@@ -1,0 +1,22 @@
+site_name: MMCU Documentation
+site_description: Modular MCU framework using C++20 modules
+site_dir: site
+docs_dir: docs
+
+theme:
+  name: mkdocs
+
+nav:
+  - Home: index.md
+  - Build And Run: build.md
+  - Project Layout: layout.md
+  - Book:
+      - Overview: book/index.md
+      - Chapter 1: book/chapter_1.md
+      - Chapter 2: book/chapter_2.md
+      - Chapter 3: book/chapter_3.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
