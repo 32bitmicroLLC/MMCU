@@ -4,7 +4,17 @@
 export module emu;
 
 import gpio;
+import mem;
 import uart;
+
+namespace mmcu::emu::detail {
+
+inline mmcu::mem::reg<mmcu::mem::uint32> gpio_registers[5]{};
+inline mmcu::mem::reg<mmcu::mem::uint32> uart_registers[6]{
+    {.value = 1u << 0},
+};
+
+}
 
 export namespace mmcu::emu {
 
@@ -51,7 +61,14 @@ inline constexpr mmcu::uart::layout uart_layout{
     .flow_control_rts_cts_value = 3,
 };
 
-inline constexpr mmcu::gpio::gpio gpio0{0x40000000u, gpio_layout};
-inline constexpr mmcu::uart::uart uart0{0x40001000u, uart_layout};
+inline constexpr mmcu::gpio::gpio gpio0{
+    &detail::gpio_registers[0],
+    gpio_layout,
+};
+
+inline constexpr mmcu::uart::uart uart0{
+    &detail::uart_registers[0],
+    uart_layout,
+};
 
 }

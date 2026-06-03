@@ -12,7 +12,12 @@ struct layout {
 
 class cpu : public mmcu::mem::peripheral<layout> {
 public:
-    constexpr explicit cpu(mmcu::mem::uintptr base = 0) :
+    constexpr explicit cpu(volatile void* base = nullptr) :
+        mmcu::mem::peripheral<layout>(base, {})
+    {
+    }
+
+    explicit cpu(mmcu::mem::uintptr base) :
         mmcu::mem::peripheral<layout>(base, {})
     {
     }

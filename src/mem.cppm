@@ -43,13 +43,18 @@ volatile reg<T>& at(uintptr address)
 template <typename Layout>
 class peripheral {
 public:
-    constexpr peripheral(uintptr base, Layout regs) :
+    constexpr peripheral(volatile void* base, Layout regs) :
         base_(base),
         layout_(regs)
     {
     }
 
-    constexpr uintptr base() const
+    peripheral(uintptr base, Layout regs) :
+        peripheral(reinterpret_cast<volatile void*>(base), regs)
+    {
+    }
+
+    constexpr volatile void* base() const
     {
         return base_;
     }
@@ -62,11 +67,12 @@ public:
     template <typename T>
     volatile reg<T>& register_at(uintptr offset) const
     {
-        return at<T>(base_ + offset);
+        auto* bytes = static_cast<volatile uint8*>(base_);
+        return *reinterpret_cast<volatile reg<T>*>(bytes + offset);
     }
 
 private:
-    uintptr base_;
+    volatile void* base_;
     Layout layout_;
 };
 

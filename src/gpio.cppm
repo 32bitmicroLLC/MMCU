@@ -29,7 +29,12 @@ struct layout {
 
 class gpio : public mmcu::mem::peripheral<layout> {
 public:
-    constexpr gpio(mmcu::mem::uintptr base, layout regs) :
+    constexpr gpio(volatile void* base, layout regs) :
+        mmcu::mem::peripheral<layout>(base, regs)
+    {
+    }
+
+    gpio(mmcu::mem::uintptr base, layout regs) :
         mmcu::mem::peripheral<layout>(base, regs)
     {
     }
