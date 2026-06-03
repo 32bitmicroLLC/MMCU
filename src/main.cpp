@@ -2,17 +2,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import cpu;
-import emu;
 import gpio;
+import target;
 import uart;
 
-int main(void)
+extern "C" int main(void)
 {
-    static_cast<void>(mmcu::emu::gpio0);
-    static_cast<void>(mmcu::emu::uart0);
+    static_cast<void>(mmcu::target::gpio0);
+    static_cast<void>(mmcu::target::uart0);
 
-    mmcu::emu::gpio0.configure(0, mmcu::gpio::direction::output);
-    mmcu::emu::uart0.configure({
+    mmcu::target::gpio0.configure(0, mmcu::gpio::direction::output);
+    mmcu::target::uart0.configure({
         .baud_rate = 115200,
         .data_bits = 8,
         .parity_mode = mmcu::uart::parity::none,
@@ -21,6 +21,6 @@ int main(void)
     });
 
     for (;;) {
-        mmcu::cpu::wait_for_event();
+        mmcu::target::cpu.wait_for_event();
     }
 }

@@ -7,10 +7,11 @@ BUILD=1
 CLEAN=0
 DEBUG=0
 COMPILER="clang"
+TARGET="emu"
 QEMU="qemu-system-arm"
 GDB="gdb"
 MACHINE="lm3s6965evb"
-CPU="cortex-m3"
+CPU=""
 TIMEOUT="5s"
 START_PAUSED=0
 GDB_ENDPOINT=""
@@ -25,12 +26,13 @@ Options:
   -t, --type <type>           CMAKE_BUILD_TYPE (default: Release)
   -c, --clean                 Clean before building
       --debug                 Build Debug, start QEMU paused, and run GDB on ELF
+      --target <name>         Target: emu, cortex-m0, or cortex-m0plus (default: emu)
       --compiler <name>       Bare-metal compiler output to run: clang or gcc (default: clang)
       --no-build              Run existing ELF without building first
       --qemu <path>           QEMU system emulator (default: qemu-system-arm)
       --gdb-bin <path>        GDB executable (default: gdb)
       --machine <name>        QEMU machine (default: lm3s6965evb)
-      --cpu <name>            QEMU CPU (default: cortex-m3)
+      --cpu <name>            QEMU CPU (default: target-selected)
       --start-paused          Start QEMU paused for debugger attachment
       --gdb <endpoint>        Add QEMU gdbstub endpoint, for example tcp::1234
       --timeout <duration>    Stop QEMU after duration (default: 5s, use 0 to disable)
@@ -66,6 +68,10 @@ while [[ $# -gt 0 ]]; do
                 GDB_ENDPOINT="tcp::1234"
             fi
             shift
+            ;;
+        --target)
+            TARGET="${2:-}"
+            shift 2
             ;;
         --compiler)
             COMPILER="${2:-}"
@@ -128,6 +134,25 @@ case "$COMPILER" in
         exit 1
         ;;
 esac
+case "$TARGET" in
+    emu)
+        DEFAULT_CPU="cortex-m3"
+        ;;
+    cortex-m0)
+        DEFAULT_CPU="cortex-m0"
+        MACHINE="microbit"
+        ;;
+    cortex-m0plus)
+        DEFAULT_CPU="cortex-m0plus"
+        ;;
+    *)
+        echo "Error: --target must be one of: emu, cortex-m0, cortex-m0plus" >&2
+        exit 1
+        ;;
+esac
+if [[ -z "$CPU" ]]; then
+    CPU="$DEFAULT_CPU"
+fi
 
 if ! command -v "$QEMU" >/dev/null 2>&1; then
     echo "Error: $QEMU not found in PATH." >&2
@@ -142,7 +167,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 if [[ $BUILD -eq 1 ]]; then
-    BUILD_ARGS=(--build-dir "$BUILD_DIR" --type "$BUILD_TYPE" --compiler "$COMPILER")
+    BUILD_ARGS=(--build-dir "$BUILD_DIR" --type "$BUILD_TYPE" --compiler "$COMPILER" --target "$TARGET")
     if [[ $CLEAN -eq 1 ]]; then
         BUILD_ARGS+=(--clean)
     fi

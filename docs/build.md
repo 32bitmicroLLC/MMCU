@@ -6,8 +6,11 @@
 - C++20-capable compiler with module support
 - Ninja (optional, auto-detected by `build.sh`)
 - `/usr/bin/clang++-20` for the Clang bare-metal build
+- `/usr/bin/clang-20` for Clang bare-metal C and assembly sources
 - `/usr/bin/arm-none-eabi-g++` for the GNU Arm bare-metal build
+- `/usr/bin/arm-none-eabi-gcc` for GNU Arm bare-metal C and assembly sources
 - `/usr/bin/arm-none-eabi-objdump` for bare-metal listings
+- CMSIS_6 from `https://github.com/ARM-software/CMSIS_6` for Cortex-M0/M0+ targets
 
 ## Build
 
@@ -39,9 +42,16 @@ Useful options:
 
 - `./build-baremetal.sh --compiler clang`
 - `./build-baremetal.sh --compiler gcc`
+- `./build-baremetal.sh --target cortex-m0`
+- `./build-baremetal.sh --target cortex-m0plus`
+- `./build-baremetal.sh --cmsis-dir third_party/CMSIS_6`
 - `./build-baremetal.sh --cpu cortex-m4`
 - `./build-baremetal.sh --type Debug`
 - `./build-baremetal.sh --jobs 8`
+
+If `--target cortex-m0` or `--target cortex-m0plus` is selected and
+`--cmsis-dir` is not provided, CMake fetches CMSIS_6 at configure time using
+`FetchContent`.
 
 Generate linker maps and full disassembly listings:
 
