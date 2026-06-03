@@ -6,6 +6,7 @@ set(MMCU_TARGET "emu" CACHE STRING "MMCU target to build")
 set_property(CACHE MMCU_TARGET PROPERTY STRINGS emu cortex-m0 cortex-m0plus)
 set(MMCU_CMSIS_DIR "" CACHE PATH "Path to an installed CMSIS_6 checkout")
 set(MMCU_CMSIS_GIT_TAG "v6.3.0" CACHE STRING "CMSIS_6 git tag to fetch when MMCU_CMSIS_DIR is not set")
+set(MMCU_THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party" CACHE PATH "Shared third-party source directory")
 
 add_executable(mmcu_app)
 target_compile_features(mmcu_app PRIVATE cxx_std_20)
@@ -20,14 +21,24 @@ function(mmcu_require_cmsis)
     if(MMCU_CMSIS_DIR)
         set(_cmsis_dir "${MMCU_CMSIS_DIR}")
     else()
-        include(FetchContent)
-        FetchContent_Declare(
-            cmsis_6
-            GIT_REPOSITORY https://github.com/ARM-software/CMSIS_6.git
-            GIT_TAG "${MMCU_CMSIS_GIT_TAG}"
-        )
-        FetchContent_MakeAvailable(cmsis_6)
-        set(_cmsis_dir "${cmsis_6_SOURCE_DIR}")
+        set(_cmsis_dir "${MMCU_THIRD_PARTY_DIR}/CMSIS_6")
+        if(NOT EXISTS "${_cmsis_dir}")
+            find_package(Git REQUIRED)
+            file(MAKE_DIRECTORY "${MMCU_THIRD_PARTY_DIR}")
+            message(STATUS "Cloning CMSIS_6 ${MMCU_CMSIS_GIT_TAG} into ${_cmsis_dir}")
+            execute_process(
+                COMMAND
+                    "${GIT_EXECUTABLE}" clone
+                    --branch "${MMCU_CMSIS_GIT_TAG}"
+                    --depth 1
+                    https://github.com/ARM-software/CMSIS_6.git
+                    "${_cmsis_dir}"
+                RESULT_VARIABLE _cmsis_clone_result
+            )
+            if(NOT _cmsis_clone_result EQUAL 0)
+                message(FATAL_ERROR "Failed to clone CMSIS_6 into ${_cmsis_dir}")
+            endif()
+        endif()
     endif()
 
     set(_cmsis_core_include "${_cmsis_dir}/CMSIS/Core/Include")
@@ -41,13 +52,11 @@ endfunction()
 if(MMCU_TARGET STREQUAL "emu")
     list(APPEND MMCU_MODULES
         src/emu.cppm
-        src/target_emu.cppm
     )
 elseif(MMCU_TARGET STREQUAL "cortex-m0")
     mmcu_require_cmsis()
     list(APPEND MMCU_MODULES
         targets/arm/cortex_m0/cortex_m0.cppm
-        targets/arm/cortex_m0/target.cppm
     )
     target_sources(mmcu_app PRIVATE
         targets/arm/cortex_m0/startup_cortex_m0.s
@@ -60,7 +69,6 @@ elseif(MMCU_TARGET STREQUAL "cortex-m0plus")
     mmcu_require_cmsis()
     list(APPEND MMCU_MODULES
         targets/arm/cortex_m0plus/cortex_m0plus.cppm
-        targets/arm/cortex_m0plus/target.cppm
     )
     target_sources(mmcu_app PRIVATE
         targets/arm/cortex_m0plus/startup_cortex_m0plus.s

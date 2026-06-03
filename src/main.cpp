@@ -3,16 +3,17 @@
 
 import cpu;
 import gpio;
-import target;
 import uart;
 
-extern "C" int main(void)
-{
-    static_cast<void>(mmcu::target::gpio0);
-    static_cast<void>(mmcu::target::uart0);
+int main() asm("main");
 
-    mmcu::target::gpio0.configure(0, mmcu::gpio::direction::output);
-    mmcu::target::uart0.configure({
+int main()
+{
+    static_cast<void>(mmcu::gpio::gpio0);
+    static_cast<void>(mmcu::uart::uart0);
+
+    mmcu::gpio::gpio0.configure(0, mmcu::gpio::direction::output);
+    mmcu::uart::uart0.configure({
         .baud_rate = 115200,
         .data_bits = 8,
         .parity_mode = mmcu::uart::parity::none,
@@ -21,6 +22,6 @@ extern "C" int main(void)
     });
 
     for (;;) {
-        mmcu::target::cpu.wait_for_event();
+        mmcu::cpu::core.wait_for_event();
     }
 }

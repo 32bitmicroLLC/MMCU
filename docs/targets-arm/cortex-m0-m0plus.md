@@ -21,14 +21,15 @@ productive builds rather than the moving `main` branch.
 Install it as an external dependency, not as hand-copied source mixed into
 `src/`.
 
-Recommended local layout:
+CMake fetches the default CMSIS_6 checkout into this shared local layout:
 
 ```text
 third_party/
   CMSIS_6/
 ```
 
-or an externally supplied path:
+All build directories reuse that checkout. An externally supplied path can be
+selected instead:
 
 ```bash
 ./build-baremetal.sh --target cortex-m0 --cmsis-dir /path/to/CMSIS_6
@@ -45,7 +46,7 @@ The Cortex-M0/M0+ target integration should provide:
 - linker script
 - `SystemInit`
 - Cortex-M0 and Cortex-M0+ compiler flags
-- target module imported by the application
+- concrete target module compiled by CMake
 
 The first pass should not use vendor HAL code.
 
@@ -151,9 +152,12 @@ Common flags:
 Extend `build-baremetal.sh`:
 
 ```bash
-./build-baremetal.sh --target cortex-m0 --cmsis-dir third_party/CMSIS_6
-./build-baremetal.sh --target cortex-m0plus --cmsis-dir third_party/CMSIS_6
+./build-baremetal.sh --target cortex-m0
+./build-baremetal.sh --target cortex-m0plus
 ```
+
+If `--cmsis-dir` is omitted, CMake fetches CMSIS_6 into
+`third_party/CMSIS_6`.
 
 The target option should select:
 
@@ -189,7 +193,6 @@ import mem;
 import cpu;
 import gpio;
 import uart;
-import target;
 ```
 
 Concrete target modules may exist internally:
@@ -199,37 +202,28 @@ export module cortex_m0;
 export module cortex_m0plus;
 ```
 
-But `main.cpp` should not import those concrete modules directly. Build target
-selection should provide a stable target module surface:
+But `main.cpp` should not import those concrete modules directly. It should use
+stable default objects exposed by the generic modules:
 
 ```cpp
-export module target;
-```
-
-The stable `target` module should expose target-level objects under:
-
-```cpp
-mmcu::target
-```
-
-For example:
-
-```cpp
-mmcu::target::cpu
+mmcu::cpu::core
+mmcu::gpio::gpio0
+mmcu::uart::uart0
 ```
 
 Do not put Cortex-M0/M0+ assumptions into `gpio.cppm` or `uart.cppm`.
 
-## Concrete Module Selection Mechanism
+## Default Object Selection Mechanism
 
-The generic mechanism for selecting a concrete target implementation behind the
-stable `target` module is described in [Target Modules](../target-modules.md).
+The generic mechanism for exposing target-independent default objects is
+described in [Target Module Objects](../target-modules.md).
 
-For these ARM targets, the selected provider should be one of:
+For these ARM targets, CMake may include one of the concrete implementation
+modules:
 
 ```text
-targets/arm/cortex_m0/target.cppm
-targets/arm/cortex_m0plus/target.cppm
+targets/arm/cortex_m0/cortex_m0.cppm
+targets/arm/cortex_m0plus/cortex_m0plus.cppm
 ```
 
 ## QEMU Direction

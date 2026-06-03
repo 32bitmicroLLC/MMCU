@@ -211,4 +211,47 @@ private:
     }
 };
 
+namespace detail {
+
+inline mmcu::mem::reg<mmcu::mem::uint32> uart0_registers[6]{
+    {.value = 1u << 0},
+};
+
+}
+
+inline constexpr layout uart0_layout{
+    .status_offset = 0x00,
+    .data_offset = 0x04,
+    .baud_offset = 0x08,
+    .control_offset = 0x0c,
+    .frame_offset = 0x10,
+    .flow_offset = 0x14,
+    .tx_ready_mask = 1u << 0,
+    .rx_ready_mask = 1u << 1,
+    .enable_mask = 1u << 0,
+    .data_bits_shift = 0,
+    .data_bits_mask = 0x0f,
+    .parity_shift = 4,
+    .parity_mask = 0x30,
+    .stop_bits_shift = 6,
+    .stop_bits_mask = 0xc0,
+    .flow_control_shift = 0,
+    .flow_control_mask = 0x03,
+    .parity_none_value = 0,
+    .parity_even_value = 1,
+    .parity_odd_value = 2,
+    .stop_bits_one_value = 0,
+    .stop_bits_one_and_half_value = 1,
+    .stop_bits_two_value = 2,
+    .flow_control_none_value = 0,
+    .flow_control_rts_value = 1,
+    .flow_control_cts_value = 2,
+    .flow_control_rts_cts_value = 3,
+};
+
+inline constexpr uart uart0{
+    &detail::uart0_registers[0],
+    uart0_layout,
+};
+
 }

@@ -1,84 +1,70 @@
-# Target Modules
+# Target Module Objects
 
-MMCU application code should import stable modules only. Concrete target
-implementation modules should be selected by the build.
-
-## Stable Import
-
-Application code imports:
+MMCU application code should import stable generic modules only.
 
 ```cpp
-import target;
-```
-
-Only one source file in a build should provide:
-
-```cpp
-export module target;
-```
-
-C++20 module imports are resolved by module name, not by source filename. MMCU
-uses that property to keep application code stable while swapping target
-implementations at build time.
-
-## Build-Time Selection
-
-For a Cortex-M0 build, CMake includes:
-
-```text
-targets/arm/cortex_m0/target.cppm
-```
-
-For a Cortex-M0+ build, CMake includes:
-
-```text
-targets/arm/cortex_m0plus/target.cppm
-```
-
-Both files export the same public module name:
-
-```cpp
-export module target;
-```
-
-but each file binds `mmcu::target` to its own concrete implementation.
-
-Example:
-
-```cpp
-export module target;
-
 import cpu;
+import gpio;
+import uart;
+```
 
-export namespace mmcu::target {
-inline constexpr mmcu::cpu::cpu cpu{};
+Application code should not import concrete target modules such as `emu`,
+`cortex_m0`, or `cortex_m0plus`.
+
+## Stable Names
+
+Target-selected default objects live in the generic module namespaces:
+
+```cpp
+mmcu::cpu::core
+mmcu::gpio::gpio0
+mmcu::uart::uart0
+```
+
+This keeps application code independent of the selected target:
+
+```cpp
+mmcu::gpio::gpio0.configure(0, mmcu::gpio::direction::output);
+mmcu::uart::uart0.configure({
+    .baud_rate = 115200,
+    .data_bits = 8,
+    .parity_mode = mmcu::uart::parity::none,
+    .stop = mmcu::uart::stop_bits::one,
+    .flow = mmcu::uart::flow_control::none,
+});
+
+for (;;) {
+    mmcu::cpu::core.wait_for_event();
 }
 ```
 
-## Private Concrete Modules
+## Build-Time Selection
 
-The selected `target.cppm` may import private concrete implementation modules:
+The build still selects a concrete target:
 
-```cpp
-import cortex_m0;
+```bash
+./build-baremetal.sh --target emu
+./build-baremetal.sh --target cortex-m0
+./build-baremetal.sh --target cortex-m0plus
 ```
 
-or:
+Concrete target modules may exist internally:
 
 ```cpp
-import cortex_m0plus;
+export module cortex_m0;
+export module cortex_m0plus;
 ```
 
-Those concrete modules are added to the build only for the selected target.
-Application code does not import them directly.
+They are implementation details. CMake may include them for startup, CMSIS, CPU
+flags, linker scripts, or target metadata, but application code should not name
+them.
 
 ## Rule
 
-- public application import: `import target;`
-- selected module interface file: `targets/<family>/<target>/target.cppm`
-- private concrete implementation: target-specific modules such as `cortex_m0`
-- never include more than one `export module target;` provider in one build
+- public application imports: `cpu`, `gpio`, `uart`
+- public default objects: `mmcu::cpu::core`, `mmcu::gpio::gpio0`, `mmcu::uart::uart0`
+- concrete targets are selected by CMake/build scripts
+- concrete target modules are internal implementation details
 
-This keeps the application source stable while still allowing each target to
-have separate startup files, linker scripts, CPU flags, CMSIS configuration,
-and implementation modules.
+This avoids a separate `target` import and avoids `mmcu::target::` in
+application code.

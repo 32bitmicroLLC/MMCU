@@ -51,7 +51,8 @@ Useful options:
 
 If `--target cortex-m0` or `--target cortex-m0plus` is selected and
 `--cmsis-dir` is not provided, CMake fetches CMSIS_6 at configure time using
-`FetchContent`.
+`FetchContent` into `third_party/CMSIS_6`. That checkout is shared by all
+build directories.
 
 Generate linker maps and full disassembly listings:
 

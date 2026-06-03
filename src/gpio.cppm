@@ -96,4 +96,28 @@ private:
     }
 };
 
+namespace detail {
+
+inline mmcu::mem::reg<mmcu::mem::uint32> gpio0_registers[5]{};
+
+}
+
+inline constexpr layout gpio0_layout{
+    .direction_offset = 0x00,
+    .input_offset = 0x04,
+    .output_offset = 0x08,
+    .set_offset = 0x0c,
+    .clear_offset = 0x10,
+    .direction_bits = 2,
+    .input_value = 0,
+    .output_value = 1,
+    .alternate_value = 2,
+    .analog_value = 3,
+};
+
+inline constexpr gpio gpio0{
+    &detail::gpio0_registers[0],
+    gpio0_layout,
+};
+
 }

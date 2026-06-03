@@ -45,29 +45,31 @@ public:
     }
 };
 
+inline constexpr cpu core{};
+
 inline void enable_interrupts()
 {
-    cpu{}.enable_interrupts();
+    core.enable_interrupts();
 }
 
 inline void disable_interrupts()
 {
-    cpu{}.disable_interrupts();
+    core.disable_interrupts();
 }
 
 inline void wait_for_event()
 {
-    cpu{}.wait_for_event();
+    core.wait_for_event();
 }
 
 inline void memory_barrier()
 {
-    cpu{}.memory_barrier();
+    core.memory_barrier();
 }
 
 inline void instruction_barrier()
 {
-    cpu{}.instruction_barrier();
+    core.instruction_barrier();
 }
 
 }
