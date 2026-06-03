@@ -11,6 +11,8 @@
 - `/usr/bin/arm-none-eabi-gcc` for GNU Arm bare-metal C and assembly sources
 - `/usr/bin/arm-none-eabi-objdump` for bare-metal listings
 - CMSIS_6 from `https://github.com/ARM-software/CMSIS_6` for Cortex-M0/M0+ targets
+  when building those targets. CMake clones it into `third_party/CMSIS_6` if no
+  `--cmsis-dir` is provided.
 
 ## Build
 
@@ -50,9 +52,9 @@ Useful options:
 - `./build-baremetal.sh --jobs 8`
 
 If `--target cortex-m0` or `--target cortex-m0plus` is selected and
-`--cmsis-dir` is not provided, CMake fetches CMSIS_6 at configure time using
-`FetchContent` into `third_party/CMSIS_6`. That checkout is shared by all
-build directories.
+`--cmsis-dir` is not provided, CMake clones CMSIS_6 at configure time into
+`third_party/CMSIS_6`. That checkout is shared by all build directories and
+reused until it is removed manually.
 
 Generate linker maps and full disassembly listings:
 

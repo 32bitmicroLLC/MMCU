@@ -21,7 +21,7 @@ productive builds rather than the moving `main` branch.
 Install it as an external dependency, not as hand-copied source mixed into
 `src/`.
 
-CMake fetches the default CMSIS_6 checkout into this shared local layout:
+CMake clones the default CMSIS_6 checkout into this shared local layout:
 
 ```text
 third_party/
@@ -156,8 +156,8 @@ Extend `build-baremetal.sh`:
 ./build-baremetal.sh --target cortex-m0plus
 ```
 
-If `--cmsis-dir` is omitted, CMake fetches CMSIS_6 into
-`third_party/CMSIS_6`.
+If `--cmsis-dir` is omitted, CMake clones CMSIS_6 into `third_party/CMSIS_6`
+and reuses that checkout for later build directories.
 
 The target option should select:
 

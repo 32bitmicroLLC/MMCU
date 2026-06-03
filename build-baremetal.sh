@@ -38,7 +38,7 @@ Options:
       --arm-gcc <path>         arm-none-eabi-gcc path (default: /usr/bin/arm-none-eabi-gcc)
       --objdump <path>         objdump path (default: /usr/bin/arm-none-eabi-objdump)
       --cmsis-dir <path>       Installed CMSIS_6 checkout path
-      --cmsis-git-tag <tag>    CMSIS_6 tag for CMake FetchContent (default: v6.3.0)
+      --cmsis-git-tag <tag>    CMSIS_6 tag for the CMake-managed clone (default: v6.3.0)
   -h, --help                   Show this help
 
 Outputs:
