@@ -12,6 +12,11 @@ nav:
   - Target Modules: target-modules.md
   - ARM Targets:
       - Cortex-M0/M0+ Integration: targets-arm/cortex-m0-m0plus.md
+  - Platform Modules: platform-modules.md
+  - Native Platforms:
+      - Linux: platforms-native/linux.md
+  - Bare-Metal Platforms:
+      - MCU: platforms-baremetal/mcu.md
   - Project Layout: layout.md
   - Book:
       - Overview: book/index.md
@@ -19,6 +24,7 @@ nav:
       - Chapter 2: book/chapter_2.md
       - Chapter 3: book/chapter_3.md
       - Chapter 4: book/chapter_4.md
+      - Chapter 5: book/chapter_5.md
 
 markdown_extensions:
   - admonition
