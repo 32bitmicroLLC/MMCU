@@ -25,6 +25,7 @@ nav:
       - MCU: platforms-baremetal/mcu.md
       - pico-sdk: platforms-baremetal/pico-sdk.md
   - Project Layout: layout.md
+  - Libraries: libraries.md
   - Book:
       - Overview: book/index.md
       - Chapter 1: book/chapter_1.md
