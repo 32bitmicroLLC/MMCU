@@ -138,7 +138,7 @@ Board variants are configured separately from the target:
 ```text
 ./setup.sh                 # venv + YAML tooling + host tool checks
 ./setup.sh --docs          # also install docs tooling
-./setup.sh --cmsis         # also install vendored CMSIS_6
+./setup.sh --cmsis         # also install vendored CMSIS_6 and CMSIS-RP2xxx-DFP
 ./setup.sh --pico-sdk      # also install vendored pico-sdk/platform tools
 ./setup.sh --check         # report only; make no changes
 ./setup.sh --native-build  # setup, configure, and build native target

@@ -21,9 +21,11 @@ elseif(MMCU_PLATFORM STREQUAL "mcu")
     set(_mmcu_default_target "emu")
     set(_mmcu_default_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchains/arm-none-eabi-gcc.cmake")
 elseif(MMCU_PLATFORM STREQUAL "cmsis")
-    # CMSIS is the first-class generic Arm CMSIS-Core platform. It is not a
-    # Raspberry Pi Pico board platform; Pico-family boards use pico_sdk.
-    set(_mmcu_valid_targets cortex-m0 cortex-m0plus)
+    # CMSIS is the first-class Arm CMSIS platform. Generic Cortex-M targets use
+    # CMSIS-Core plus MMCU startup/linker files; rp2040 uses Raspberry Pi's
+    # CMSIS-RP2xxx-DFP device family pack. The pico_sdk platform remains the
+    # vendor SDK integration with real pico-sdk runtime/boot2 support.
+    set(_mmcu_valid_targets cortex-m0 cortex-m0plus rp2040)
     set(_mmcu_default_target "cortex-m0")
     set(_mmcu_default_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchains/arm-none-eabi-gcc.cmake")
 elseif(MMCU_PLATFORM STREQUAL "pico_sdk")
@@ -60,8 +62,10 @@ set(MMCU_PICO_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platforms/pico-sdk/pico-sdk" 
     "Vendored pico-sdk checkout used by the rp2040/rp2350 targets")
 set(MMCU_CMSIS_PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platforms/cmsis/CMSIS_6" CACHE PATH
     "Vendored CMSIS_6 checkout used by the cmsis platform")
+set(MMCU_CMSIS_RP2XXX_DFP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platforms/cmsis/CMSIS-RP2xxx-DFP" CACHE PATH
+    "Vendored Raspberry Pi CMSIS-RP2xxx-DFP checkout used by CMSIS RP2040 targets")
 
-if(MMCU_TARGET STREQUAL "rp2040" OR MMCU_TARGET STREQUAL "rp2350")
+if(MMCU_PLATFORM STREQUAL "pico_sdk" AND (MMCU_TARGET STREQUAL "rp2040" OR MMCU_TARGET STREQUAL "rp2350"))
     if(NOT EXISTS "${MMCU_PICO_SDK_DIR}/pico_sdk_init.cmake")
         message(FATAL_ERROR
             "MMCU_TARGET '${MMCU_TARGET}' requires a vendored pico-sdk checkout at "
@@ -158,6 +162,44 @@ function(mmcu_require_cmsis)
     )
     message(STATUS "MMCU CMSIS-Core include: ${_cmsis_core_include}")
     message(STATUS "MMCU CMSIS-Core path: CMake headers, not CMSIS-Toolbox cbuild")
+endfunction()
+
+function(mmcu_require_cmsis_rp2040_dfp)
+    mmcu_require_cmsis()
+
+    set(_dfp_dir "${MMCU_CMSIS_RP2XXX_DFP_DIR}")
+    set(_dfp_device_dir "${_dfp_dir}/CMSIS/Device/RP2040")
+    set(_dfp_include_dir "${_dfp_device_dir}/Include")
+    set(_dfp_source_dir "${_dfp_device_dir}/Source")
+    set(_dfp_gcc_dir "${_dfp_source_dir}/GCC")
+
+    foreach(_required_path IN ITEMS
+        "${_dfp_include_dir}/rp2040.h"
+        "${_dfp_include_dir}/system_rp2040.h"
+        "${_dfp_source_dir}/system_rp2040.c"
+        "${_dfp_gcc_dir}/startup_rp2040.S"
+        "${_dfp_gcc_dir}/gcc_arm.ld"
+    )
+        if(NOT EXISTS "${_required_path}")
+            message(FATAL_ERROR
+                "Raspberry Pi CMSIS-RP2xxx-DFP file not found: ${_required_path}\n"
+                "Run ./platforms/cmsis/cmsis-install.sh, or configure with "
+                "-DMMCU_CMSIS_RP2XXX_DFP_DIR=<checkout>.")
+        endif()
+    endforeach()
+
+    target_include_directories(mmcu_app PRIVATE "${_dfp_include_dir}")
+    target_sources(mmcu_app PRIVATE
+        "${_dfp_gcc_dir}/startup_rp2040.S"
+        "${_dfp_source_dir}/system_rp2040.c"
+        targets/arm/rp2040/cmsis_runtime.c
+    )
+    target_link_options(mmcu_app PRIVATE
+        $<$<CXX_COMPILER_ID:Clang>:-fuse-ld=bfd>
+        -Wl,--no-warn-execstack
+        "-T${_dfp_gcc_dir}/gcc_arm.ld"
+    )
+    message(STATUS "MMCU CMSIS-RP2xxx-DFP: ${_dfp_dir}")
 endfunction()
 
 function(mmcu_set_entry_symbol symbol)
@@ -272,8 +314,14 @@ elseif(MMCU_TARGET STREQUAL "rp2040")
         targets/arm/rp2040/rp2040.cppm
         ${MMCU_PICO_MODULES}
     )
-    mmcu_pico_sdk_board_for_target(_mmcu_pico_board rp2040)
-    mmcu_require_pico_sdk_foundation(rp2040 "${_mmcu_pico_board}")
+    if(MMCU_PLATFORM STREQUAL "cmsis")
+        mmcu_require_cmsis_rp2040_dfp()
+        mmcu_apply_freestanding_options()
+        mmcu_set_entry_symbol(Reset_Handler)
+    else()
+        mmcu_pico_sdk_board_for_target(_mmcu_pico_board rp2040)
+        mmcu_require_pico_sdk_foundation(rp2040 "${_mmcu_pico_board}")
+    endif()
 elseif(MMCU_TARGET STREQUAL "rp2350")
     list(APPEND MMCU_MODULES
         targets/arm/rp2350/rp2350.cppm

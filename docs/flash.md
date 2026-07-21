@@ -30,7 +30,7 @@ first with `./configure.sh`.
 |---|---|---|---|
 | `pico_sdk` | `rp2040`, `rp2350` | `platforms/pico-sdk/pico-sdk-flash.sh` | flashes `mmcu_app.uf2` via `picotool load -f -x` |
 | `native`, `mcu` | any | — | rejected: no real hardware target |
-| `cmsis` | any | — | rejected: generic CMSIS-Core builds do not produce `.uf2` images |
+| `cmsis` | any | — | rejected: CMSIS CMake builds currently produce ELF-only images |
 
 ## How dispatch works
 

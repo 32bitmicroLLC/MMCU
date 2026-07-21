@@ -13,6 +13,7 @@ BUILD_TYPE="Release"
 GENERATOR=""
 CMSIS_DIR=""
 CMSIS_GIT_TAG="v6.3.0"
+CMSIS_RP2XXX_DFP_DIR=""
 CPU=""
 LINKER_MAP=0
 CLEAN=0
@@ -32,7 +33,7 @@ context instead.
 
 Options:
   -d, --build-dir <dir>      MMCU build directory (default: build-cmsis-<target>-<compiler>)
-  -t, --target <name>        MMCU_TARGET: cortex-m0 or cortex-m0plus
+  -t, --target <name>        MMCU_TARGET: cortex-m0, cortex-m0plus, or rp2040
                               (default: cortex-m0)
       --board <name>         MMCU_BOARD override
       --compiler <name>      gcc or clang (default: gcc)
@@ -41,6 +42,8 @@ Options:
   -G, --generator <name>     CMake generator
       --cmsis-dir <path>     MMCU_CMSIS_DIR
       --cmsis-git-tag <tag>  MMCU_CMSIS_GIT_TAG (default: v6.3.0)
+      --cmsis-rp2xxx-dfp-dir <path>
+                              MMCU_CMSIS_RP2XXX_DFP_DIR for --target rp2040
       --cpu <cpu>            MMCU_CPU override
       --linker-map           Enable MMCU_LINKER_MAP
       --csolution <file>     CMSIS-Toolbox *.csolution.yml file
@@ -66,6 +69,7 @@ while [[ $# -gt 0 ]]; do
         -G|--generator) GENERATOR="${2:-}"; shift 2 ;;
         --cmsis-dir) CMSIS_DIR="${2:-}"; shift 2 ;;
         --cmsis-git-tag) CMSIS_GIT_TAG="${2:-}"; shift 2 ;;
+        --cmsis-rp2xxx-dfp-dir) CMSIS_RP2XXX_DFP_DIR="${2:-}"; shift 2 ;;
         --cpu) CPU="${2:-}"; shift 2 ;;
         --linker-map) LINKER_MAP=1; shift ;;
         --csolution) CSOLUTION="${2:-}"; shift 2 ;;
@@ -106,11 +110,11 @@ if [[ -n "$CSOLUTION" ]]; then
 fi
 
 case "$TARGET" in
-    cortex-m0|cortex-m0plus)
+    cortex-m0|cortex-m0plus|rp2040)
         ;;
     *)
-        echo "Error: CMSIS CMake wrapper targets are: cortex-m0, cortex-m0plus." >&2
-        echo "       Raspberry Pi Pico boards use --platform pico_sdk with --target rp2040 or rp2350." >&2
+        echo "Error: CMSIS CMake wrapper targets are: cortex-m0, cortex-m0plus, rp2040." >&2
+        echo "       RP2350/Pico 2 boards currently use --platform pico_sdk with --target rp2350." >&2
         exit 1
         ;;
 esac
@@ -131,6 +135,7 @@ CONFIGURE_ARGS=(
 [[ -n "$TOOLCHAIN_FILE" ]] && CONFIGURE_ARGS+=(--toolchain-file "$TOOLCHAIN_FILE")
 [[ -n "$GENERATOR" ]] && CONFIGURE_ARGS+=(--generator "$GENERATOR")
 [[ -n "$CMSIS_DIR" ]] && CONFIGURE_ARGS+=(--cmsis-dir "$CMSIS_DIR")
+[[ -n "$CMSIS_RP2XXX_DFP_DIR" ]] && CONFIGURE_ARGS+=(--cmsis-rp2xxx-dfp-dir "$CMSIS_RP2XXX_DFP_DIR")
 [[ -n "$CPU" ]] && CONFIGURE_ARGS+=(--cpu "$CPU")
 [[ $LINKER_MAP -eq 1 ]] && CONFIGURE_ARGS+=(--linker-map)
 [[ $CLEAN -eq 1 ]] && CONFIGURE_ARGS+=(--clean)

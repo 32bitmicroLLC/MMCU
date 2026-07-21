@@ -144,6 +144,7 @@ if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
         CONFIG_CPU="$(read_config_var MMCU_CPU)"
         CONFIG_CMSIS_DIR="$(read_config_var MMCU_CMSIS_DIR)"
         CONFIG_CMSIS_GIT_TAG="$(read_config_var MMCU_CMSIS_GIT_TAG)"
+        CONFIG_CMSIS_RP2XXX_DFP_DIR="$(read_config_var MMCU_CMSIS_RP2XXX_DFP_DIR)"
         CONFIG_LINKER_MAP="$(read_config_var MMCU_LINKER_MAP)"
         CONFIG_ARM_GCC="$(read_config_var MMCU_ARM_GCC)"
         CONFIG_ARM_GXX="$(read_config_var MMCU_ARM_GXX)"
@@ -165,6 +166,7 @@ if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
         [[ -n "$CONFIG_CPU" ]] && CONFIGURE_ARGS+=(--cpu "$CONFIG_CPU")
         [[ -n "$CONFIG_CMSIS_DIR" ]] && CONFIGURE_ARGS+=(--cmsis-dir "$CONFIG_CMSIS_DIR")
         [[ -n "$CONFIG_CMSIS_GIT_TAG" ]] && CONFIGURE_ARGS+=(--cmsis-git-tag "$CONFIG_CMSIS_GIT_TAG")
+        [[ -n "$CONFIG_CMSIS_RP2XXX_DFP_DIR" ]] && CONFIGURE_ARGS+=(--cmsis-rp2xxx-dfp-dir "$CONFIG_CMSIS_RP2XXX_DFP_DIR")
         [[ "$CONFIG_LINKER_MAP" == "1" || "$CONFIG_LINKER_MAP" == "ON" ]] && CONFIGURE_ARGS+=(--linker-map)
         [[ -n "$CONFIG_ARM_GCC" ]] && CONFIGURE_ARGS+=(--arm-gcc "$CONFIG_ARM_GCC")
         [[ -n "$CONFIG_ARM_GXX" ]] && CONFIGURE_ARGS+=(--arm-gxx "$CONFIG_ARM_GXX")

@@ -10,6 +10,7 @@ _mmcu_effective_target=""
 CPU=""
 CMSIS_DIR=""
 CMSIS_GIT_TAG="v6.3.0"
+CMSIS_RP2XXX_DFP_DIR=""
 LINKER_MAP=0
 ARM_GCC=""
 ARM_GXX=""
@@ -39,6 +40,9 @@ Options:
       --cpu <cpu>           MMCU_CPU override (mcu/cmsis/pico_sdk, default target-derived)
       --cmsis-dir <path>    MMCU_CMSIS_DIR (cortex-m0, cortex-m0plus)
       --cmsis-git-tag <tag> MMCU_CMSIS_GIT_TAG (default: v6.3.0)
+      --cmsis-rp2xxx-dfp-dir <path>
+                             Raspberry Pi CMSIS-RP2xxx-DFP checkout
+                             (cmsis + rp2040)
       --linker-map          Enable MMCU_LINKER_MAP (mmcu_app.map + --cref)
       --arm-gcc <path>      MMCU_ARM_GCC override
       --arm-gxx <path>      MMCU_ARM_GXX override
@@ -56,6 +60,7 @@ Examples:
   ./configure.sh
   ./configure.sh --platform mcu --target cortex-m0
   ./configure.sh --platform cmsis --target cortex-m0
+  ./configure.sh --platform cmsis --target rp2040 --board pico
   ./configure.sh --platform mcu --target cortex-m0plus --compiler clang
   ./configure.sh --platform mcu --target cortex-m0 --toolchain-file cmake/toolchains/arm-none-eabi-clang.cmake
   ./configure.sh --platform pico_sdk --target rp2040
@@ -242,7 +247,7 @@ run_interactive() {
     local platform_labels=(
         "native   - host build, emu target"
         "mcu      - generic bare-metal: emu, cortex-m0, cortex-m0plus"
-        "cmsis    - generic CMSIS-Core bare-metal ARM: cortex-m0, cortex-m0plus"
+        "cmsis    - CMSIS bare-metal ARM: cortex-m0, cortex-m0plus, rp2040"
         "pico_sdk - Raspberry Pi Pico SDK: rp2040, rp2350"
     )
     local platform_default=1
@@ -270,10 +275,11 @@ run_interactive() {
             )
             ;;
         cmsis)
-            target_values=(cortex-m0 cortex-m0plus)
+            target_values=(cortex-m0 cortex-m0plus rp2040)
             target_labels=(
                 "cortex-m0     - CMSIS-Core Cortex-M0 target"
                 "cortex-m0plus - CMSIS-Core Cortex-M0+ target"
+                "rp2040        - Raspberry Pi RP2040 via CMSIS-RP2xxx-DFP"
             )
             ;;
         pico_sdk)
@@ -298,8 +304,12 @@ run_interactive() {
     fi
 
     local _rp2_pico_sdk_backed=0
+    local _rp2040_cmsis_dfp_backed=0
     if [[ "$PLATFORM" == "pico_sdk" && ( "$TARGET" == "rp2040" || "$TARGET" == "rp2350" ) ]]; then
         _rp2_pico_sdk_backed=1
+    fi
+    if [[ "$PLATFORM" == "cmsis" && "$TARGET" == "rp2040" ]]; then
+        _rp2040_cmsis_dfp_backed=1
     fi
 
     if [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "cmsis" || "$PLATFORM" == "pico_sdk" ]]; then
@@ -325,6 +335,9 @@ run_interactive() {
 
         if [[ "$TARGET" != "emu" && $_rp2_pico_sdk_backed -eq 0 ]]; then
             CMSIS_DIR="$(prompt_default "CMSIS_6 checkout path (blank = platforms/cmsis/CMSIS_6, then third_party/CMSIS_6 fallback)" "$CMSIS_DIR")"
+        fi
+        if [[ $_rp2040_cmsis_dfp_backed -eq 1 ]]; then
+            CMSIS_RP2XXX_DFP_DIR="$(prompt_default "CMSIS-RP2xxx-DFP checkout path (blank = platforms/cmsis/CMSIS-RP2xxx-DFP)" "$CMSIS_RP2XXX_DFP_DIR")"
         fi
 
         if prompt_yes_no "Enable linker map + cross-reference (MMCU_LINKER_MAP)?" "n"; then
@@ -367,6 +380,7 @@ run_interactive() {
     [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "cmsis" || "$PLATFORM" == "pico_sdk" ]] && echo "  compiler      = $COMPILER"
     [[ -n "$CPU" ]] && echo "  MMCU_CPU      = $CPU"
     [[ -n "$CMSIS_DIR" ]] && echo "  MMCU_CMSIS_DIR = $CMSIS_DIR"
+    [[ -n "$CMSIS_RP2XXX_DFP_DIR" ]] && echo "  MMCU_CMSIS_RP2XXX_DFP_DIR = $CMSIS_RP2XXX_DFP_DIR"
     [[ $LINKER_MAP -eq 1 ]] && echo "  MMCU_LINKER_MAP = ON"
     echo "  build type    = $BUILD_TYPE"
     echo "  build dir     = $BUILD_DIR"
@@ -406,6 +420,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --cmsis-git-tag)
             CMSIS_GIT_TAG="${2:-}"
+            shift 2
+            ;;
+        --cmsis-rp2xxx-dfp-dir)
+            CMSIS_RP2XXX_DFP_DIR="${2:-}"
             shift 2
             ;;
         --linker-map)
@@ -494,6 +512,10 @@ if [[ "$PLATFORM" == "pico_sdk" ]]; then
     fi
 fi
 
+if [[ "$PLATFORM" == "cmsis" ]]; then
+    _mmcu_effective_target="${TARGET:-cortex-m0}"
+fi
+
 if [[ ( "$PLATFORM" == "mcu" || "$PLATFORM" == "cmsis" || "$PLATFORM" == "pico_sdk" ) && -z "$TOOLCHAIN_FILE" ]]; then
     case "$COMPILER" in
         gcc)
@@ -538,6 +560,28 @@ if [[ "$PLATFORM" == "pico_sdk" \
         echo "Error: MMCU_TARGET=$_mmcu_effective_target requires a vendored pico-sdk checkout at platforms/pico-sdk/pico-sdk." >&2
         echo "       Run ./platforms/pico-sdk/pico-sdk-install.sh first." >&2
         exit 1
+    fi
+fi
+
+if [[ "$PLATFORM" == "cmsis" && "${_mmcu_effective_target:-${TARGET:-cortex-m0}}" == "rp2040" ]]; then
+    _mmcu_dfp_probe="${CMSIS_RP2XXX_DFP_DIR:-platforms/cmsis/CMSIS-RP2xxx-DFP}"
+    if [[ "$_mmcu_dfp_probe" != /* ]]; then
+        _mmcu_dfp_probe="$SCRIPT_DIR/$_mmcu_dfp_probe"
+    fi
+    if [[ ! -e "$_mmcu_dfp_probe/CMSIS/Device/RP2040/Include/rp2040.h" ]]; then
+        if [[ $INTERACTIVE -eq 1 ]]; then
+            echo "CMSIS-RP2xxx-DFP is not installed yet at $_mmcu_dfp_probe (needed for MMCU_PLATFORM=cmsis MMCU_TARGET=rp2040)."
+            if prompt_yes_no "Run ./platforms/cmsis/cmsis-install.sh now? (clones CMSIS_6 + CMSIS-RP2xxx-DFP)" "y"; then
+                "$SCRIPT_DIR/platforms/cmsis/cmsis-install.sh"
+            else
+                echo "Aborted. Run ./platforms/cmsis/cmsis-install.sh first." >&2
+                exit 1
+            fi
+        else
+            echo "Error: MMCU_PLATFORM=cmsis MMCU_TARGET=rp2040 requires Raspberry Pi CMSIS-RP2xxx-DFP at $_mmcu_dfp_probe." >&2
+            echo "       Run ./platforms/cmsis/cmsis-install.sh, or pass --cmsis-rp2xxx-dfp-dir <checkout>." >&2
+            exit 1
+        fi
     fi
 fi
 
@@ -616,6 +660,9 @@ if [[ -n "$CMSIS_DIR" ]]; then
     CMAKE_ARGS+=(-DMMCU_CMSIS_DIR="$CMSIS_DIR")
 fi
 CMAKE_ARGS+=(-DMMCU_CMSIS_GIT_TAG="$CMSIS_GIT_TAG")
+if [[ -n "$CMSIS_RP2XXX_DFP_DIR" ]]; then
+    CMAKE_ARGS+=(-DMMCU_CMSIS_RP2XXX_DFP_DIR="$CMSIS_RP2XXX_DFP_DIR")
+fi
 if [[ $LINKER_MAP -eq 1 ]]; then
     CMAKE_ARGS+=(-DMMCU_LINKER_MAP=ON)
 fi
@@ -655,6 +702,7 @@ CMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE
 MMCU_CPU=$CPU
 MMCU_CMSIS_DIR=$CMSIS_DIR
 MMCU_CMSIS_GIT_TAG=$CMSIS_GIT_TAG
+MMCU_CMSIS_RP2XXX_DFP_DIR=$CMSIS_RP2XXX_DFP_DIR
 MMCU_LINKER_MAP=$LINKER_MAP
 MMCU_ARM_GCC=$ARM_GCC
 MMCU_ARM_GXX=$ARM_GXX

@@ -17,14 +17,16 @@ does implicitly.
 
 Two external dependencies already exist, both hand-rolled, both kept as-is:
 
-- **CMSIS_6 and optional CMSIS-Toolbox state**
+- **CMSIS_6, Raspberry Pi CMSIS-RP2xxx-DFP, and optional CMSIS-Toolbox state**
   (`platforms/cmsis/cmsis-install.sh` and `mmcu_require_cmsis()` in root
   `CMakeLists.txt`): the preferred explicit CMSIS-Core install is
-  `platforms/cmsis/CMSIS_6`; CMake also has a fallback
+  `platforms/cmsis/CMSIS_6`; the RP2040 CMSIS target also uses
+  `platforms/cmsis/CMSIS-RP2xxx-DFP`. CMake also has a fallback
   `execute_process(COMMAND git clone --branch ... --depth 1 ...)` into
-  `third_party/CMSIS_6` the first time it's needed. The current CMake path
-  is header-only — nothing to build, just an include path. Full
-  CMSIS-Pack work is platform-owned state under `platforms/cmsis/toolbox/`
+  `third_party/CMSIS_6` the first time CMSIS-Core is needed. The generic
+  Cortex-M CMake path is header-only; the RP2040 CMake path compiles the
+  DFP startup/system files. Full CMSIS-Pack work is platform-owned state
+  under `platforms/cmsis/toolbox/`
   and `platforms/cmsis/packs/`, documented in
   [Bare-Metal CMSIS Platform](platforms-baremetal/cmsis.md).
 - **pico-sdk** (`platforms/pico-sdk/pico-sdk-install.sh`): a full install

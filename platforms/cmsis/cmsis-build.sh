@@ -30,7 +30,7 @@ With --csolution, it invokes CMSIS-Toolbox cbuild.
 Options:
   -d, --build-dir <dir>      MMCU build directory (default: build-cmsis-<target>-<compiler>)
   -t, --target <name>        MMCU_TARGET for CMake wrapper mode:
-                              cortex-m0 or cortex-m0plus
+                              cortex-m0, cortex-m0plus, or rp2040
                               (default: cortex-m0)
       --board <name>         MMCU_BOARD override
       --compiler <name>      gcc or clang (default: gcc)

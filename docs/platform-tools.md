@@ -6,11 +6,13 @@ install them only when working with the platform that needs them.
 
 For common build, documentation, and YAML tools, see [Tools](tools.md).
 
-## cmsis: CMSIS_6, CMSIS-Toolbox, and packs
+## cmsis: CMSIS_6, Raspberry Pi DFP, CMSIS-Toolbox, and packs
 
 CMSIS_6 belongs to the `cmsis` platform when installed explicitly. It is
 used by `MMCU_PLATFORM=cmsis` targets such as `cortex-m0` and
-`cortex-m0plus`.
+`cortex-m0plus`. Raspberry Pi's CMSIS-RP2xxx-DFP also belongs to the
+`cmsis` platform and is used by `MMCU_PLATFORM=cmsis` with
+`MMCU_TARGET=rp2040`.
 
 The normal install path is:
 
@@ -18,14 +20,17 @@ The normal install path is:
 ./platforms/cmsis/cmsis-install.sh
 ```
 
-That script vendors CMSIS_6 under:
+That script vendors CMSIS_6 and the Raspberry Pi DFP under:
 
 ```text
 platforms/cmsis/CMSIS_6/
+platforms/cmsis/CMSIS-RP2xxx-DFP/
 ```
 
 Use `./configure.sh --cmsis-dir <path>` when a system-wide or externally
-managed CMSIS_6 checkout should be used instead.
+managed CMSIS_6 checkout should be used instead. Use
+`./configure.sh --cmsis-rp2xxx-dfp-dir <path>` when an external
+CMSIS-RP2xxx-DFP checkout should be used instead.
 
 Full CMSIS-Pack workflows additionally use CMSIS-Toolbox:
 

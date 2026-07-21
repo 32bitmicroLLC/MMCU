@@ -6,6 +6,8 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 CMSIS_TAG="v6.3.0"
 CMSIS_DIR="$SCRIPT_DIR/CMSIS_6"
+DFP_TAG="v0.9.5"
+DFP_DIR="$SCRIPT_DIR/CMSIS-RP2xxx-DFP"
 TOOLBOX_DIR="$SCRIPT_DIR/toolbox"
 PACK_ROOT="$SCRIPT_DIR/packs"
 PACK_INDEX="https://www.keil.com/pack/index.pidx"
@@ -24,6 +26,10 @@ Options:
       --tag <tag>          CMSIS_6 git tag to clone (default: v6.3.0)
       --dir <path>         CMSIS_6 checkout directory
                            (default: platforms/cmsis/CMSIS_6)
+      --dfp-tag <tag>      Raspberry Pi CMSIS-RP2xxx-DFP git tag
+                           (default: v0.9.5)
+      --dfp-dir <path>     CMSIS-RP2xxx-DFP checkout directory
+                           (default: platforms/cmsis/CMSIS-RP2xxx-DFP)
       --toolbox-dir <dir>  CMSIS-Toolbox directory, used when it already
                            contains bin/cbuild, bin/csolution, bin/cpackget
                            (default: platforms/cmsis/toolbox)
@@ -32,7 +38,7 @@ Options:
       --pack-index <url>   Pack index used by cpackget init
                            (default: https://www.keil.com/pack/index.pidx)
       --init-pack-root     Run cpackget init for --pack-root
-      --default-packs      Install ARM::CMSIS@6.3.0 and RPi::RP2xxx_DFP
+      --default-packs      Install ARM::CMSIS@6.3.0 and RaspberryPi::RP2xxx_DFP
       --add-pack <pack>    Install an additional CMSIS pack with cpackget;
                            may be repeated
       --require-toolbox    Fail if cbuild/csolution/cpackget are unavailable
@@ -41,12 +47,13 @@ Options:
 Examples:
   ./platforms/cmsis/cmsis-install.sh
   ./platforms/cmsis/cmsis-install.sh --require-toolbox --init-pack-root --default-packs
-  ./platforms/cmsis/cmsis-install.sh --add-pack RPi::RP2xxx_DFP
+  ./platforms/cmsis/cmsis-install.sh --add-pack RaspberryPi::RP2xxx_DFP
 
-This script always supports the current MMCU CMSIS-Core path by cloning
-CMSIS_6. Full CMSIS-Toolbox support additionally requires cbuild,
-csolution, and cpackget. Install the CMSIS-Toolbox manually from Arm's
-artifacts, place it under --toolbox-dir, or expose its bin directory in PATH.
+This script always supports the current MMCU CMSIS CMake path by cloning
+CMSIS_6 and Raspberry Pi's CMSIS-RP2xxx-DFP. Full CMSIS-Toolbox support
+additionally requires cbuild, csolution, and cpackget. Install the
+CMSIS-Toolbox manually from Arm's artifacts, place it under --toolbox-dir,
+or expose its bin directory in PATH.
 EOF
 }
 
@@ -58,6 +65,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dir)
             CMSIS_DIR="${2:-}"
+            shift 2
+            ;;
+        --dfp-tag)
+            DFP_TAG="${2:-}"
+            shift 2
+            ;;
+        --dfp-dir)
+            DFP_DIR="${2:-}"
             shift 2
             ;;
         --toolbox-dir)
@@ -108,6 +123,10 @@ case "$TOOLBOX_DIR" in
     /*) ;;
     *) TOOLBOX_DIR="$REPO_ROOT/$TOOLBOX_DIR" ;;
 esac
+case "$DFP_DIR" in
+    /*) ;;
+    *) DFP_DIR="$REPO_ROOT/$DFP_DIR" ;;
+esac
 case "$PACK_ROOT" in
     /*) ;;
     *) PACK_ROOT="$REPO_ROOT/$PACK_ROOT" ;;
@@ -115,6 +134,10 @@ esac
 
 if [[ -z "$CMSIS_TAG" ]]; then
     echo "Error: --tag must not be empty." >&2
+    exit 1
+fi
+if [[ -z "$DFP_TAG" ]]; then
+    echo "Error: --dfp-tag must not be empty." >&2
     exit 1
 fi
 
@@ -141,6 +164,38 @@ if [[ ! -d "$CMSIS_DIR/CMSIS/Core/Include" ]]; then
 fi
 
 echo "ok: CMSIS-Core include path: $CMSIS_DIR/CMSIS/Core/Include"
+
+if [[ -e "$DFP_DIR" ]]; then
+    if [[ ! -d "$DFP_DIR/.git" && ! -d "$DFP_DIR/CMSIS/Device/RP2040/Include" ]]; then
+        echo "Error: destination exists but is not a CMSIS-RP2xxx-DFP checkout: $DFP_DIR" >&2
+        exit 1
+    fi
+    echo "==> CMSIS-RP2xxx-DFP already present: $DFP_DIR"
+else
+    if ! command -v git >/dev/null 2>&1; then
+        echo "Error: git not found in PATH." >&2
+        exit 1
+    fi
+
+    mkdir -p "$(dirname "$DFP_DIR")"
+    echo "==> Cloning CMSIS-RP2xxx-DFP $DFP_TAG into $DFP_DIR"
+    git clone --branch "$DFP_TAG" --depth 1 https://github.com/raspberrypi/CMSIS-RP2xxx-DFP.git "$DFP_DIR"
+fi
+
+for required_path in \
+    "$DFP_DIR/CMSIS/Device/RP2040/Include/rp2040.h" \
+    "$DFP_DIR/CMSIS/Device/RP2040/Include/system_rp2040.h" \
+    "$DFP_DIR/CMSIS/Device/RP2040/Source/system_rp2040.c" \
+    "$DFP_DIR/CMSIS/Device/RP2040/Source/GCC/startup_rp2040.S" \
+    "$DFP_DIR/CMSIS/Device/RP2040/Source/GCC/gcc_arm.ld"
+do
+    if [[ ! -f "$required_path" ]]; then
+        echo "Error: CMSIS-RP2xxx-DFP file not found: $required_path" >&2
+        exit 1
+    fi
+done
+
+echo "ok: CMSIS-RP2xxx-DFP RP2040 device support: $DFP_DIR/CMSIS/Device/RP2040"
 
 if [[ -d "$TOOLBOX_DIR/bin" ]]; then
     export PATH="$TOOLBOX_DIR/bin:$PATH"
@@ -174,7 +229,7 @@ if [[ $INIT_PACK_ROOT -eq 1 ]]; then
 fi
 
 if [[ $ADD_DEFAULT_PACKS -eq 1 ]]; then
-    PACKS+=("ARM::CMSIS@6.3.0" "RPi::RP2xxx_DFP")
+    PACKS+=("ARM::CMSIS@6.3.0" "RaspberryPi::RP2xxx_DFP")
 fi
 
 for pack in "${PACKS[@]}"; do

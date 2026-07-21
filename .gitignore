@@ -75,6 +75,7 @@ third_party/
 
 # vendored CMSIS checkout
 platforms/cmsis/CMSIS_6/
+platforms/cmsis/CMSIS-RP2xxx-DFP/
 platforms/cmsis/toolbox/
 platforms/cmsis/packs/
 platforms/cmsis/build/

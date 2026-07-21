@@ -107,11 +107,11 @@ check_host_tools() {
     fi
 
     if [[ $INSTALL_CMSIS -eq 1 || $INSTALL_PICO_SDK -eq 1 ]]; then
-        require_command git "vendored CMSIS or pico-sdk checkout" || required_missing=1
+        require_command git "vendored CMSIS/DFP or pico-sdk checkout" || required_missing=1
     elif have_command git; then
         echo "ok: git (needed when CMSIS or pico-sdk are fetched)"
     else
-        warn "git not found; needed only when fetching CMSIS or pico-sdk"
+        warn "git not found; needed only when fetching CMSIS/DFP or pico-sdk"
     fi
 
     if [[ $required_missing -ne 0 ]]; then
@@ -186,16 +186,21 @@ setup_pico_sdk() {
 
 setup_cmsis() {
     if [[ $CHECK_ONLY -eq 1 ]]; then
-        info "Checking CMSIS_6 checkout"
+        info "Checking CMSIS_6 and CMSIS-RP2xxx-DFP checkouts"
         if [[ -e platforms/cmsis/CMSIS_6/CMSIS/Core/Include ]]; then
             echo "ok: platforms/cmsis/CMSIS_6"
         else
             echo "missing: platforms/cmsis/CMSIS_6"
         fi
+        if [[ -e platforms/cmsis/CMSIS-RP2xxx-DFP/CMSIS/Device/RP2040/Include/rp2040.h ]]; then
+            echo "ok: platforms/cmsis/CMSIS-RP2xxx-DFP"
+        else
+            echo "missing: platforms/cmsis/CMSIS-RP2xxx-DFP"
+        fi
         return 0
     fi
 
-    info "Installing vendored CMSIS_6"
+    info "Installing vendored CMSIS_6 and CMSIS-RP2xxx-DFP"
     ./platforms/cmsis/cmsis-install.sh
 }
 

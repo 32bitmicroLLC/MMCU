@@ -107,6 +107,7 @@ Examples:
 ./configure.sh --platform native
 ./configure.sh --platform mcu --target cortex-m0
 ./configure.sh --platform cmsis --target cortex-m0
+./configure.sh --platform cmsis --target rp2040 --board pico
 ./configure.sh --platform pico_sdk --target rp2040 --board pico-w
 ./configure.sh --interactive
 ```
@@ -137,6 +138,7 @@ third_party/                    # fetched third-party source trees
 *.cbuild-idx.yml                # CMSIS-Toolbox generated build index
 *.cbuild-run.yml                # CMSIS-Toolbox generated run/debug info
 platforms/cmsis/CMSIS_6/        # vendored CMSIS_6 checkout
+platforms/cmsis/CMSIS-RP2xxx-DFP/ # vendored Raspberry Pi CMSIS RP2040 DFP checkout
 platforms/cmsis/toolbox/        # optional CMSIS-Toolbox install
 platforms/cmsis/packs/          # project-local CMSIS_PACK_ROOT
 platforms/cmsis/build/          # CMSIS platform-local generated build state

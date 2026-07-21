@@ -1,10 +1,12 @@
 # Bare-Metal CMSIS Platform
 
-`MMCU_PLATFORM=cmsis` is the first-class Arm CMSIS platform for hand-rolled
-bare-metal targets. It currently has two deliberately separate workflows:
+`MMCU_PLATFORM=cmsis` is the first-class Arm CMSIS platform for bare-metal
+targets. It currently has two deliberately separate workflows:
 
 1. **CMSIS-Core compatibility mode** — the implemented MMCU CMake path. It
-   uses CMSIS-Core headers plus MMCU-owned startup/linker files.
+   uses CMSIS-Core headers plus either MMCU-owned startup/linker files
+   (`cortex-m0`, `cortex-m0plus`) or a vendor CMSIS device family pack
+   (`rp2040` via Raspberry Pi's CMSIS-RP2xxx-DFP).
 2. **CMSIS-Toolbox mode** — the pack-based workflow that uses Arm's
    `csolution`, `cbuild`, and `cpackget` tools. This is the process MMCU
    should grow into for full CMSIS-Pack support.
@@ -21,6 +23,7 @@ components, tools, and workflows rather than a large runtime layer:
 - CMSIS-Toolbox overview: <https://arm-software.github.io/CMSIS_6/latest/Toolbox/index.html>
 - CMSIS-Toolbox user guide: <https://open-cmsis-pack.github.io/cmsis-toolbox/>
 - CMSIS_6 repository: <https://github.com/ARM-software/CMSIS_6>
+- Raspberry Pi CMSIS-RP2xxx-DFP repository: <https://github.com/raspberrypi/CMSIS-RP2xxx-DFP>
 
 ## Metadata format rule
 
@@ -61,12 +64,21 @@ descriptions, generated resolver solutions, or YAML schema contracts.
 ```bash
 ./configure.sh --platform cmsis --target cortex-m0
 ./configure.sh --platform cmsis --target cortex-m0plus
+./configure.sh --platform cmsis --target rp2040 --board pico
 ```
 
-The default CMSIS target is `cortex-m0`. These are generic Arm Cortex-M
-targets with MMCU-owned startup/linker files and CMSIS-Core headers.
-Raspberry Pi Pico boards (`rp2040`, `rp2350`, `pico`, `pico-w`, etc.) are
-modeled by `MMCU_PLATFORM=pico_sdk`, not by the generic `cmsis` platform.
+The default CMSIS target is `cortex-m0`.
+
+| target | implementation | boards |
+|---|---|---|
+| `cortex-m0` | CMSIS-Core headers plus MMCU-owned startup/linker files | none |
+| `cortex-m0plus` | CMSIS-Core headers plus MMCU-owned startup/linker files | none |
+| `rp2040` | CMSIS-Core plus Raspberry Pi CMSIS-RP2xxx-DFP startup, system file, device header, and GCC linker script | `pico`, `pico-h`, `pico-w`, `pico-wh`, `pico-all`, `pico-w-all` |
+
+RP2350/Pico 2 boards are not supported by the CMSIS platform yet because
+the inspected Raspberry Pi CMSIS-RP2xxx-DFP revision used here provides
+RP2040 device files only. Use `MMCU_PLATFORM=pico_sdk` with
+`MMCU_TARGET=rp2350` for Pico 2 builds.
 
 ## Platform-local scripts
 
@@ -74,7 +86,7 @@ The CMSIS scripts mirror the platform-local `pico-sdk` scripts:
 
 | Script | Role |
 |---|---|
-| `platforms/cmsis/cmsis-install.sh` | Vendor CMSIS_6 and optionally prepare CMSIS-Toolbox pack state |
+| `platforms/cmsis/cmsis-install.sh` | Vendor CMSIS_6, vendor CMSIS-RP2xxx-DFP, and optionally prepare CMSIS-Toolbox pack state |
 | `platforms/cmsis/cmsis-configure.sh` | Configure the implemented MMCU CMake CMSIS build, or run `csolution convert` |
 | `platforms/cmsis/cmsis-build.sh` | Configure/build the MMCU CMake CMSIS build, or run `cbuild` |
 | `platforms/cmsis/cmsis-clean.sh` | Remove platform-local generated CMSIS state |
@@ -90,7 +102,7 @@ The top-level dispatcher remains available:
 Use the platform-local scripts when working directly on CMSIS platform
 support.
 
-## Install CMSIS-Core
+## Install CMSIS-Core and Raspberry Pi DFP
 
 CMSIS can be supplied three ways, in this order:
 
@@ -111,9 +123,29 @@ That dispatches to:
 ./platforms/cmsis/cmsis-install.sh
 ```
 
-The installer clones a tagged CMSIS_6 release and validates that
-`CMSIS/Core/Include` exists. It does not install OS packages or ARM
-compilers.
+The installer clones a tagged CMSIS_6 release and a tagged Raspberry Pi
+CMSIS-RP2xxx-DFP checkout, then validates the files used by the CMake path:
+
+```text
+platforms/cmsis/CMSIS_6/CMSIS/Core/Include/
+platforms/cmsis/CMSIS-RP2xxx-DFP/CMSIS/Device/RP2040/Include/rp2040.h
+platforms/cmsis/CMSIS-RP2xxx-DFP/CMSIS/Device/RP2040/Source/system_rp2040.c
+platforms/cmsis/CMSIS-RP2xxx-DFP/CMSIS/Device/RP2040/Source/GCC/startup_rp2040.S
+platforms/cmsis/CMSIS-RP2xxx-DFP/CMSIS/Device/RP2040/Source/GCC/gcc_arm.ld
+```
+
+Override paths when using external checkouts:
+
+```bash
+./configure.sh \
+  --platform cmsis \
+  --target rp2040 \
+  --board pico \
+  --cmsis-dir /path/to/CMSIS_6 \
+  --cmsis-rp2xxx-dfp-dir /path/to/CMSIS-RP2xxx-DFP
+```
+
+The installer does not install OS packages or ARM compilers.
 
 ## Install CMSIS-Toolbox and packs
 
@@ -151,14 +183,13 @@ Equivalent explicit pack commands are:
 export CMSIS_PACK_ROOT="$PWD/platforms/cmsis/packs"
 cpackget --pack-root "$CMSIS_PACK_ROOT" init https://www.keil.com/pack/index.pidx
 cpackget --pack-root "$CMSIS_PACK_ROOT" add ARM::CMSIS@6.3.0
-cpackget --pack-root "$CMSIS_PACK_ROOT" add RPi::RP2xxx_DFP
+cpackget --pack-root "$CMSIS_PACK_ROOT" add RaspberryPi::RP2xxx_DFP
 ```
 
-`RPi::RP2xxx_DFP` is useful for future pack-aware RP2040/RP2350 work through
-CMSIS-Toolbox-generated projects. It is not used by the current
-`MMCU_PLATFORM=pico_sdk` build and does not make Pico boards compatible with
-the generic `cmsis` platform. Plain `cortex-m0`/`cortex-m0plus` targets only
-need CMSIS-Core in the current CMake workflow.
+`RaspberryPi::RP2xxx_DFP` is the CMSIS-Toolbox pack name. The implemented
+CMake path uses a Git checkout of the same DFP repository because the CMake
+integration needs ordinary source/header/linker paths. The pack install is
+for `csolution`/`cbuild` workflows.
 
 ## Build: current MMCU CMake mode
 
@@ -167,6 +198,16 @@ This is the implemented path today:
 ```bash
 ./platforms/cmsis/cmsis-build.sh \
   --target cortex-m0 \
+  --compiler gcc \
+  --verbose
+```
+
+RP2040 through the Raspberry Pi DFP:
+
+```bash
+./platforms/cmsis/cmsis-build.sh \
+  --target rp2040 \
+  --board pico \
   --compiler gcc \
   --verbose
 ```
@@ -235,11 +276,11 @@ solution:
   compiler: GCC
   packs:
     - pack: ARM::CMSIS@6.3.0
-    - pack: RPi::RP2xxx_DFP
+    - pack: RaspberryPi::RP2xxx_DFP
   target-types:
     - type: pico
       board: Raspberry Pi::Raspberry Pi Pico:Rev. 3
-      device: RPi::RP2040
+      device: RaspberryPi::RP2040
   build-types:
     - type: Release
       optimize: speed
@@ -279,10 +320,10 @@ generic CMSIS platform actually knows how to build that board:
 
 ```yaml
 cmsis:
-  device: RPi::RP2040
+  device: RaspberryPi::RP2040
   board: Raspberry Pi::Raspberry Pi Pico:Rev. 3
   packs:
-    - RPi::RP2xxx_DFP
+    - RaspberryPi::RP2xxx_DFP
 ```
 
 This gives the CMSIS generator enough information to translate:
@@ -320,6 +361,7 @@ Do not commit platform-local installed state:
 
 ```text
 platforms/cmsis/CMSIS_6/
+platforms/cmsis/CMSIS-RP2xxx-DFP/
 platforms/cmsis/toolbox/
 platforms/cmsis/packs/
 platforms/cmsis/build/
@@ -350,6 +392,7 @@ platforms/cmsis/tmp/
 
 ```text
 platforms/cmsis/CMSIS_6/
+platforms/cmsis/CMSIS-RP2xxx-DFP/
 platforms/cmsis/toolbox/
 platforms/cmsis/packs/
 ```
@@ -357,10 +400,12 @@ platforms/cmsis/packs/
 ## Relationship to `mcu` and `pico_sdk`
 
 `mcu` remains the generic bare-metal platform and keeps the `emu` target.
-`cmsis` is the explicit generic CMSIS-Core platform for real Arm Cortex-M
-startup and linker integrations.
+`cmsis` is the explicit CMSIS platform for Arm Cortex-M startup and linker
+integrations. Its generic Cortex-M targets use CMSIS-Core plus MMCU-owned
+startup/linker files. Its `rp2040` target uses Raspberry Pi's
+CMSIS-RP2xxx-DFP.
 
 `pico_sdk` remains the platform for real Raspberry Pi Pico SDK boot and
 image generation. Its `rp2040` and `rp2350` targets require pico-sdk. Pico
 SDK may use CMSIS-style headers internally, but that is not the same thing
-as selecting `MMCU_PLATFORM=cmsis`.
+as the CMSIS DFP-backed `rp2040` target.

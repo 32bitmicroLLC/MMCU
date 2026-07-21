@@ -14,7 +14,7 @@ Usage: ./platforms/cmsis/cmsis-clean.sh [options] [paths...]
 
 Options:
   -n, --dry-run   Print what would be removed without deleting
-  -a, --all       Also remove CMSIS_6, toolbox, and packs
+  -a, --all       Also remove CMSIS_6, CMSIS-RP2xxx-DFP, toolbox, and packs
   -h, --help      Show this help
 
 Paths are relative to platforms/cmsis/.
@@ -23,9 +23,9 @@ Defaults:
   If no paths are provided, removes platform-local generated dirs: build,
   out, and tmp.
 
-  --all additionally removes CMSIS_6, toolbox, and packs. Those are left
-  alone by default so re-running cmsis-build.sh does not need to re-install
-  platform dependencies.
+  --all additionally removes CMSIS_6, CMSIS-RP2xxx-DFP, toolbox, and packs.
+  Those are left alone by default so re-running cmsis-build.sh does not need
+  to re-install platform dependencies.
 EOF
 }
 
@@ -43,7 +43,7 @@ if [[ ${#TARGETS[@]} -eq 0 ]]; then
 fi
 
 if [[ $REMOVE_ALL -eq 1 ]]; then
-    TARGETS+=("CMSIS_6" "toolbox" "packs")
+    TARGETS+=("CMSIS_6" "CMSIS-RP2xxx-DFP" "toolbox" "packs")
 fi
 
 REMOVED_ANY=0
@@ -71,5 +71,5 @@ for target in "${TARGETS[@]}"; do
 done
 
 if [[ $REMOVED_ANY -eq 0 ]]; then
-    echo "Nothing to clean. Run cmsis-install.sh/cmsis-build.sh first, or pass --all to also check CMSIS_6/toolbox/packs."
+    echo "Nothing to clean. Run cmsis-install.sh/cmsis-build.sh first, or pass --all to also check CMSIS_6/CMSIS-RP2xxx-DFP/toolbox/packs."
 fi

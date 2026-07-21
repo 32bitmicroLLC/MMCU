@@ -145,7 +145,7 @@ The top-level choice is `MMCU_PLATFORM`:
 |---|---|---|
 | `native` | host executable | `emu` |
 | `mcu` | generic bare-metal build, including `emu` | `emu` |
-| `cmsis` | Arm CMSIS-Core bare-metal build | `cortex-m0` |
+| `cmsis` | Arm CMSIS bare-metal build, including RP2040 via Raspberry Pi DFP | `cortex-m0` |
 | `pico_sdk` | Raspberry Pi Pico SDK-backed build | `rp2040` |
 
 The target chooses the MCU integration:
@@ -154,6 +154,7 @@ The target chooses the MCU integration:
 ./configure.sh --platform mcu --target cortex-m0
 ./configure.sh --platform mcu --target cortex-m0plus
 ./configure.sh --platform cmsis --target cortex-m0
+./configure.sh --platform cmsis --target rp2040 --board pico
 ./configure.sh --platform pico_sdk --target rp2040
 ./configure.sh --platform pico_sdk --target rp2350
 ```

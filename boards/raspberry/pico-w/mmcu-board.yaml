@@ -5,7 +5,7 @@
 
 name: pico-w
 target: rp2040
-platforms: [pico_sdk]
+platforms: [pico_sdk, cmsis]
 
 power:
   regulation: DC-DC          # onboard buck-boost switching regulator (not LDO)

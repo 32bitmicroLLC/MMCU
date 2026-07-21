@@ -62,10 +62,11 @@ nothing to vendor and exits `0` rather than erroring.
 ## CMSIS install
 
 `./platform.sh install --platform cmsis` vendors Arm CMSIS_6 under
-`platforms/cmsis/CMSIS_6` and validates `CMSIS/Core/Include`. This is the
-preferred project-local checkout for `MMCU_PLATFORM=cmsis`; explicit
-`--cmsis-dir <path>` still overrides it. If neither is present,
-`CMakeLists.txt` keeps the older fallback of cloning CMSIS_6 into
+`platforms/cmsis/CMSIS_6` and Raspberry Pi CMSIS-RP2xxx-DFP under
+`platforms/cmsis/CMSIS-RP2xxx-DFP`. This is the preferred project-local
+checkout set for `MMCU_PLATFORM=cmsis`; explicit `--cmsis-dir <path>` and
+`--cmsis-rp2xxx-dfp-dir <path>` still override them. If CMSIS_6 is not
+present, `CMakeLists.txt` keeps the older fallback of cloning CMSIS_6 into
 `third_party/CMSIS_6` during configure. See
 [Bare-Metal CMSIS Platform](platforms-baremetal/cmsis.md).
 

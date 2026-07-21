@@ -51,8 +51,10 @@ instead of the default `pico`, adding the CYW43439
 doc describes below — a board variant, not a new target. `native`/`mcu`
 platforms leave `MMCU_BOARD` empty by default: there's no physical carrier
 being modeled, just the bare chip target. `cmsis` does the same for generic
-Cortex-M targets. Raspberry Pi Pico boards are compatible with
-`MMCU_PLATFORM=pico_sdk`, not the generic `cmsis` platform.
+Cortex-M targets, but its `rp2040` target may use RP2040 Pico board
+metadata through Raspberry Pi's CMSIS-RP2xxx-DFP integration. Pico 2/RP2350
+board declarations remain `pico_sdk`-only until a CMSIS DFP path provides
+RP2350 device support.
 
 An `MMCU_BOARD` value can name either a real purchasable board or a
 **board variant**: a deliberately modeled subset/profile of multiple real
@@ -127,7 +129,7 @@ A board file then declares facts only; no build commands:
 # boards/raspberry/pico/mmcu-board.yaml
 name: pico
 target: rp2040
-platforms: [pico_sdk]
+platforms: [pico_sdk, cmsis]
 buses: []
 rails: [3.3]
 connectors: [USB-MICRO-B, HEADER-0.1IN-20PIN-DUAL-CASTELLATED, SWD-3PIN-CASTELLATED]
@@ -149,7 +151,7 @@ links:
 name: pico-all
 virtual: true
 compatible_targets: [rp2040, rp2350]
-platforms: [pico_sdk]
+platforms: [pico_sdk, cmsis]
 buses: []
 rails: [3.3]
 ```
@@ -159,7 +161,7 @@ rails: [3.3]
 name: pico-w-all
 virtual: true
 compatible_targets: [rp2040, rp2350]
-platforms: [pico_sdk]
+platforms: [pico_sdk, cmsis]
 buses: [WIFI, BLUETOOTH]
 rails: [3.3]
 default_providers:
@@ -171,7 +173,7 @@ default_providers:
 # boards/raspberry/pico-w/mmcu-board.yaml
 name: pico-w
 target: rp2040
-platforms: [pico_sdk]
+platforms: [pico_sdk, cmsis]
 buses: [WIFI, BLUETOOTH]
 rails: [3.3]
 connectors: [USB-MICRO-B, HEADER-0.1IN-20PIN-DUAL-CASTELLATED, SWD-3PIN-CASTELLATED-CENTRAL]
@@ -195,10 +197,11 @@ The required `platforms` field is the direct compatibility check between a
 board declaration and `MMCU_PLATFORM`. `target`/`compatible_targets` answer
 "which chip target can this board host?"; `platforms` answers "which
 build-platform integration knows how to use this board?" For the current
-Raspberry Pi Pico declarations, that is `pico_sdk`: pico-sdk uses the
-metadata for real SDK board selection and dependency resolution. The
-generic `cmsis` platform uses CMSIS-Core for abstract Cortex-M targets and
-does not consume Raspberry Pi Pico board metadata.
+Raspberry Pi Pico declarations, RP2040 boards list both `pico_sdk` and
+`cmsis`: pico-sdk uses the metadata for real SDK board selection, while
+CMSIS uses it for the RP2040 DFP-backed target. RP2350/Pico 2 declarations
+currently list only `pico_sdk`. Generic `cmsis` targets such as
+`cortex-m0` and `cortex-m0plus` still have no physical board by default.
 
 ## Power Supply (LDO/DC-DC)
 

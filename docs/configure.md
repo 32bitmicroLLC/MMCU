@@ -18,7 +18,7 @@ CMAKE_TOOLCHAIN_FILE   defaults per platform, overridable
 |---|---|---|---|
 | `native` (default) | `emu` | `emu` | host compiler, no toolchain file |
 | `mcu` | `emu` | `emu`, `cortex-m0`, `cortex-m0plus` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
-| `cmsis` | `cortex-m0` | `cortex-m0`, `cortex-m0plus` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
+| `cmsis` | `cortex-m0` | `cortex-m0`, `cortex-m0plus`, `rp2040` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
 | `pico_sdk` | `rp2040` | `rp2040`, `rp2350` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
 
 `native` and `mcu` both default to the `emu` target: `emu` is a placeholder
@@ -28,9 +28,11 @@ freestanding ARM Thumb-2 binary (`mcu`) — see
 [Native Linux Platform](platforms-native/linux.md) and
 [Bare-Metal MCU Platform](platforms-baremetal/mcu.md).
 
-`cmsis` is the explicit generic CMSIS-Core platform for hand-rolled Arm
-Cortex-M startup/linker integrations. It is intentionally not a Raspberry Pi
-Pico board platform; Pico-family boards are modeled by `pico_sdk`. See
+`cmsis` is the explicit CMSIS platform for Arm Cortex-M startup/linker
+integrations. Generic `cortex-m0`/`cortex-m0plus` targets use CMSIS-Core
+headers plus MMCU-owned startup/linker files. `rp2040` uses Raspberry Pi's
+CMSIS-RP2xxx-DFP device family pack and may select RP2040 Pico board
+metadata such as `pico` or `pico-w`. See
 [Bare-Metal CMSIS Platform](platforms-baremetal/cmsis.md).
 
 `pico_sdk` has two active targets, one per supported RP chip (see
@@ -57,8 +59,9 @@ clear error pointing at that script — it never runs it automatically
 without being asked, since it clones a large repository and can take a
 few minutes.
 Pico-sdk may include or consume CMSIS-style headers internally, but that is
-an implementation detail of the vendor SDK. It does not make Pico boards
-compatible with `MMCU_PLATFORM=cmsis`.
+an implementation detail of the vendor SDK. It is separate from
+`MMCU_PLATFORM=cmsis`, whose RP2040 path uses the Raspberry Pi
+CMSIS-RP2xxx-DFP checkout directly.
 
 ## Validation rules
 
@@ -148,6 +151,7 @@ entry point (it never builds):
 ./configure.sh                                              # native
 ./configure.sh --platform mcu --target cortex-m0             # mcu, gcc (default)
 ./configure.sh --platform cmsis --target cortex-m0            # CMSIS-Core, gcc (default)
+./configure.sh --platform cmsis --target rp2040 --board pico  # Raspberry Pi DFP, gcc
 ./configure.sh --platform mcu --target cortex-m0plus --compiler clang
 ./configure.sh --platform mcu --target cortex-m0 --toolchain-file cmake/toolchains/arm-none-eabi-clang.cmake
 ./configure.sh --platform pico_sdk --target rp2040            # real pico-sdk boot2/clocks (default), gcc
@@ -156,10 +160,11 @@ entry point (it never builds):
 
 `--compiler`/`--toolchain-file` apply to `--platform mcu`, `--platform
 cmsis`, or `--platform pico_sdk` (`native` has no toolchain file).
-`MMCU_TARGET=rp2040`/`rp2350`
-(the pico-sdk-backed targets) only support `--compiler gcc` for now. Clang
-support for pico-sdk requires a configured Arm Clang runtime/sysroot and is
-not wired yet. Build
+`MMCU_PLATFORM=pico_sdk` with `MMCU_TARGET=rp2040`/`rp2350` only supports
+`--compiler gcc` for now. Clang support for pico-sdk requires a configured
+Arm Clang runtime/sysroot and is not wired yet. The CMSIS `rp2040` target
+uses the normal CMSIS toolchain selection and can be configured with either
+GCC or Clang. Build
 directories default to `build` (native), `build-<target>-<compiler>` (mcu and
 pico_sdk), or `build-cmsis-<target>-<compiler>` (cmsis),
 overridable with `--build-dir`. Run `./configure.sh --help` for the full
@@ -169,7 +174,7 @@ selected target. Run `cmake --build <dir>` afterward to build.
 `./configure.sh --interactive` (or `-i`) walks through the same choices as
 numbered menus instead of flags: platform, target (skipped when the platform
 has only one valid target), board override, compiler (mcu/cmsis/pico_sdk, forced
-to gcc for `rp2040`/`rp2350`), CPU/CMSIS overrides, linker map, build
+to gcc for pico-sdk `rp2040`/`rp2350`), CPU/CMSIS overrides, linker map, build
 type, build directory, and clean. The board prompt reads the board
 registry and shows only boards compatible with the selected
 `MMCU_PLATFORM`/`MMCU_TARGET`; if no compatible boards are discoverable, it
@@ -179,8 +184,8 @@ before running `cmake`.
 After configuring, `./configure.sh` writes `.config` (repo root,
 git-ignored) recording the last build directory plus the relevant
 configure-time choices: `MMCU_PLATFORM`, `MMCU_TARGET`, `MMCU_BOARD`,
-compiler/toolchain, build type, CMSIS path/tag, CPU override, linker-map
-flag, and compiler path overrides. It then prints
+compiler/toolchain, build type, CMSIS path/tag, CMSIS-RP2xxx-DFP path, CPU
+override, linker-map flag, and compiler path overrides. It then prints
 `Run: ./build.sh`. `./build.sh`/`./run.sh` read `.config` as their default
 `--build-dir` — see [Build And Run](build.md) — so you don't have to
 repeat `--build-dir <dir>` on every subsequent command.
@@ -203,6 +208,10 @@ cmake -S . -B build-cortex-m0plus-clang \
 # cmsis, cortex-m0, gcc
 cmake -S . -B build-cmsis-cortex-m0-gcc \
     -DMMCU_PLATFORM=cmsis -DMMCU_TARGET=cortex-m0
+
+# cmsis, rp2040 via Raspberry Pi CMSIS-RP2xxx-DFP
+cmake -S . -B build-cmsis-rp2040-gcc \
+    -DMMCU_PLATFORM=cmsis -DMMCU_TARGET=rp2040 -DMMCU_BOARD=pico
 
 # pico_sdk, rp2040, gcc (default toolchain)
 cmake -S . -B build-rp2040-gcc \
