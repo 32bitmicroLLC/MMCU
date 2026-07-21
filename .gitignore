@@ -95,4 +95,6 @@ platforms/pico-sdk/share/
 Testing/
 .cache/
 site/
+
+# local proposal drafts
 proposals/
