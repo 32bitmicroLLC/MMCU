@@ -1,0 +1,31 @@
+# Virtual Raspberry Pi Pico board variant: common subset of all official
+# Pico-series boards (Pico, Pico H, Pico W, Pico WH, Pico 2, Pico 2 with
+# headers, Pico 2 W, and Pico 2 W with headers).
+#
+# This is not a real purchasable board. It is a portability profile for
+# code that only requires board-level features present across the whole
+# Pico family, independent of RP2040 vs RP2350, wireless, or header/SWD
+# connector population.
+
+name: pico-all
+virtual: true
+compatible_targets: [rp2040, rp2350]
+
+power:
+  regulation: DC-DC          # common onboard buck-boost switching regulator class
+  input_voltage_min: 1.8     # VSYS, volts
+  input_voltage_max: 5.5
+rails: [3.3]                 # common board-supplied rail
+
+analog_io:
+  adc_channels_broken_out: 3   # ADC0-ADC2 on GP26-GP28 across Pico-series boards
+
+digital_io:
+  gpio_broken_out: 26          # GP0-GP22 and GP26-GP28 on the edge pins
+
+buses: []                    # no wireless or other onboard bus exists on every Pico board
+
+connectors:
+  - USB-MICRO-B
+  - HEADER-0.1IN-20PIN-DUAL   # abstracted: castellated or presoldered depending on real board
+  - SWD-3PIN                  # abstracted: pads or keyed connector depending on real board

@@ -16,11 +16,11 @@ analog_io:
   adc_channels_broken_out: 3   # ADC0-ADC2 on GP26-GP28 (ADC3 is internal, VSYS/3)
 
 digital_io:
-  gpio_broken_out: 26          # GP0-GP22, GP25 (onboard LED)
+  gpio_broken_out: 26          # GP0-GP22 and GP26-GP28 on the edge pins
 
 buses: []                    # no onboard transceivers/radios
 
 connectors:
   - USB-MICRO-B
-  - HEADER-0.1IN-20PIN-DUAL   # 40-pin 0.1" through-hole (2x20)
-  - SWD-3PIN                  # unpopulated debug test points
+  - HEADER-0.1IN-20PIN-DUAL-CASTELLATED  # 40-pin edge holes, no presoldered pins
+  - SWD-3PIN-CASTELLATED                  # unpopulated debug through-hole pads

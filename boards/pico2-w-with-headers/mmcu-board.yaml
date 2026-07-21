@@ -1,10 +1,9 @@
-# Raspberry Pi Pico W: a board variant of MMCU_TARGET=rp2040 (same chip,
-# same MMCU_TARGET), adding the CYW43439 wireless chip -- the worked
-# example in docs/board.md for how MMCU_BOARD varies independently of
-# MMCU_TARGET rather than needing a new target.
+# Raspberry Pi Pico 2 W with headers: Pico 2 W with presoldered headers and
+# a keyed debug connector. Same RP2350 target and CYW43439 wireless
+# hardware as Pico 2 W; only the physical connector population changes.
 
-name: pico-w
-target: rp2040
+name: pico2-w-with-headers
+target: rp2350
 
 power:
   regulation: DC-DC          # onboard buck-boost switching regulator (not LDO)
@@ -27,8 +26,8 @@ buses: [WIFI, BLUETOOTH]
 
 connectors:
   - USB-MICRO-B
-  - HEADER-0.1IN-20PIN-DUAL-CASTELLATED
-  - SWD-3PIN-CASTELLATED-CENTRAL
+  - HEADER-0.1IN-20PIN-DUAL-PRESOLDERED
+  - SWD-3PIN-JST-STYLE-CENTRAL
 
 default_providers:
   wifi: cyw43439

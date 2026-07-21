@@ -1,9 +1,8 @@
-# Raspberry Pi Pico 2: the default board for MMCU_TARGET=rp2350.
-# Facets described in docs/board.md; PICO_BOARD is already real in
-# CMakeLists.txt today (mmcu_require_pico_sdk_foundation(rp2350-arm-s pico2)),
-# this file is the proposed MMCU_BOARD declaration for it.
+# Raspberry Pi Pico 2 with headers: Pico 2 with presoldered headers and a
+# keyed debug connector. Same RP2350 target and electrical capabilities as
+# the plain Pico 2; only the physical connector population changes.
 
-name: pico2
+name: pico2-with-headers
 target: rp2350
 
 power:
@@ -22,5 +21,5 @@ buses: []                    # no onboard transceivers/radios
 
 connectors:
   - USB-MICRO-B
-  - HEADER-0.1IN-20PIN-DUAL-CASTELLATED
-  - SWD-3PIN-CASTELLATED
+  - HEADER-0.1IN-20PIN-DUAL-PRESOLDERED
+  - SWD-3PIN-JST-STYLE
