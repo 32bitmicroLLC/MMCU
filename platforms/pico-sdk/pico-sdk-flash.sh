@@ -105,6 +105,26 @@ if [[ ! -x "$PICOTOOL" ]]; then
     exit 1
 fi
 
+# Whether picotool's udev rules (installed by
+# ./platforms/pico-sdk/pico-sdk-install.sh --udev-rules) appear to be
+# present. Used both for an upfront heads-up and, if picotool fails, a
+# targeted hint. Not a hard requirement (root, or an already-permissive
+# system, can work without it), so this never blocks the actual flash
+# attempt.
+udev_rules_missing() {
+    [[ "$(uname -s)" == "Linux" ]] || return 1
+    [[ -e /etc/udev/rules.d/60-picotool.rules ]] && return 1
+    grep -rq '"2e8a"' /etc/udev/rules.d/*.rules 2>/dev/null && return 1
+    return 0
+}
+
+if udev_rules_missing; then
+    echo "Note: picotool's udev rules don't appear to be installed." \
+        "If loading fails with 'unable to connect' / 'Maybe try sudo or" \
+        "check your permissions' below, run:" >&2
+    echo "  ./platforms/pico-sdk/pico-sdk-install.sh --udev-rules" >&2
+fi
+
 PICOTOOL_ARGS=(load)
 if [[ $FORCE -eq 1 ]]; then
     PICOTOOL_ARGS+=(-f)
@@ -116,4 +136,18 @@ PICOTOOL_ARGS+=("$UF2_FILE")
 PICOTOOL_ARGS+=("${EXTRA_ARGS[@]}")
 
 echo "==> $PICOTOOL ${PICOTOOL_ARGS[*]}"
-exec "$PICOTOOL" "${PICOTOOL_ARGS[@]}"
+set +e
+"$PICOTOOL" "${PICOTOOL_ARGS[@]}"
+STATUS=$?
+set -e
+
+if [[ $STATUS -ne 0 ]] && udev_rules_missing; then
+    echo >&2
+    echo "picotool failed, and its udev rules don't appear to be installed." >&2
+    echo "If the error above mentions permissions or being unable to connect" >&2
+    echo "to a device already in BOOTSEL mode, this is very likely why. Fix:" >&2
+    echo "  ./platforms/pico-sdk/pico-sdk-install.sh --udev-rules" >&2
+    echo "then unplug/replug the device (or re-enter BOOTSEL mode) and retry." >&2
+fi
+
+exit "$STATUS"

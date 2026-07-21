@@ -126,6 +126,18 @@ verbatim to `/etc/udev/rules.d/60-picotool.rules` and reloads udev — via
 implicitly, including by `./flash.sh`). If a device is already plugged in,
 unplug and replug it (or re-enter BOOTSEL mode) afterward.
 
+`pico-sdk-flash.sh` checks for this itself (whether
+`/etc/udev/rules.d/60-picotool.rules` exists, or any rule mentioning
+picotool's `2e8a` vendor ID under `/etc/udev/rules.d/`) — a static check, not
+a guarantee flashing will work (root, or an already-permissive system, can
+work without it, and it never blocks the actual flash attempt):
+
+- If the rules appear to be missing, it prints a heads-up **before** running
+  `picotool`, so the hint is there even the first time you hit this.
+- If `picotool` then fails **and** the rules are still missing, it prints a
+  second, more specific "this is very likely why" hint pointing at
+  `--udev-rules`, right after `picotool`'s own error output.
+
 ## Not implemented
 
 - `rp2040-cmsis`/`rp2350-cmsis` have no flash path (no `.uf2`; would need
