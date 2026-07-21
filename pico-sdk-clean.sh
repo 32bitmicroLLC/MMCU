@@ -61,6 +61,8 @@ if [[ $REMOVE_ALL -eq 1 ]]; then
     )
 fi
 
+REMOVED_ANY=0
+
 for target in "${TARGETS[@]}"; do
     [[ -z "$target" ]] && continue
     [[ "$target" == "/" ]] && { echo "Skipping unsafe target: /" >&2; continue; }
@@ -70,6 +72,7 @@ for target in "${TARGETS[@]}"; do
         continue
     fi
 
+    REMOVED_ANY=1
     if [[ $DRY_RUN -eq 1 ]]; then
         echo "would remove: $target"
     else
@@ -77,3 +80,7 @@ for target in "${TARGETS[@]}"; do
         echo "removed: $target"
     fi
 done
+
+if [[ $REMOVED_ANY -eq 0 ]]; then
+    echo "Nothing to clean. Run ./pico-sdk-install.sh and ./pico-sdk-build.sh first, or pass --all to also check the vendored pico-sdk/picotool install."
+fi
