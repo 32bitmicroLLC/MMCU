@@ -39,6 +39,7 @@ MMCU is a modular C++20 project scaffold built around CMake module support.
 - [Dependency DSL: YAML Manifests](dependency-dsl.md)
 - [Mapping: Application → Modules, Libraries, Drivers](mapping.md)
 - [Resolving](resolving.md)
+- [Build Process: Mapping and Resolving](process.md)
 - [External Dependencies](external-dependencies.md)
 - [Target Modules](target-modules.md)
 - [Modular Target](target.md)

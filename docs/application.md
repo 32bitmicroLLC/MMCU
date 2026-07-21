@@ -11,9 +11,10 @@ whichever concrete [libraries](libraries.md), [drivers](drivers.md), and
 [peripherals](dependencies.md) the selected `MMCU_TARGET` actually
 provides. This doc is the top-of-the-chain view: what an application
 *is*, in terms everything else in this spec series already defines. See
-[Mapping](mapping.md) for how that graph gets built and
-[Resolving](resolving.md) for how it gets bound to a concrete platform and
-target and turned into a build.
+[Build Process](process.md) for the full mapping-then-resolving pipeline,
+[Mapping](mapping.md) for how that graph gets built, and
+[Resolving](resolving.md) for how it gets bound to a concrete platform,
+target, and board and turned into a build.
 
 ## The application manifest
 

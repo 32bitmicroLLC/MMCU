@@ -5,10 +5,10 @@
 `CMakeLists.txt` today — there is exactly one target block per
 `MMCU_TARGET` and one flat `MMCU_MODULES` list, no per-package
 declaration, no peripheral-capability check. This doc (and
-[Dependency DSL](dependency-dsl.md), [Mapping](mapping.md),
-[Resolving](resolving.md), [Application](application.md)) specify the
-mechanism to build once `libraries/`/`drivers/`/`modules/` need it, the
-same way [Target Module Objects](target-modules.md) and
+[Dependency DSL](dependency-dsl.md), [Build Process](process.md),
+[Application](application.md)) specify the mechanism to build once
+`libraries/`/`drivers/`/`modules/` need it, the same way
+[Target Module Objects](target-modules.md) and
 [Platform Modules](platform-modules.md) specify a naming convention —
 except those two are already reflected in `src/`, and this one isn't yet.
 
@@ -17,8 +17,8 @@ whole application's manifest and resulting dependency graph look like,
 built out of the mechanics this doc defines. See [Modular
 Peripherals](peripherals.md) for the bottom-of-the-chain view: what
 actually implements a "peripheral" capability in `src/`. See
-[Mapping](mapping.md) and [Resolving](resolving.md) for how a declared
-graph actually gets walked and built.
+[Build Process](process.md) for how a declared graph actually gets walked
+(mapped) and built (resolved).
 
 **A note on terminology**: "module" is used two different ways across
 these docs, and context disambiguates them. A **C++20 module**

@@ -4,55 +4,71 @@
 [Dependencies](dependencies.md)'s status note; `tools/mmcu-deps.py` does
 not exist yet either.
 
-**Resolving** is the process — Phase 2 of [Mapping](mapping.md) — that
-takes a [mapped](mapping.md#phase-1-mapping) application plus one concrete
-`MMCU_PLATFORM`/`MMCU_TARGET` (see
-[Configure: Platform, Target, Toolchain](configure.md)) and turns it into
-buildable CMake input: every open requirement bound to one concrete
-package, every peripheral requirement checked, every source file listed.
-Two implementations of this same phase exist in this spec series — a
-hand-written baseline and a YAML-manifest-driven evolution — both
+**Resolving** is Phase 2 of the two-phase build process described in
+[Build Process](process.md); see that doc for how this phase relates to
+[Mapping](mapping.md) and why they're kept separate. This doc is Phase 2's
+mechanics only: given a [mapped](mapping.md) application plus one concrete
+`MMCU_PLATFORM`/`MMCU_TARGET` and its paired [board](board.md) (see
+[Configure](configure.md) for how platform/target are selected), how it
+turns into buildable CMake input — every open requirement bound to one
+concrete package, every peripheral requirement checked, every source file
+listed. Two implementations of this same phase exist in this spec series
+— a hand-written baseline and a YAML-manifest-driven evolution — both
 described here, in one place, rather than split across the docs that
 define what gets *declared*.
 
-## Resolving to a concrete platform and target
+## Resolving to a concrete platform, target, and board
 
 Resolving does two things the mapping phase deliberately deferred:
 
 1. **Close every open requirement.** For each capability with more than
    one candidate, apply the tie-break below — explicit pin, then *that
    target's* declared default provider, then a single satisfiable
-   candidate, else fail — using this target's `MMCU_TARGET_PERIPHERALS` to
-   decide "satisfiable." This is why the same `imu` requirement can
-   resolve to a different concrete driver depending on which target it's
-   resolved against.
+   candidate, else fail — using this target/board pair's declared
+   capabilities to decide "satisfiable" (below). This is why the same
+   `imu` requirement can resolve to a different concrete driver depending
+   on which target it's resolved against.
 2. **Check every peripheral requirement.** Now that every requirement is a
    concrete package, check each one's `REQUIRES`/`REQUIRES_ANY_OF` against
-   this target's `MMCU_TARGET_PERIPHERALS` (see
-   [Dependencies](dependencies.md)) — and, at the implementation level,
-   against whatever [Modular Peripherals](peripherals.md) that target
-   actually wires up.
+   the **union** of this target's `MMCU_TARGET_PERIPHERALS` and its
+   board's `MMCU_BOARD_BUSES` (see [Dependencies](dependencies.md) and
+   [Modular Board](board.md#resolving-a-bus-capability-target-peripheral-or-board-bus-or-both))
+   — and, at the implementation level, against whatever [Modular
+   Peripherals](peripherals.md) that target actually wires up. A
+   capability can be satisfied by the chip alone (`GPIO`), the board alone
+   (a Wi-Fi radio module with no on-die equivalent), or require both at
+   once (`CAN` — chip controller *and* board transceiver) — resolving
+   doesn't distinguish which side backs it, only whether the union
+   contains it.
 
 Resolving one mapped application (`canopen-stack` → `canopen` →
 `mcp2515` (`REQUIRES SPI`) → `ring-buffer`; `imu` → `{bmi270 | mpu6050}`)
-against two different targets:
+against two different platform/target/board combinations:
 
 ```
-resolve(mapped_app, platform=pico_sdk, target=rp2040)
- └─ "imu" → bmi270 (rp2040's default_providers picks it; REQUIRES_ANY_OF{I2C,SPI} ⊆ {GPIO,ADC,I2C,SPI,UART,PWM} ✓)
- └─ mcp2515: REQUIRES SPI ⊆ {GPIO,ADC,I2C,SPI,UART,PWM} ✓
+resolve(mapped_app, platform=pico_sdk, target=rp2040, board=pico)
+ └─ "imu" → bmi270 (rp2040's default_providers picks it;
+    REQUIRES_ANY_OF{I2C,SPI} ⊆ {GPIO,ADC,I2C,SPI,UART,PWM} ∪ {} ✓)
+ └─ mcp2515: REQUIRES SPI ⊆ {GPIO,ADC,I2C,SPI,UART,PWM} ∪ {} ✓
  → resolution succeeds, generated CMake emitted
 
-resolve(mapped_app, platform=mcu, target=cortex-m0)
- └─ mcp2515: REQUIRES SPI ⊄ {GPIO, UART}
+resolve(mapped_app, platform=mcu, target=cortex-m0, board=(none))
+ └─ mcp2515: REQUIRES SPI ⊄ {GPIO, UART} ∪ {}
  → resolution fails: "mcp2515 (required by canopen) requires peripheral
-   SPI, but MMCU_TARGET 'cortex-m0' does not provide it"
+   SPI, but MMCU_TARGET 'cortex-m0' (no board) does not provide it"
 ```
+
+A capability entirely board-provided would fail the opposite way — a
+driver `REQUIRES CAN` on a target whose chip has a CAN controller
+(`MMCU_TARGET_PERIPHERALS` includes `CAN`) but whose board never wired up
+a transceiver (`MMCU_BOARD_BUSES` doesn't include `CAN`) still fails here,
+even though the target side alone looks satisfied — the union has to
+contain the capability, not just one side of it.
 
 Only this phase can fail this way. A mapped application with an
 unresolved *name* fails in mapping, for every target identically; a
-mapped application that fails only against *some* targets always fails
-here, in resolving.
+mapped application that fails only against *some*
+platform/target/board combinations always fails here, in resolving.
 
 ## Baseline resolver: `mmcu_use()`
 
@@ -71,12 +87,13 @@ mmcu_use(bmi270)
 1. Includes `<name>`'s `mmcu-module.cmake` (located by searching
    `libraries/*/*/`, `drivers/*/*/`, and `modules/*/*/`, one topic level
    deep, for a directory named `<name>`).
-2. Checks `REQUIRES`/`REQUIRES_ANY_OF` against `MMCU_TARGET_PERIPHERALS`.
-   On failure:
+2. Checks `REQUIRES`/`REQUIRES_ANY_OF` against the union of
+   `MMCU_TARGET_PERIPHERALS` and `MMCU_BOARD_BUSES` (see
+   [Modular Board](board.md)). On failure:
    ```
    FATAL_ERROR: module 'mcp2515' requires peripheral SPI, but
-   MMCU_TARGET 'cortex-m0-plain' does not provide it
-   (MMCU_TARGET_PERIPHERALS: GPIO UART)
+   MMCU_TARGET 'cortex-m0-plain' (no board) does not provide it
+   (MMCU_TARGET_PERIPHERALS: GPIO UART; MMCU_BOARD_BUSES: (none))
    ```
 3. Appends `MODULES`/`SOURCES` to `mmcu_app`'s `FILE_SET cxx_modules` /
    sources, skipping re-addition if `<name>` was already added by an
@@ -147,7 +164,9 @@ scripting language.
    provides at least that version — see "Version resolution" below for why
    this replaces range-based conflict detection.
 4. Once the full set is resolved, check every package's
-   `peripherals.requires`/`any_of` against `MMCU_TARGET_PERIPHERALS`.
+   `peripherals.requires`/`any_of` against the union of
+   `MMCU_TARGET_PERIPHERALS` and `MMCU_BOARD_BUSES` (see
+   [Modular Board](board.md)).
 5. Emit generated CMake (below).
 
 ### Version resolution: minimal version selection, not SAT
@@ -325,8 +344,10 @@ message:
   requested it.
 - **Ambiguous capability**: more than one provider, no pin/default/single-
   candidate tie-breaker resolves it — list all candidates.
-- **Peripheral mismatch**: package name, missing peripheral, target's
-  actual provided set.
+- **Peripheral mismatch**: package name, missing peripheral, and the
+  target's and board's actual provided sets (`MMCU_TARGET_PERIPHERALS` and
+  `MMCU_BOARD_BUSES`) — since either one, or their absence, can be why the
+  union didn't contain the capability.
 
 ## What this doesn't cover
 
@@ -340,5 +361,8 @@ message:
   input, it doesn't define how it's chosen.
 - **What backs a peripheral capability in code** —
   [Modular Peripherals](peripherals.md).
+- **What a target or board actually is, facet by facet** —
+  [Modular Target](target.md), [Modular Board](board.md); resolving only
+  consumes their declared capability sets, it doesn't define them.
 - **Fetching anything from outside this repo** —
   [External Dependencies](external-dependencies.md).

@@ -36,6 +36,7 @@ nav:
   - Dependency DSL: dependency-dsl.md
   - Mapping: mapping.md
   - Resolving: resolving.md
+  - Build Process: process.md
   - External Dependencies: external-dependencies.md
   - Book:
       - Overview: book/index.md
