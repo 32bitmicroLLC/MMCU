@@ -151,7 +151,7 @@ links:
 name: pico-all
 virtual: true
 compatible_targets: [rp2040, rp2350]
-platforms: [pico_sdk, cmsis]
+platforms: [pico_sdk]
 buses: []
 rails: [3.3]
 ```
@@ -161,7 +161,7 @@ rails: [3.3]
 name: pico-w-all
 virtual: true
 compatible_targets: [rp2040, rp2350]
-platforms: [pico_sdk, cmsis]
+platforms: [pico_sdk]
 buses: [WIFI, BLUETOOTH]
 rails: [3.3]
 default_providers:
@@ -197,11 +197,13 @@ The required `platforms` field is the direct compatibility check between a
 board declaration and `MMCU_PLATFORM`. `target`/`compatible_targets` answer
 "which chip target can this board host?"; `platforms` answers "which
 build-platform integration knows how to use this board?" For the current
-Raspberry Pi Pico declarations, RP2040 boards list both `pico_sdk` and
-`cmsis`: pico-sdk uses the metadata for real SDK board selection, while
-CMSIS uses it for the RP2040 DFP-backed target. RP2350/Pico 2 declarations
-currently list only `pico_sdk`. Generic `cmsis` targets such as
-`cortex-m0` and `cortex-m0plus` still have no physical board by default.
+Raspberry Pi Pico declarations, concrete RP2040 boards list both `pico_sdk`
+and `cmsis`: pico-sdk uses the metadata for real SDK board selection, while
+CMSIS uses it for the RP2040 DFP-backed target. Whole-family virtual
+profiles such as `pico-all` and `pico-w-all` currently list only
+`pico_sdk`, because they also cover RP2350 boards and the CMSIS platform
+does not yet support RP2350. Generic `cmsis` targets such as `cortex-m0`
+and `cortex-m0plus` still have no physical board by default.
 
 ## Power Supply (LDO/DC-DC)
 

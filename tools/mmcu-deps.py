@@ -28,6 +28,12 @@ TARGET_CHIPS = {
     "rp2040": "rp2040",
     "rp2350": "rp2350",
 }
+PLATFORM_TARGETS = {
+    "native": {"emu"},
+    "mcu": {"emu", "cortex-m0", "cortex-m0plus"},
+    "cmsis": {"cortex-m0", "cortex-m0plus", "rp2040"},
+    "pico_sdk": {"rp2040", "rp2350"},
+}
 
 
 class ResolveError(Exception):
@@ -325,6 +331,17 @@ def load_board_manifest(root: Path, board: str, platform: str, target: str) -> d
             or not all(isinstance(item, str) for item in compatible_targets)
         ):
             raise ResolveError(f"{rel(path, root)}: compatible_targets must be a list of strings")
+        platform_chips = {
+            TARGET_CHIPS[item]
+            for item in PLATFORM_TARGETS.get(platform, set())
+            if item in TARGET_CHIPS
+        }
+        if platform_chips and not set(compatible_targets).issubset(platform_chips):
+            raise ResolveError(
+                f"{rel(path, root)}: virtual board is compatible with "
+                f"{', '.join(compatible_targets)}, but MMCU_PLATFORM={platform} "
+                f"supports board targets {', '.join(sorted(platform_chips))}"
+            )
         if chip not in compatible_targets:
             raise ResolveError(
                 f"{rel(path, root)}: board is compatible with "

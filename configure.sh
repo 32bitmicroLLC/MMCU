@@ -154,6 +154,17 @@ target_chips = {
     "rp2040": "rp2040",
     "rp2350": "rp2350",
 }
+platform_targets = {
+    "native": {"emu"},
+    "mcu": {"emu", "cortex-m0", "cortex-m0plus"},
+    "cmsis": {"cortex-m0", "cortex-m0plus", "rp2040"},
+    "pico_sdk": {"rp2040", "rp2350"},
+}
+platform_chips = {
+    item
+    for item in platform_targets.get(platform, set())
+    if item in target_chips
+}
 chip = target_chips.get(target, target)
 
 registry_path = root / "boards" / "mmcu-boards.yaml"
@@ -182,6 +193,8 @@ for collection_ref in registry.get("collections") or []:
         if board.get("virtual"):
             compatible_targets = board.get("compatible_targets") or []
             if chip not in compatible_targets:
+                continue
+            if platform_chips and not set(compatible_targets).issubset(platform_chips):
                 continue
             target_label = "/".join(compatible_targets) + ", virtual"
         else:

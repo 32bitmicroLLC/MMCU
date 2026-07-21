@@ -73,7 +73,7 @@ The default CMSIS target is `cortex-m0`.
 |---|---|---|
 | `cortex-m0` | CMSIS-Core headers plus MMCU-owned startup/linker files | none |
 | `cortex-m0plus` | CMSIS-Core headers plus MMCU-owned startup/linker files | none |
-| `rp2040` | CMSIS-Core plus Raspberry Pi CMSIS-RP2xxx-DFP startup, system file, device header, and GCC linker script | `pico`, `pico-h`, `pico-w`, `pico-wh`, `pico-all`, `pico-w-all` |
+| `rp2040` | CMSIS-Core plus Raspberry Pi CMSIS-RP2xxx-DFP startup, system file, device header, and GCC linker script | `pico`, `pico-h`, `pico-w`, `pico-wh` |
 
 RP2350/Pico 2 boards are not supported by the CMSIS platform yet because
 the inspected Raspberry Pi CMSIS-RP2xxx-DFP revision used here provides
