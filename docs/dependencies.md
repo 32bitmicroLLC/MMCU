@@ -58,7 +58,7 @@ application  →  library (optional)  →  driver  →  peripheral
                   module(s) (modules/)
 ```
 
-- An **application** (`src/main.cpp` and friends) depends on one or more
+- An **application** (`applications/main/main.cpp` and friends) depends on one or more
   **libraries** (`libraries/<topic>/...`) or, when there's no protocol layer
   involved, directly on a **driver** or a **module**.
 - A **library** may depend on one or more **drivers** (`drivers/<topic>/...`)

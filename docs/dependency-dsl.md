@@ -88,7 +88,7 @@ one combined check. A driver needing only one declares only that field.
 ### Application manifest
 
 ```yaml
-# mmcu.yaml (repo root, or an app-specific one under src/)
+# mmcu.yaml (repo root, or an app-specific one under applications/<name>/)
 name: mmcu_app
 kind: application
 depends:

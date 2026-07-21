@@ -260,7 +260,7 @@ endif()
 
 target_sources(mmcu_app
     PRIVATE
-        src/main.cpp
+        applications/main/main.cpp
     PRIVATE
         FILE_SET cxx_modules TYPE CXX_MODULES FILES
             ${MMCU_MODULES}

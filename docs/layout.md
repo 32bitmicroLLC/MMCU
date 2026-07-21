@@ -10,6 +10,7 @@
 ├── flash.sh
 ├── clean.sh
 ├── platform.sh
+├── applications/
 ├── src/
 ├── targets/
 ├── platforms/
@@ -31,6 +32,9 @@
 - `flash.sh`: builds and flashes onto real hardware.
 - `clean.sh`: discovers and removes configured build directories.
 - `platform.sh`: single entry point for a platform's whole lifecycle.
+- `applications/<name>/`: an application's own entry point (`main.cpp`
+  and friends) — see [Application](application.md); `applications/main/`
+  is `mmcu_app`'s.
 - `src/`: generic, target-independent modules.
 - `targets/`: concrete CPU/board target modules (startup, linker script,
   register layout).

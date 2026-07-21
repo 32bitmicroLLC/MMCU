@@ -109,13 +109,16 @@ import imu;        // open capability — resolves to whichever driver won,
 ## One application today, more later
 
 Right now there is exactly one application: one `mmcu_app` executable
-target, built from one flat `MMCU_MODULES` list in `CMakeLists.txt` — no
-manifest, since this whole mechanism is still a proposal (see the status
-note above). Nothing in this model requires staying single-application
-once it's built, though: a second application would be a second manifest
-(e.g. `apps/<name>/mmcu.yaml`) with its own `depends`, resolved
-independently against the same shared `libraries/`, `drivers/`, and
-`modules/` trees, producing its own executable target. That's a
+target, its entry point at `applications/main/main.cpp`, built from one
+flat `MMCU_MODULES` list in `CMakeLists.txt` — no manifest yet, since this
+whole mechanism is still a proposal (see the status note above). The
+`applications/<name>/` layout is already real, though (see
+[Project Layout](layout.md)); only the per-application `mmcu.yaml`
+manifest is not. Nothing in this model requires staying single-application
+once the manifest exists: a second application would be a second
+directory, `applications/<name>/`, with its own `mmcu.yaml` and `depends`,
+resolved independently against the same shared `libraries/`, `drivers/`,
+and `modules/` trees, producing its own executable target. That's a
 straightforward extension of this model, not a redesign of it — not
 proposed in more detail here because there's only one application to
 build today.
