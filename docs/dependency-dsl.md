@@ -10,11 +10,12 @@ declaration format. This spec replaces `mmcu-module.cmake` with a
 declarative YAML manifest — `mmcu.yaml` — that adds two things the plain
 CMake format can't express: **version constraints** and
 **generic-capability resolution** (an application asking for "an IMU", not
-naming `bmi270` specifically). How a manifest graph actually gets resolved
-against a concrete target — the algorithm, version selection, provider
-tie-breaking, generated CMake, lockfile, and error reporting — is covered
-on its own in [Resolving](resolving.md); this doc is the manifest *format*
-only.
+naming `bmi270` specifically). This doc also defines the YAML shape of the
+static solution file written after mapping and resolving close the graph.
+How a manifest graph actually gets resolved against a concrete target —
+the algorithm, version selection, provider tie-breaking, generated CMake,
+solution validation, and error reporting — is covered on its own in
+[Resolving](resolving.md).
 
 ## Manifest: `mmcu.yaml`
 
@@ -107,7 +108,7 @@ by whichever `provides: [imu]` package the resolver picks).
 |---|---|
 | `name` | unique package name |
 | `version` | this package's own version (semver) |
-| `kind` | `application` \| `library` \| `driver` |
+| `kind` | `application` \| `library` \| `driver` \| `module` |
 | `provides` | capability names this package satisfies (defaults to `[name]` if omitted) |
 | `modules` / `sources` | files added to the build, same meaning as in [Dependencies](dependencies.md) |
 | `depends` | list of `{name, version}` — `version` is a **minimum** required version (plain semver, no ranges); see [Resolving](resolving.md) |
@@ -143,6 +144,146 @@ one of the two meanings is silently shadowed depending on how a
 dependency happened to be spelled; rejecting the collision outright means
 a manifest author finds out immediately, at the point they introduce it,
 which name is already taken and in which sense.
+
+## Solution: `mmcu.solution.yaml`
+
+Mapping and resolving are dynamic processes. Their successful output is a
+static, concrete solution for one application and one
+`MMCU_PLATFORM`/`MMCU_TARGET`/`MMCU_BOARD` tuple. The resolver records that
+solution as `${CMAKE_BINARY_DIR}/mmcu.solution.yaml`.
+
+`mmcu.solution.yaml` is not an input manifest and it is not the portable
+mapped graph. It is the already-resolved answer: no open capabilities, no
+candidate sets that still need choosing, no target-independent meaning.
+Generated CMake is a mechanical projection of this file's `outputs`
+section.
+
+```yaml
+schema: mmcu.solution/v1
+app:
+  name: mmcu_app
+  manifest: mmcu.yaml
+
+context:
+  platform: pico_sdk
+  target: rp2040
+  board: pico
+  target_peripherals: [GPIO, ADC, I2C, SPI, UART, PWM]
+  board_buses: []
+
+validity:
+  hash: sha256:7b8e...
+  inputs:
+    - path: mmcu.yaml
+      sha256: 0df4...
+    - path: libraries/CANbus/canopen/mmcu.yaml
+      sha256: a33c...
+    - path: drivers/CANbus/mcp2515/mmcu.yaml
+      sha256: 91a0...
+    - path: drivers/Sensors/IMU/bmi270/mmcu.yaml
+      sha256: 3d7b...
+    - path: drivers/Sensors/IMU/mpu6050/mmcu.yaml
+      sha256: c21f...
+    - path: modules/Data/ring-buffer/mmcu.yaml
+      sha256: f88a...
+    - path: boards/pico/mmcu-board.yaml
+      sha256: 181a...
+    - path: targets/arm/rp2040/mmcu-target.yaml
+      sha256: e5c2...
+
+requirements:
+  - requested: canopen-stack
+    requested_by: mmcu_app
+    kind: capability
+    minimum_version: 2.0.0
+    selected: canopen
+    reason: single-provider
+  - requested: imu
+    requested_by: mmcu_app
+    kind: capability
+    minimum_version: 1.0.0
+    selected: bmi270
+    reason: target-default
+  - requested: mcp2515
+    requested_by: canopen
+    kind: package
+    minimum_version: 1.0.0
+    selected: mcp2515
+    reason: exact-name
+  - requested: ring-buffer
+    requested_by: mcp2515
+    kind: package
+    minimum_version: 1.0.0
+    selected: ring-buffer
+    reason: exact-name
+
+packages:
+  - name: canopen
+    version: 2.1.0
+    kind: library
+    manifest: libraries/CANbus/canopen/mmcu.yaml
+    provides: [canopen-stack]
+    depends: [mcp2515]
+    modules: [libraries/CANbus/canopen/canopen.cppm]
+    sources: []
+  - name: mcp2515
+    version: 1.0.0
+    kind: driver
+    manifest: drivers/CANbus/mcp2515/mmcu.yaml
+    provides: [mcp2515]
+    depends: [ring-buffer]
+    peripherals:
+      requires: [SPI]
+    modules: [drivers/CANbus/mcp2515/driver.cppm]
+    sources: [drivers/CANbus/mcp2515/mcp2515_regs.c]
+  - name: bmi270
+    version: 1.2.0
+    kind: driver
+    manifest: drivers/Sensors/IMU/bmi270/mmcu.yaml
+    provides: [imu]
+    depends: []
+    peripherals:
+      any_of: [I2C, SPI]
+    modules: [drivers/Sensors/IMU/bmi270/driver.cppm]
+    sources: []
+  - name: ring-buffer
+    version: 1.0.0
+    kind: module
+    manifest: modules/Data/ring-buffer/mmcu.yaml
+    provides: [ring-buffer]
+    depends: []
+    modules: [modules/Data/ring-buffer/ring_buffer.cppm]
+    sources: []
+
+outputs:
+  modules:
+    - libraries/CANbus/canopen/canopen.cppm
+    - drivers/CANbus/mcp2515/driver.cppm
+    - drivers/Sensors/IMU/bmi270/driver.cppm
+    - modules/Data/ring-buffer/ring_buffer.cppm
+  sources:
+    - drivers/CANbus/mcp2515/mcp2515_regs.c
+```
+
+Solution fields:
+
+| Field | Meaning |
+|---|---|
+| `schema` | solution format identifier; increment when the file shape changes incompatibly |
+| `app` | application name and manifest path that started resolution |
+| `context` | concrete platform, target, board, and hardware capability sets used for this answer |
+| `validity.hash` | hash over every value that can affect the solution |
+| `validity.inputs` | relative paths and content hashes for every manifest/target/board file visited |
+| `requirements` | every dependency edge that was closed, including why each concrete package was selected |
+| `packages` | complete resolved package set with exact versions and file lists |
+| `outputs` | flattened files emitted to generated CMake |
+
+Paths in a solution are relative to the source root. Package and output
+order are stable and deterministic, but not semantically meaningful beyond
+reproducing the same generated CMake for the same solution. The resolver
+must reject a stale solution when `validity.hash` no longer matches the
+current manifests, platform, target, board, declared capability sets, or
+default providers.
 
 ## What this doesn't cover
 

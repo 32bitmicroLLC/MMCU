@@ -107,8 +107,8 @@ never gets as far as an actual compiler invocation.
 - **Mapping's own mechanics** (the requirement-graph walk, version
   max-reduce, what stays open) — [Mapping](mapping.md).
 - **Resolving's own mechanics** (tie-breaking, the independent target-
-  peripheral/board-bus checks, generated CMake, lockfile, error reporting)
-  — [Resolving](resolving.md).
+  peripheral/board-bus checks, static solution file, generated CMake, error
+  reporting) — [Resolving](resolving.md).
 - **What an application's own manifest looks like** —
   [Application](application.md).
 - **What gets declared** for a package to participate at all —
