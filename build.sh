@@ -133,17 +133,23 @@ fi
 cmake "${BUILD_ARGS[@]}"
 
 find_app_path() {
-    local path="$BUILD_DIR/mmcu_app"
-    if [[ -x "$path" ]]; then
-        echo "$path"
-        return 0
-    fi
-    local build_type
-    build_type="$(read_cache_var CMAKE_BUILD_TYPE)"
-    if [[ -n "$build_type" && -x "$BUILD_DIR/$build_type/mmcu_app" ]]; then
-        echo "$BUILD_DIR/$build_type/mmcu_app"
-        return 0
-    fi
+    # pico-sdk-backed targets (rp2040/rp2350) get a mmcu_app.elf, not a bare
+    # mmcu_app: pico_sdk_init() sets CMAKE_EXECUTABLE_SUFFIX=.elf, so
+    # CMakeLists.txt sets the SUFFIX property on mmcu_app for those targets
+    # (picotool's uf2/bin/hex conversion needs a recognized extension).
+    local name
+    for name in mmcu_app mmcu_app.elf; do
+        if [[ -x "$BUILD_DIR/$name" ]]; then
+            echo "$BUILD_DIR/$name"
+            return 0
+        fi
+        local build_type
+        build_type="$(read_cache_var CMAKE_BUILD_TYPE)"
+        if [[ -n "$build_type" && -x "$BUILD_DIR/$build_type/$name" ]]; then
+            echo "$BUILD_DIR/$build_type/$name"
+            return 0
+        fi
+    done
     return 1
 }
 

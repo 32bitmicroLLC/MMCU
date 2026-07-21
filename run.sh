@@ -161,15 +161,19 @@ TARGET="$(read_cache_var MMCU_TARGET)"
 BUILD_TYPE="$(read_cache_var CMAKE_BUILD_TYPE)"
 
 find_app_path() {
-    local path="$BUILD_DIR/mmcu_app"
-    if [[ -f "$path" ]]; then
-        echo "$path"
-        return 0
-    fi
-    if [[ -n "$BUILD_TYPE" && -f "$BUILD_DIR/$BUILD_TYPE/mmcu_app" ]]; then
-        echo "$BUILD_DIR/$BUILD_TYPE/mmcu_app"
-        return 0
-    fi
+    # pico-sdk-backed targets (rp2040/rp2350) produce mmcu_app.elf, not a
+    # bare mmcu_app — see build.sh's find_app_path() for why.
+    local name
+    for name in mmcu_app mmcu_app.elf; do
+        if [[ -f "$BUILD_DIR/$name" ]]; then
+            echo "$BUILD_DIR/$name"
+            return 0
+        fi
+        if [[ -n "$BUILD_TYPE" && -f "$BUILD_DIR/$BUILD_TYPE/$name" ]]; then
+            echo "$BUILD_DIR/$BUILD_TYPE/$name"
+            return 0
+        fi
+    done
     return 1
 }
 

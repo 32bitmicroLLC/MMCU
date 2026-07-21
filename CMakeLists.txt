@@ -162,6 +162,15 @@ function(mmcu_require_pico_sdk_foundation pico_platform pico_board)
     pico_sdk_init()
     target_link_libraries(mmcu_app PRIVATE pico_runtime pico_standard_link)
     mmcu_apply_cxx_constraints()
+    # pico_sdk_init() sets CMAKE_EXECUTABLE_SUFFIX=.elf (see
+    # src/cmake/on_device.cmake), but mmcu_app's add_executable() already ran
+    # before this function is called, so that global change is too late to
+    # affect it. Set it directly: picotool's uf2/bin/hex output (below)
+    # requires a recognized file extension to identify the input as an ELF.
+    set_target_properties(mmcu_app PROPERTIES SUFFIX ".elf")
+    # Post-build picotool processing: .uf2 (flashable image), .bin, .hex,
+    # .map, .dis. Without this, only the raw mmcu_app ELF is produced.
+    pico_add_extra_outputs(mmcu_app)
 endfunction()
 
 if(MMCU_TARGET STREQUAL "emu")
