@@ -231,7 +231,7 @@ targets/arm/cortex_m0plus/cortex_m0plus.cppm
 The current QEMU runner can load an ELF, but a Cortex-M target needs a valid
 vector table and reset state before it can run normally.
 
-Once startup exists, `run-baremetal-qemu.sh` should map:
+Once startup exists, `run.sh` (see [Run](../run.md)) should map:
 
 ```text
 cortex-m0      -> a QEMU Cortex-M0 machine, if selected

@@ -106,11 +106,11 @@ If `--target cortex-m0` or `--target cortex-m0plus` is selected and
 `third_party/CMSIS_6`. That checkout is shared by all build directories and
 reused until it is removed manually.
 
-## Run Scripts
+## Run
 
-`./run-native.sh` and `./run-baremetal-qemu.sh` wrap `./configure.sh` +
-`./build.sh` for the native and QEMU bare-metal cases respectively — see
-`./run-native.sh --help` / `./run-baremetal-qemu.sh --help`.
+`./run.sh` builds (via `./build.sh`) and then runs MMCU as configured —
+directly for native, under QEMU for mcu — dispatching on the configured
+`MMCU_PLATFORM`. See [Run](run.md).
 
 ## Clean
 
