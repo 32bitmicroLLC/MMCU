@@ -39,10 +39,18 @@ freestanding ARM Thumb-2 binary (`mcu`) — see
 `rp2040`/`rp2350` require the vendored pico-sdk checkout at
 `platforms/pico-sdk/pico-sdk` — run
 `./platforms/pico-sdk/pico-sdk-install.sh` first (see
-[Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)); configure
-fails with a clear error pointing at that script if it's missing. That
+[Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)). That
 vendored checkout is otherwise unrelated to `mmcu_app` — it's the same one
 `platforms/pico-sdk/`'s separate, standalone smoke-test project uses.
+
+`configure.sh` checks for this checkout itself, before ever invoking
+`cmake` (rather than letting CMake fail deep inside its own reconfigure
+with a long, noisy build log). In `--interactive` mode it offers to run
+`./platforms/pico-sdk/pico-sdk-install.sh` for you right there (answering
+"no" aborts cleanly); non-interactively it just fails fast with a short,
+clear error pointing at that script — it never runs it automatically
+without being asked, since it clones a large repository and can take a
+few minutes.
 `rp2040-cmsis`/`rp2350-cmsis` need none of that — only CMSIS_6.
 
 ## Validation rules

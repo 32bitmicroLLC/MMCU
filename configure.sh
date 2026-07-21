@@ -5,6 +5,7 @@ PLATFORM="native"
 TARGET=""
 COMPILER="gcc"
 TOOLCHAIN_FILE=""
+_mmcu_effective_target=""
 CPU=""
 CMSIS_DIR=""
 CMSIS_GIT_TAG="v6.3.0"
@@ -373,6 +374,24 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+
+if [[ "$PLATFORM" == "pico_sdk" \
+      && ( "$_mmcu_effective_target" == "rp2040" || "$_mmcu_effective_target" == "rp2350" ) \
+      && ! -e "platforms/pico-sdk/pico-sdk/pico_sdk_init.cmake" ]]; then
+    if [[ $INTERACTIVE -eq 1 ]]; then
+        echo "pico-sdk is not installed yet at platforms/pico-sdk/pico-sdk (needed for MMCU_TARGET=$_mmcu_effective_target)."
+        if prompt_yes_no "Run ./platforms/pico-sdk/pico-sdk-install.sh now? (clones pico-sdk + builds picotool; can take a few minutes)" "y"; then
+            "$SCRIPT_DIR/platforms/pico-sdk/pico-sdk-install.sh"
+        else
+            echo "Aborted. Run ./platforms/pico-sdk/pico-sdk-install.sh first, or use --target ${_mmcu_effective_target}-cmsis instead." >&2
+            exit 1
+        fi
+    else
+        echo "Error: MMCU_TARGET=$_mmcu_effective_target requires a vendored pico-sdk checkout at platforms/pico-sdk/pico-sdk." >&2
+        echo "       Run ./platforms/pico-sdk/pico-sdk-install.sh first, or use --target ${_mmcu_effective_target}-cmsis instead." >&2
+        exit 1
+    fi
+fi
 
 if [[ -z "$BUILD_DIR" ]]; then
     if [[ "$PLATFORM" == "native" ]]; then
