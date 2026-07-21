@@ -44,6 +44,9 @@ build/
 Build/
 build-*/
 
+# last-configured build dir, written by ./configure.sh
+/.config
+
 # CMake generated files
 CMakeFiles/
 CMakeCache.txt

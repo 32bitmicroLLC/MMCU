@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BUILD_DIR="build"
+BUILD_DIR=""
+BUILD_DIR_EXPLICIT=0
 BUILD=1
 CLEAN=0
 DEBUG=0
@@ -25,7 +26,7 @@ CMakeCache.txt after building). Configure the platform/target/toolchain
 first with ./configure.sh; run.sh never changes them. See docs/run.md.
 
 Options:
-  -d, --build-dir <dir>   Build directory (default: build)
+  -d, --build-dir <dir>   Build directory (default: .config, else build)
   -c, --clean             Remove the build directory before building
       --no-build          Run the existing executable/ELF without building first
       --debug             Run under a debugger instead of directly
@@ -55,6 +56,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         -d|--build-dir)
             BUILD_DIR="${2:-}"
+            BUILD_DIR_EXPLICIT=1
             shift 2
             ;;
         -c|--clean)
@@ -124,6 +126,13 @@ done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+
+if [[ $BUILD_DIR_EXPLICIT -eq 0 ]]; then
+    if [[ -f .config ]]; then
+        BUILD_DIR="$(grep '^MMCU_BUILD_DIR=' .config 2>/dev/null | tail -1 | cut -d= -f2-)"
+    fi
+    BUILD_DIR="${BUILD_DIR:-build}"
+fi
 
 if [[ $DEBUG -eq 1 ]] && ! command -v "$GDB" >/dev/null 2>&1; then
     echo "Error: $GDB not found in PATH." >&2

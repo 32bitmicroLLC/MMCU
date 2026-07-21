@@ -143,6 +143,12 @@ has only one valid target), compiler (mcu/pico_sdk, forced to gcc for
 `rp2040`/`rp2350`), CPU/CMSIS overrides, linker map, build type, build
 directory, and clean. It prints a summary before running `cmake`.
 
+After configuring, `./configure.sh` writes `.config` (repo root,
+git-ignored) recording `MMCU_BUILD_DIR`/`MMCU_PLATFORM`/`MMCU_TARGET`, and
+prints `Run: ./build.sh`. `./build.sh`/`./run.sh` read `.config` as their
+default `--build-dir` — see [Build And Run](build.md) — so you don't have to
+repeat `--build-dir <dir>` on every subsequent command.
+
 ## Direct CMake invocation
 
 ```bash

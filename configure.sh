@@ -432,3 +432,15 @@ fi
 
 echo "==> Configuring MMCU_PLATFORM=$PLATFORM${TARGET:+ MMCU_TARGET=$TARGET} in $BUILD_DIR"
 cmake "${CMAKE_ARGS[@]}"
+
+cat > .config <<CONFIG
+# Written by ./configure.sh. Read by build.sh/run.sh as the default
+# --build-dir when none is given, so they act on what was last configured
+# instead of always defaulting to plain "build". Not consulted by clean.sh,
+# which discovers every configured build dir on its own. Safe to delete.
+MMCU_BUILD_DIR=$BUILD_DIR
+MMCU_PLATFORM=$PLATFORM
+MMCU_TARGET=$TARGET
+CONFIG
+
+echo "Run: ./build.sh"

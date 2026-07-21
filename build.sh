@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BUILD_DIR="build"
+BUILD_DIR=""
+BUILD_DIR_EXPLICIT=0
 JOBS=""
 RUN_APP=0
 CLEAN=0
@@ -14,12 +15,18 @@ Usage: ./build.sh [options]
 
 Builds MMCU as configured in --build-dir. Platform/target/toolchain/build
 type are configure-time choices (see ./configure.sh and docs/configure.md),
-not build.sh flags. If --build-dir has not been configured yet, this
-configures it first with MMCU_PLATFORM=native defaults, so plain
-"./build.sh" still works with no setup.
+not build.sh flags.
+
+Without --build-dir, this uses .config (written by the last ./configure.sh
+run) if present, otherwise plain "build" — so "./build.sh" with no prior
+setup, and "./build.sh" right after "./configure.sh --platform ...", both
+just work without having to repeat --build-dir. If the resolved directory
+isn't configured yet, it's configured first: using .config's recorded
+platform/target if that's where the directory name came from, otherwise
+MMCU_PLATFORM=native defaults.
 
 Options:
-  -d, --build-dir <dir>   Build directory to build (default: build)
+  -d, --build-dir <dir>   Build directory to build (default: .config, else build)
   -j, --jobs <n>          Parallel build jobs
   -r, --run               Run mmcu_app after a successful build
       --map-and-list      Generate a linker map and full disassembly listings
@@ -40,6 +47,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         -d|--build-dir)
             BUILD_DIR="${2:-}"
+            BUILD_DIR_EXPLICIT=1
             shift 2
             ;;
         -j|--jobs)
@@ -82,6 +90,17 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+read_config_var() {
+    local var="$1"
+    [[ -f .config ]] || return 0
+    grep "^${var}=" .config 2>/dev/null | tail -1 | cut -d= -f2-
+}
+
+CONFIG_BUILD_DIR="$(read_config_var MMCU_BUILD_DIR)"
+if [[ $BUILD_DIR_EXPLICIT -eq 0 ]]; then
+    BUILD_DIR="${CONFIG_BUILD_DIR:-build}"
+fi
+
 if [[ $CLEAN -eq 1 ]]; then
     rm -rf "$BUILD_DIR"
 fi
@@ -93,8 +112,18 @@ read_cache_var() {
 }
 
 if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
-    echo "==> $BUILD_DIR is not configured yet; configuring with MMCU_PLATFORM=native defaults"
-    "$SCRIPT_DIR/configure.sh" --build-dir "$BUILD_DIR"
+    if [[ -n "$CONFIG_BUILD_DIR" && "$CONFIG_BUILD_DIR" == "$BUILD_DIR" ]]; then
+        CONFIG_PLATFORM="$(read_config_var MMCU_PLATFORM)"
+        CONFIG_TARGET="$(read_config_var MMCU_TARGET)"
+        CONFIGURE_ARGS=(--build-dir "$BUILD_DIR")
+        [[ -n "$CONFIG_PLATFORM" ]] && CONFIGURE_ARGS+=(--platform "$CONFIG_PLATFORM")
+        [[ -n "$CONFIG_TARGET" ]] && CONFIGURE_ARGS+=(--target "$CONFIG_TARGET")
+        echo "==> $BUILD_DIR is not configured yet; reconfiguring using .config (MMCU_PLATFORM=${CONFIG_PLATFORM:-native}${CONFIG_TARGET:+ MMCU_TARGET=$CONFIG_TARGET})"
+        "$SCRIPT_DIR/configure.sh" "${CONFIGURE_ARGS[@]}"
+    else
+        echo "==> $BUILD_DIR is not configured yet; configuring with MMCU_PLATFORM=native defaults"
+        "$SCRIPT_DIR/configure.sh" --build-dir "$BUILD_DIR"
+    fi
 fi
 
 BUILD_ARGS=(--build "$BUILD_DIR")

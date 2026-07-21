@@ -11,6 +11,17 @@ MMCU splits configuring and building into two scripts:
 Plain `./build.sh` with no prior `./configure.sh` call still works: it
 configures `build/` with the `MMCU_PLATFORM=native` defaults first.
 
+`./configure.sh` writes `.config` (repo root, git-ignored) recording the
+build directory/platform/target it just configured. `./build.sh` and
+`./run.sh` read it as their default `--build-dir` when none is given, so
+`./build.sh` right after `./configure.sh --platform mcu --target cortex-m0`
+builds `build-cortex-m0-gcc`, not plain `build`. If that directory gets
+deleted later, `./build.sh` reconfigures it using `.config`'s recorded
+platform/target rather than falling back to native. `.config` is purely a
+convenience for these two scripts — `clean.sh` doesn't consult it, and
+deleting `.config` is always safe (everything just falls back to plain
+`build`).
+
 ## Requirements
 
 - CMake 4.0 or newer
@@ -58,10 +69,9 @@ options (CMSIS git tag, individual compiler-path overrides, etc.).
 
 Useful options:
 
-- `./build.sh --clean` — removes the build directory first, so the next
-  build re-runs `./configure.sh` with native defaults (only meaningful for
-  `--build-dir build`; for a non-default build dir, reconfigure it
-  explicitly with `./configure.sh` afterward)
+- `./build.sh --clean` — removes the build directory first; the next build
+  reconfigures it using `.config`'s recorded platform/target if that's where
+  the directory name came from, otherwise native defaults
 - `./build.sh --jobs 8`
 - `./build.sh --run` — runs `mmcu_app` after a successful build
 - `./build.sh --map-and-list` — generates a linker map and full disassembly

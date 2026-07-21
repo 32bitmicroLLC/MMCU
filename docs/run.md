@@ -12,6 +12,10 @@ itself. See [Configure: Platform, Target, Toolchain](configure.md) and
 ./run.sh --build-dir build-cortex-m0-gcc            # mcu: launched under QEMU
 ```
 
+Without `--build-dir`, `./run.sh` defaults to whatever `.config` (written by
+the last `./configure.sh` run) recorded, falling back to plain `build` if
+`.config` doesn't exist — see [Build And Run](build.md).
+
 ## Requirements
 
 - Everything [Build And Run](build.md) requires for the platform being run.
