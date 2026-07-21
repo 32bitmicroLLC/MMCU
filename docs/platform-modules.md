@@ -86,6 +86,27 @@ Raspberry Pi's pico-sdk for RP2040/RP2350. See
 [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md). Target
 selection is constrained by the selected platform.
 
+## Platform module specifications
+
+Platform foundations are also declared as MMCU YAML modules under
+`modules/platform/`. These declarations are graph metadata: they describe
+the selected platform foundation and version, while `platforms/` contains
+the installer/configure/build scripts and vendored external inputs.
+
+Current CMSIS declarations:
+
+```text
+modules/platform/cmsis/mmcu.yaml      # platform family: platform-cmsis
+modules/platform/cmsis/6/mmcu.yaml    # concrete version: platform-cmsis-6
+```
+
+The family module depends on the concrete CMSIS 6 module. The versioned
+module provides `cmsis`, `cmsis-6`, and `cmsis-core` capabilities. The
+package names intentionally use `platform-cmsis` / `platform-cmsis-6`
+instead of plain `cmsis`, so a capability named `cmsis` can remain a
+resolver-selected platform capability without colliding with an exact
+package name.
+
 ## Rule
 
 - public application import: `platform`

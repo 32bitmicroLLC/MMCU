@@ -80,6 +80,42 @@ the inspected Raspberry Pi CMSIS-RP2xxx-DFP revision used here provides
 RP2040 device files only. Use `MMCU_PLATFORM=pico_sdk` with
 `MMCU_TARGET=rp2350` for Pico 2 builds.
 
+## MMCU module declarations
+
+The CMSIS platform is represented in the MMCU module graph under
+`modules/platform/cmsis/`:
+
+```text
+modules/platform/cmsis/mmcu.yaml
+modules/platform/cmsis/6/mmcu.yaml
+```
+
+`modules/platform/cmsis/mmcu.yaml` declares the CMSIS platform family:
+
+```yaml
+schema: mmcu.module/v1
+name: platform-cmsis
+kind: platform
+provides: [cmsis-platform, platform-cmsis]
+depends:
+  - name: platform-cmsis-6
+    version: 6.0.0
+```
+
+`modules/platform/cmsis/6/mmcu.yaml` declares the concrete CMSIS 6 platform
+module:
+
+```yaml
+schema: mmcu.module/v1
+name: platform-cmsis-6
+kind: platform
+version: 6.0.0
+provides: [cmsis, cmsis-6, cmsis-core]
+```
+
+These module declarations are resolver metadata. The platform-local scripts
+and vendored inputs still live under `platforms/cmsis/`.
+
 ## Platform-local scripts
 
 The CMSIS scripts mirror the platform-local `pico-sdk` scripts:

@@ -22,9 +22,10 @@ for portable built-in core module specs implemented in `src/core/`.
 `modules/pico/` is reserved for Raspberry Pi RP-series-specific module
 specs implemented in `src/pico/`. `modules/arm/` is reserved for Arm
 Cortex-M common and core-specific module specs implemented in `src/arm/`;
-see [Arm Modules](modules/arm.md). The rest of `modules/` holds generic,
-hardware-independent reusable building blocks like ring buffers, CRC
-routines, fixed-point types, and small containers that
+see [Arm Modules](modules/arm.md). `modules/platform/` is reserved for
+platform foundation specifications such as CMSIS and pico-sdk. The rest of
+`modules/` holds generic, hardware-independent reusable building blocks
+like ring buffers, CRC routines, fixed-point types, and small containers that
 [Libraries](libraries.md) and [Drivers](drivers.md) compose on top of,
 organized by topic the same way both of those are.
 
@@ -46,6 +47,10 @@ organized by topic the same way both of those are.
   specifications such as NVIC, SysTick, SCB, MPU, exceptions, barriers,
   sleep, and core profile facts. These are processor-core facilities, not
   SoC peripherals.
+- `modules/platform/<name>/` — platform foundation specifications. For
+  example, `modules/platform/cmsis/` declares the CMSIS platform family and
+  `modules/platform/cmsis/6/` declares the concrete CMSIS 6 platform module
+  used by `MMCU_PLATFORM=cmsis`.
 - `modules/<topic>/` — generic C++ facilities with **no hardware or
   protocol awareness at all**. A ring buffer, a CRC-16 routine, or a
   fixed-point type behaves identically whether it's used inside a UART
@@ -106,6 +111,10 @@ modules/
     cortex-m0/
     cortex-m0plus/
     cortex-m33/
+  platform/
+    cmsis/
+      6/
+    pico-sdk/
   Containers/
     RingBuffer/
     FixedVector/
