@@ -279,7 +279,9 @@ case "$PLATFORM" in
         ;;
 
     pico_sdk)
-        echo "Error: MMCU_PLATFORM=pico_sdk has no run mechanism yet (its target module isn't implemented). See docs/platforms-baremetal/pico-sdk.md." >&2
+        echo "Error: MMCU_PLATFORM=pico_sdk has no run mechanism: no QEMU machine exists for" >&2
+        echo "       RP2040/RP2350 (see docs/targets-arm/rp2040-rp2350.md). Use ./flash.sh to" >&2
+        echo "       run it on real hardware instead (see docs/flash.md)." >&2
         exit 1
         ;;
 

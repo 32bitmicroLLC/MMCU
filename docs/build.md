@@ -122,6 +122,13 @@ reused until it is removed manually.
 directly for native, under QEMU for mcu — dispatching on the configured
 `MMCU_PLATFORM`. See [Run](run.md).
 
+## Flash
+
+`./flash.sh` builds (via `./build.sh`) and then flashes `mmcu_app` onto
+real hardware — currently `MMCU_PLATFORM=pico_sdk`'s `rp2040`/`rp2350`
+targets, via `picotool` — dispatching on the configured `MMCU_PLATFORM`/
+`MMCU_TARGET`. See [Flash](flash.md).
+
 ## Clean
 
 ```bash
