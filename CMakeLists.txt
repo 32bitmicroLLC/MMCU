@@ -22,7 +22,7 @@ elseif(MMCU_PLATFORM STREQUAL "mcu")
 elseif(MMCU_PLATFORM STREQUAL "pico_sdk")
     set(_mmcu_valid_targets rp2040 rp2350)
     set(_mmcu_default_target "rp2040")
-    set(_mmcu_default_toolchain "")
+    set(_mmcu_default_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchains/arm-none-eabi-gcc.cmake")
 else()
     message(FATAL_ERROR "Unsupported MMCU_PLATFORM: ${MMCU_PLATFORM} (expected native, mcu, or pico_sdk)")
 endif()
@@ -116,11 +116,30 @@ elseif(MMCU_TARGET STREQUAL "cortex-m0plus")
     target_link_options(mmcu_app PRIVATE
         "-T${CMAKE_CURRENT_SOURCE_DIR}/targets/arm/cortex_m0plus/linker.ld"
     )
-elseif(MMCU_TARGET STREQUAL "rp2040" OR MMCU_TARGET STREQUAL "rp2350")
-    message(FATAL_ERROR
-        "MMCU_TARGET '${MMCU_TARGET}' is recognized under MMCU_PLATFORM=pico_sdk, but its "
-        "target module (targets/arm/${MMCU_TARGET}/) is not implemented yet. "
-        "See docs/platforms-baremetal/pico-sdk.md.")
+elseif(MMCU_TARGET STREQUAL "rp2040")
+    mmcu_require_cmsis()
+    list(APPEND MMCU_MODULES
+        targets/arm/rp2040/rp2040.cppm
+    )
+    target_sources(mmcu_app PRIVATE
+        targets/arm/rp2040/startup_rp2040.s
+        targets/arm/rp2040/system_rp2040.c
+    )
+    target_link_options(mmcu_app PRIVATE
+        "-T${CMAKE_CURRENT_SOURCE_DIR}/targets/arm/rp2040/linker.ld"
+    )
+elseif(MMCU_TARGET STREQUAL "rp2350")
+    mmcu_require_cmsis()
+    list(APPEND MMCU_MODULES
+        targets/arm/rp2350/rp2350.cppm
+    )
+    target_sources(mmcu_app PRIVATE
+        targets/arm/rp2350/startup_rp2350.s
+        targets/arm/rp2350/system_rp2350.c
+    )
+    target_link_options(mmcu_app PRIVATE
+        "-T${CMAKE_CURRENT_SOURCE_DIR}/targets/arm/rp2350/linker.ld"
+    )
 else()
     message(FATAL_ERROR "Unsupported MMCU_TARGET: ${MMCU_TARGET}")
 endif()

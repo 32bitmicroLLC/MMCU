@@ -16,6 +16,7 @@ nav:
   - Target Modules: target-modules.md
   - ARM Targets:
       - Cortex-M0/M0+ Integration: targets-arm/cortex-m0-m0plus.md
+      - RP2040/RP2350 Integration: targets-arm/rp2040-rp2350.md
   - Platform Modules: platform-modules.md
   - Native Platforms:
       - Linux: platforms-native/linux.md

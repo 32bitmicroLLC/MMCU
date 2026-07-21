@@ -17,7 +17,7 @@ CMAKE_TOOLCHAIN_FILE   defaults per platform, overridable
 |---|---|---|---|
 | `native` (default) | `emu` | `emu` | host compiler, no toolchain file |
 | `mcu` | `emu` | `emu`, `cortex-m0`, `cortex-m0plus` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
-| `pico_sdk` | `rp2040` | `rp2040`, `rp2350` | none (pico-sdk manages its own toolchain) |
+| `pico_sdk` | `rp2040` | `rp2040`, `rp2350` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
 
 `native` and `mcu` both default to the `emu` target: `emu` is a placeholder
 GPIO/UART register layout with no CMSIS or real hardware dependency, so the
@@ -26,10 +26,16 @@ freestanding ARM Thumb-2 binary (`mcu`) — see
 [Native Linux Platform](platforms-native/linux.md) and
 [Bare-Metal MCU Platform](platforms-baremetal/mcu.md).
 
-`pico_sdk` (see [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md))
-is documented here for the configuration surface; its `rp2040`/`rp2350`
-target modules are not implemented yet, so selecting it currently fails
-with a clear `FATAL_ERROR` pointing at that doc, rather than a silent no-op.
+`pico_sdk`'s `rp2040`/`rp2350` targets (see
+[RP2040/RP2350 Target Integration](targets-arm/rp2040-rp2350.md)) currently
+build the same way `cortex-m0`/`cortex-m0plus` do — CMSIS-Core plus
+hand-rolled startup/linker script, using real RP2040/RP2350 CPU cores and
+memory maps, but **not** pico-sdk's own boot2/clock-tree/linker
+infrastructure yet. See that doc for exactly what is and isn't implemented.
+The vendored pico-sdk under `platforms/pico-sdk/` (see
+[Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)) is unrelated
+to building `mmcu_app` for these targets — it's a separate, standalone
+smoke-test project.
 
 ## Validation rules
 
@@ -60,8 +66,8 @@ lives. This is the same pattern pico-sdk itself uses (its
 
 ## Toolchain files
 
-`mcu`-platform builds use a real CMake toolchain file instead of flags
-computed in a shell script:
+`mcu`- and `pico_sdk`-platform builds both use the same real CMake toolchain
+files instead of flags computed in a shell script:
 
 - `cmake/toolchains/arm-none-eabi-gcc.cmake`
 - `cmake/toolchains/arm-none-eabi-clang.cmake`
@@ -74,6 +80,8 @@ a default `-mcpu` value and linker entry symbol:
 | `cortex-m0` | `cortex-m0` | `Reset_Handler` |
 | `cortex-m0plus` | `cortex-m0plus` | `Reset_Handler` |
 | `emu` (built via `mcu` platform) | `cortex-m3` | `main` |
+| `rp2040` | `cortex-m0plus` | `Reset_Handler` |
+| `rp2350` | `cortex-m33` (`-mfloat-abi=soft`) | `Reset_Handler` |
 
 The CPU can be overridden with `-DMMCU_CPU=<cpu>`. Compiler paths are
 overridable cache variables (`MMCU_ARM_GCC`, `MMCU_ARM_GXX`, `MMCU_CLANG_CC`,
@@ -84,10 +92,6 @@ These variables are forwarded into CMake's internal `try_compile` scratch
 projects (used for compiler ABI detection) via
 `CMAKE_TRY_COMPILE_PLATFORM_VARIABLES` — otherwise the toolchain file runs a
 second time with none of them set and fails before the real build starts.
-
-`pico_sdk`-platform builds don't use one of these files at all: compiler
-discovery is pico-sdk's job, done via its own `pico_sdk_init.cmake`, not
-MMCU's.
 
 ## `./configure.sh`
 
@@ -101,18 +105,17 @@ entry point (it never builds):
 ./configure.sh --platform mcu --target cortex-m0 --toolchain-file cmake/toolchains/arm-none-eabi-clang.cmake
 ```
 
-`--compiler`/`--toolchain-file` only apply to `--platform mcu` (`native` has
-no toolchain file, `pico_sdk` manages its own). Build directories default to
-`build` (native), `build-<target>-<compiler>` (mcu), or `build-<target>`
-(pico_sdk), overridable with `--build-dir`. Run `./configure.sh --help` for
-the full option list, or `cmake --build <dir>` afterward to build.
+`--compiler`/`--toolchain-file` apply to `--platform mcu` or `--platform
+pico_sdk` (`native` has no toolchain file). Build directories default to
+`build` (native) or `build-<target>-<compiler>` (mcu, pico_sdk), overridable
+with `--build-dir`. Run `./configure.sh --help` for the full option list, or
+`cmake --build <dir>` afterward to build.
 
 `./configure.sh --interactive` (or `-i`) walks through the same choices as
 numbered menus instead of flags: platform, target (skipped when the platform
-has only one valid target), compiler (mcu only), CPU/CMSIS overrides, linker
-map, build type, build directory, and clean. It prints a summary before
-running `cmake`. Selecting `pico_sdk` warns that the target isn't
-implemented yet and asks for confirmation before configuring anyway.
+has only one valid target), compiler (mcu/pico_sdk), CPU/CMSIS overrides,
+linker map, build type, build directory, and clean. It prints a summary
+before running `cmake`.
 
 ## Direct CMake invocation
 
@@ -128,6 +131,10 @@ cmake -S . -B build-cortex-m0 \
 cmake -S . -B build-cortex-m0plus-clang \
     -DMMCU_PLATFORM=mcu -DMMCU_TARGET=cortex-m0plus \
     -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/arm-none-eabi-clang.cmake
+
+# pico_sdk, rp2040, gcc (default toolchain)
+cmake -S . -B build-rp2040-gcc \
+    -DMMCU_PLATFORM=pico_sdk -DMMCU_TARGET=rp2040
 ```
 
 ## How the build scripts use this
@@ -146,5 +153,8 @@ cmake -S . -B build-cortex-m0plus-clang \
   `pico-sdk-configure.sh`/`pico-sdk-build.sh`/`pico-sdk-clean.sh` (see
   [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)) are
   unrelated to `MMCU_PLATFORM=pico_sdk` above — they build the standalone
-  `platforms/pico-sdk/` smoke-test project, not `mmcu_app`, since the
-  `rp2040`/`rp2350` target modules don't exist yet.
+  `platforms/pico-sdk/` smoke-test project, not `mmcu_app`. Building
+  `mmcu_app` for `rp2040`/`rp2350` (see
+  [RP2040/RP2350 Target Integration](targets-arm/rp2040-rp2350.md)) needs
+  none of that vendored pico-sdk checkout — it only needs CMSIS_6, the same
+  as `cortex-m0`/`cortex-m0plus`.

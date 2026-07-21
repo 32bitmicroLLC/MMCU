@@ -1,75 +1,68 @@
 # Platform
 
-`./platform.sh` is a single entry point for a configured platform's whole
-lifecycle — install, configure, build, clean — instead of remembering which
-script lives where for each `MMCU_PLATFORM`. It dispatches each command to
-that platform's own script if one exists, and falls back to the top-level
-generic scripts otherwise.
+`./platform.sh` is a single entry point for `mmcu_app`'s configure/build/
+clean lifecycle across every `MMCU_PLATFORM`, plus `install` for platforms
+that need to vendor a toolchain/SDK first.
 
 ```bash
-./platform.sh install --platform pico_sdk
 ./platform.sh configure --platform mcu --target cortex-m0
 ./platform.sh build --platform mcu
-./platform.sh clean --platform pico_sdk -a
+./platform.sh configure --platform pico_sdk --target rp2040
+./platform.sh build --platform pico_sdk --build-dir build-rp2040-gcc
+./platform.sh clean
 ./platform.sh build                              # native (default), same as ./build.sh
 ```
 
 ## Commands
 
 - `install` — vendor the platform's toolchain/SDK, if it has one.
-- `configure` — configure MMCU (or a per-platform project) for the platform.
-- `build` — build the configured project.
-- `clean` — clean the configured project.
+- `configure` — `./configure.sh --platform <name>` for `mmcu_app`.
+- `build` — `./build.sh` for `mmcu_app`.
+- `clean` — `./clean.sh` (discovers every configured `mmcu_app` build dir).
 
-## Dispatch
+`configure`/`build`/`clean` always go through the top-level `configure.sh`/
+`build.sh`/`clean.sh` — see [Configure](configure.md),
+[Build And Run](build.md), and [Clean](clean.md) — since those already
+handle `native`, `mcu`, and `pico_sdk` uniformly via `mmcu_app`'s own
+`CMakeLists.txt`. `platform.sh` doesn't reimplement or branch on that
+logic; it just injects `--platform <name>` into the `configure` call and
+passes every other argument straight through.
 
-For `-p`/`--platform <name>`, `platform.sh` looks for a dedicated script at
-`platforms/<dir>/<prefix>-<command>.sh`:
+## `install`: the one platform-specific command
 
-| `--platform` | script directory | prefix |
-|---|---|---|
-| `native` | — (none) | — |
-| `mcu` | — (none) | — |
-| `pico_sdk` | `platforms/pico-sdk` | `pico-sdk` |
+`install` is different: vendoring a toolchain/SDK is genuinely
+platform-specific, and `mmcu_app` has no generic "install" step of its own.
+`platform.sh` looks for a dedicated script at
+`platforms/<dir>/<prefix>-install.sh`:
 
-If that script exists and is executable, `platform.sh` runs it with every
-remaining argument passed through unchanged. Otherwise it falls back:
+| `--platform` | install script |
+|---|---|
+| `native` | — (none) |
+| `mcu` | — (none) |
+| `pico_sdk` | `platforms/pico-sdk/pico-sdk-install.sh` |
 
-- `configure` → `./configure.sh --platform <name> <args...>`
-- `build` → `./build.sh <args...>`
-- `clean` → `./clean.sh <args...>`
-- `install` → no fallback. If the platform has nothing to vendor (`native`,
-  `mcu`), `platform.sh` prints that and exits `0` rather than erroring.
+If that script exists, `platform.sh` runs it with every remaining argument
+passed through unchanged. Otherwise (`native`, `mcu`) it prints that there's
+nothing to vendor and exits `0` rather than erroring — `mmcu_app`'s
+`cortex-m0`/`cortex-m0plus`/`rp2040`/`rp2350` targets all only need CMSIS_6,
+which `configure` fetches automatically (see
+[Configure: Platform, Target, Toolchain](configure.md)), not a separate
+install step.
 
-`native` and `mcu` have no `platforms/<name>/` script directory of their
-own — they're served entirely by the top-level `configure.sh`/`build.sh`/
-`clean.sh` (see [Configure](configure.md), [Build And Run](build.md), and
-[Clean](clean.md)). `pico_sdk` has dedicated scripts for all four commands
-(see [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)),
-so every `--platform pico_sdk` command dispatches to
-`platforms/pico-sdk/pico-sdk-<command>.sh`.
+## Important: `pico_sdk` install vendors a *different* project than build
 
-## Important: two different "configure"/"build" targets
-
-`platform.sh configure --platform mcu ...` and
-`platform.sh configure --platform pico_sdk ...` **do not configure the same
-project**:
-
-- `native`/`mcu` configure MMCU's own `mmcu_app` (via the root
-  `CMakeLists.txt`).
-- `pico_sdk` configures the standalone smoke-test project under
-  `platforms/pico-sdk/` (`pico_sdk_smoke`), which validates the vendored
-  pico-sdk/picotool installation. It does **not** build `mmcu_app`, since
-  the `rp2040`/`rp2350` target modules that `MMCU_PLATFORM=pico_sdk` in
-  `CMakeLists.txt` expects aren't implemented yet (see
-  [Configure: Platform, Target, Toolchain](configure.md) and
-  [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)).
-
-Once those target modules exist, `pico_sdk`'s `configure`/`build` dispatch
-in `platform.sh` can point at the real `mmcu_app` build instead, without
-changing `platform.sh` itself — only which script lives at
-`platforms/pico-sdk/pico-sdk-configure.sh`/`pico-sdk-build.sh` would need to
-change.
+`./platform.sh install --platform pico_sdk` (→
+`platforms/pico-sdk/pico-sdk-install.sh`) vendors pico-sdk and picotool for
+`platforms/pico-sdk/`'s own **standalone smoke-test project**
+(`pico_sdk_smoke`), which validates that installation in isolation. It has
+nothing to do with `./platform.sh configure --platform pico_sdk --target
+rp2040`, which configures `mmcu_app`'s `rp2040`/`rp2350` targets — those
+build against CMSIS_6 only (see
+[RP2040/RP2350 Target Integration](targets-arm/rp2040-rp2350.md)), not the
+pico-sdk checkout. Running `./platform.sh install --platform pico_sdk` is
+**not** a prerequisite for `./platform.sh configure/build --platform
+pico_sdk`. See [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)
+for why these two things share a directory but not a build.
 
 ## Passing arguments through
 
@@ -80,8 +73,9 @@ does not parse or validate them itself:
 ```bash
 ./platform.sh configure --platform mcu --target cortex-m0plus --compiler clang
 ./platform.sh build --platform mcu --build-dir build-cortex-m0plus-clang --map-and-list
+./platform.sh configure --platform pico_sdk --target rp2350 --compiler clang
 ./platform.sh install --platform pico_sdk --tag 2.3.0 --skip-picotool
-./platform.sh clean --platform pico_sdk -a -n
+./platform.sh clean -a -n
 ```
 
 ## Options
