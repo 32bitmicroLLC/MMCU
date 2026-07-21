@@ -97,11 +97,14 @@ checked up front, at configure time — before compiling anything.
 `MMCU_TARGET_PERIPHERALS` is one facet of a target's full composition —
 see [Modular Target](target.md) for the others (CPU core, memories, MMU,
 floating-point, debug). Some capabilities (CAN, Ethernet, ...) need board
-hardware too, not just the chip's own peripheral — see [Modular
-Board](board.md#resolving-a-bus-capability-target-peripheral-or-board-bus-or-both)
-for how that union gets checked. Each target block in the root
-`CMakeLists.txt` sets the list of peripheral capabilities that target
-actually has:
+hardware too, not just the chip's own peripheral — [Modular
+Board](board.md#declaring-and-checking-a-board-requirement) covers the
+board's equivalent declaration, `MMCU_BOARD_BUSES`, checked
+**independently**, not merged into this same set (see `REQUIRES_BOARD`
+below — a driver needing both a target peripheral and a board bus declares
+both separately; there is no single combined "peripherals" set to check
+against). Each target block in the root `CMakeLists.txt` sets the list of
+peripheral capabilities that target actually has:
 
 ```cmake
 elseif(MMCU_TARGET STREQUAL "rp2040")
@@ -159,6 +162,21 @@ mmcu_module(
 )
 ```
 
+A driver that genuinely needs *both* a target peripheral and board
+hardware — the CAN case [Modular Board](board.md) describes, where the
+chip's own controller and the board's transceiver are both required —
+declares both independently:
+
+```cmake
+# drivers/CANbus/onboard-can/mmcu-module.cmake
+mmcu_module(
+    NAME onboard-can
+    MODULES driver.cppm
+    REQUIRES CAN             # the target's on-die CAN controller
+    REQUIRES_BOARD CAN       # the board's CAN transceiver, wired to it
+)
+```
+
 `mmcu_module()` arguments:
 
 | Argument | Meaning |
@@ -167,12 +185,23 @@ mmcu_module(
 | `MODULES` | `.cppm` files added to the build's `FILE_SET cxx_modules` |
 | `SOURCES` | plain `.c`/`.cpp`/`.s` files, if any, added alongside `MODULES` |
 | `REQUIRES` | peripheral capabilities that **all** must be in `MMCU_TARGET_PERIPHERALS` |
-| `REQUIRES_ANY_OF` | peripheral capabilities where **at least one** must be present |
+| `REQUIRES_ANY_OF` | peripheral capabilities where **at least one** must be in `MMCU_TARGET_PERIPHERALS` |
+| `REQUIRES_BOARD` | bus capabilities that **all** must be in `MMCU_BOARD_BUSES` (see [Modular Board](board.md)) |
+| `REQUIRES_BOARD_ANY_OF` | bus capabilities where **at least one** must be in `MMCU_BOARD_BUSES` |
 | `DEPENDS` | names of other `mmcu_module()` entries (library, driver, or module) this one needs |
 
-A module with no `REQUIRES`/`REQUIRES_ANY_OF` (e.g. a pure data-format
-library like a JSON parser, or almost anything under `modules/`) simply
-has none — not every node in the chain touches hardware.
+`REQUIRES`/`REQUIRES_ANY_OF` and `REQUIRES_BOARD`/`REQUIRES_BOARD_ANY_OF`
+are checked **independently against separate sets** — `MMCU_TARGET_PERIPHERALS`
+and `MMCU_BOARD_BUSES` respectively, never merged into one combined set to
+check against. A driver needing only a target peripheral declares only
+`REQUIRES`; one needing only board hardware (a driver purely for an
+onboard Wi-Fi radio module, say) declares only `REQUIRES_BOARD`; one
+needing both, like `onboard-can` above, declares both, and both checks
+must independently pass.
+
+A module with none of the four (e.g. a pure data-format library like a
+JSON parser, or almost anything under `modules/`) simply has none — not
+every node in the chain touches hardware.
 
 ## Consuming what's declared
 
@@ -199,10 +228,10 @@ is a separate process, **resolving**, covered on its own in
   *target-level* wiring at configure time (does this MCU/board even expose
   this bus at all) — not runtime conditions like "is a device actually
   present on the bus," which stays application logic.
-- **Version constraints and generic-capability resolution** (e.g. "give me
-  *an* IMU, any provider, version `^1.0`"). This spec's `DEPENDS` names
-  exact modules only. See [Dependency DSL](dependency-dsl.md) for the
-  YAML-manifest evolution that adds both, and
+- **Minimum-version constraints and generic-capability resolution** (e.g.
+  "give me *an* IMU, any provider, version `1.0.0`"). This spec's
+  `DEPENDS` names exact modules only. See [Dependency DSL](dependency-dsl.md)
+  for the YAML-manifest evolution that adds both, and
   [Resolving](resolving.md) for how either mechanism is actually walked.
 - **The walking/resolving process itself** — `mmcu_use()`'s algorithm, its
   worked example, and the DSL resolver's algorithm all live in

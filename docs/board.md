@@ -24,17 +24,54 @@ implemented piece today — and it isn't independent: it's derived 1:1 from
 own. Every other facet below is proposed, same status as
 [Modular Target](target.md)'s non-CPU-core facets.
 
-## A board hosts exactly one target
+## Board selection: `MMCU_BOARD`, defaulted from `MMCU_TARGET`
 
-Same shape as target→CPU-core: one board, one target, chosen together
-rather than independently — you don't configure "a `pico` board" and
-separately decide it happens to have an `rp2040` on it; picking the target
-picks the board. `native`/`mcu` platforms currently have no board concept
-at all: there's no physical carrier being modeled, just the bare chip
-target. A proposed `MMCU_BOARD` variable would follow the same pattern
-`MMCU_TARGET_PERIPHERALS` does for targets — a per-board block in
-`CMakeLists.txt` (or a `boards/<name>/mmcu-board.cmake`) declaring the
-facets below.
+A proposed `MMCU_BOARD` cache variable, following the same default/
+override pattern `MMCU_TARGET` itself uses relative to `MMCU_PLATFORM`
+(see [Configure](configure.md)):
+
+```cmake
+set(MMCU_BOARD "" CACHE STRING "Board (default: derived from MMCU_TARGET)")
+```
+
+| `MMCU_TARGET` | default `MMCU_BOARD` |
+|---|---|
+| `rp2040` | `pico` |
+| `rp2350` | `pico2` |
+| `emu`, `cortex-m0`, `cortex-m0plus` | *(none — no physical board modeled)* |
+
+This is the same mapping `mmcu_require_pico_sdk_foundation()` already
+hardcodes today via its `pico_board` argument — the proposal just gives it
+its own named, independently-overridable variable instead of an implicit
+function-call constant. That independence is what a Pico *W* would use:
+same `MMCU_TARGET=rp2040` (it's still an RP2040), but
+`MMCU_BOARD=pico-w` instead of the default `pico`, adding the CYW43439
+[bus](#buses-ethernet-can-rs485-rs232-sd-card-usb-wi-fi-bluetooth) this
+doc describes below — a board variant, not a new target. `native`/`mcu`
+platforms leave `MMCU_BOARD` empty: there's no physical carrier being
+modeled, just the bare chip target.
+
+A board's facets are declared the same way a target's are — a per-board
+block in `CMakeLists.txt`, or (in the [Dependency DSL](dependency-dsl.md)
+evolution) a `boards/<name>/mmcu-board.yaml`:
+
+```yaml
+# boards/pico/mmcu-board.yaml
+name: pico
+buses: []
+rails: [3.3]
+connectors: [USB-MICRO-B, SWD-3PIN]
+```
+
+```yaml
+# boards/pico-w/mmcu-board.yaml
+name: pico-w
+buses: [WIFI, BLUETOOTH]
+rails: [3.3]
+connectors: [USB-MICRO-B, SWD-3PIN]
+default_providers:
+  wifi: cyw43439
+```
 
 ## Power Supply (LDO/DC-DC)
 
@@ -94,17 +131,35 @@ target-level from the build's point of view. MMCU's current `rp2040`
 target models the plain Pico (no wireless); a `rp2040-w`-style
 target/board pair would be where this facet actually gets exercised.
 
-### Resolving a bus capability: target peripheral, or board bus, or both
+### Declaring and checking a board requirement
 
-A driver's `REQUIRES CAN` (see [Dependencies](dependencies.md)) shouldn't
-have to know or care whether `CAN` is satisfied by the target's own
-peripheral, the board's transceiver, or — the common case — needs *both*
-to actually work end to end. The proposal: resolving a capability checks
-it against the **union** of `MMCU_TARGET_PERIPHERALS` and
-`MMCU_BOARD_BUSES`, not either alone. To the dependency graph, a capability
-is either backed by real hardware on this build or it isn't; which
-physical object (chip die vs. board component) provides it doesn't change
-what a driver needs to know.
+A driver needing board hardware declares it with its own field,
+`REQUIRES_BOARD`/`REQUIRES_BOARD_ANY_OF` (or `peripherals.board_requires`/
+`board_any_of` in the [Dependency DSL](dependency-dsl.md) YAML), checked
+against `MMCU_BOARD_BUSES` **independently** of `REQUIRES`/
+`REQUIRES_ANY_OF` against `MMCU_TARGET_PERIPHERALS` (see
+[Dependencies](dependencies.md)) — not a single merged set. A capability
+name like `CAN` can appear on either side, both, or neither, depending on
+what a specific driver actually needs:
+
+- **Target-only** (`GPIO`, most on-die peripherals): declare `REQUIRES`
+  alone.
+- **Board-only** (a driver purely for an onboard Wi-Fi radio module with
+  no on-die equivalent, like `cyw43439` above): declare `REQUIRES_BOARD`
+  alone.
+- **Both, independently** (a CAN driver needing the chip's own controller
+  *and* the board's transceiver): declare both `REQUIRES` and
+  `REQUIRES_BOARD`, and both checks must pass — see the worked example in
+  [Dependencies](dependencies.md#declaring-what-a-module-needs) and
+  [Resolving](resolving.md#resolving-to-a-concrete-platform-target-and-board).
+
+Keeping the two checks separate (rather than unioning
+`MMCU_TARGET_PERIPHERALS` and `MMCU_BOARD_BUSES` into one set before
+checking) is what makes "needs both" and "needs either" actually
+distinguishable — a union can't tell a reader (or an error message)
+whether a capability came from the chip, the board, or required both at
+once; two independent checks can, and do, when one fails and the other
+doesn't.
 
 ## Connectors
 

@@ -17,14 +17,32 @@ produces a graph of **requirements**, each either:
 - still **open** — a capability name with more than one possible provider
   (`imu`, satisfied by either `bmi270` or `mpu6050`).
 
-Version bounds are also checked here (the maximum of every minimum
-requested for a given name — see [Dependency DSL](dependency-dsl.md)),
-since a version is a property of the package graph itself, not of any
-target. Diamond dependencies de-duplicate here too. Nothing in this phase
-touches `MMCU_TARGET_PERIPHERALS`, `MMCU_BOARD_BUSES`, `MMCU_PLATFORM`, or
-`MMCU_TARGET` — a mapped application is a portable statement of "here's
-what's needed," correct (or not) independent of what it eventually gets
-built for.
+An open requirement is not a dead end mapping stops at: since every
+`libraries/`/`drivers/`/`modules/` package is in-tree and known ahead of
+time, mapping expands **every** candidate's own transitive `depends` too
+— all of `bmi270`'s subgraph *and* all of `mpu6050`'s, fully — leaving
+only the choice of *which candidate* open, never leaving a candidate's own
+dependencies unexpanded. Resolving's job (Phase 2) is to pick a winner
+from among already-fully-mapped alternatives and discard the rest, not to
+keep walking a graph mapping left unfinished.
+
+Version bounds are handled with the same asymmetry. For an unambiguous,
+exact-name dependency, the version check is fully mapping's job — the
+maximum of every minimum requested for that name, checked against that
+one package's actual version (see [Dependency DSL](dependency-dsl.md)).
+For an open capability, mapping can only compute *what* the requested
+minimum is (the same max-reduce, keyed on the capability name); it can't
+check that minimum against a candidate's version yet, because which
+candidate's version even applies isn't decided until resolving picks one
+— see [Resolving](resolving.md#where-version-checking-actually-happens).
+
+Diamond dependencies de-duplicate here too — reached two ways, a package
+(or an already-fully-expanded candidate subgraph) is still one node.
+Nothing in this phase touches `MMCU_TARGET_PERIPHERALS`, `MMCU_BOARD_BUSES`,
+`MMCU_PLATFORM`, `MMCU_TARGET`, or `MMCU_BOARD` — a mapped application is
+a portable statement of "here's what's needed, and here's every way it
+*could* be satisfied," correct (or not) independent of what it eventually
+gets built for.
 
 ```
 application (mmcu_app)
@@ -33,7 +51,10 @@ application (mmcu_app)
  │                                └─ requires "mcp2515" ──▶ mcp2515 (driver) [unambiguous]
  │                                                           └─ requires "ring-buffer" ──▶ ring-buffer (module) [unambiguous]
  │
- ├─ requires "imu" ──▶ { bmi270 | mpu6050 }                     [open — needs a target to pick one]
+ ├─ requires "imu" ──▶ { bmi270 (fully expanded) | mpu6050 (fully expanded) }
+ │                                                    [open — both candidates' own
+ │                                                     subgraphs are already mapped;
+ │                                                     only "which one" is left]
  │
  └─ requires "ring-buffer" ──▶ ring-buffer (module, same node — resolved once)
 ```

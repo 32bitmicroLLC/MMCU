@@ -22,24 +22,25 @@ define what gets *declared*.
 Resolving does two things the mapping phase deliberately deferred:
 
 1. **Close every open requirement.** For each capability with more than
-   one candidate, apply the tie-break below — explicit pin, then *that
-   target's* declared default provider, then a single satisfiable
-   candidate, else fail — using this target/board pair's declared
-   capabilities to decide "satisfiable" (below). This is why the same
-   `imu` requirement can resolve to a different concrete driver depending
-   on which target it's resolved against.
-2. **Check every peripheral requirement.** Now that every requirement is a
-   concrete package, check each one's `REQUIRES`/`REQUIRES_ANY_OF` against
-   the **union** of this target's `MMCU_TARGET_PERIPHERALS` and its
-   board's `MMCU_BOARD_BUSES` (see [Dependencies](dependencies.md) and
-   [Modular Board](board.md#resolving-a-bus-capability-target-peripheral-or-board-bus-or-both))
-   — and, at the implementation level, against whatever [Modular
-   Peripherals](peripherals.md) that target actually wires up. A
-   capability can be satisfied by the chip alone (`GPIO`), the board alone
-   (a Wi-Fi radio module with no on-die equivalent), or require both at
-   once (`CAN` — chip controller *and* board transceiver) — resolving
-   doesn't distinguish which side backs it, only whether the union
-   contains it.
+   one candidate, first drop any candidate whose own `version` doesn't
+   satisfy the minimum requested for that capability (mapping only
+   computed *that* minimum — it can't check it per-candidate, since which
+   candidate wins wasn't known yet; see "Where version checking actually
+   happens" below). Of what's left, apply the tie-break below — explicit
+   pin, then this target/board's declared default provider, then a single
+   *fully* satisfiable candidate (its whole transitive closure, not just
+   its own immediate `REQUIRES` — see "Satisfiability means the whole
+   subgraph" below), else fail.
+2. **Check every peripheral and board requirement.** Now that every
+   requirement is a concrete package, check each one's `REQUIRES`/
+   `REQUIRES_ANY_OF` against this target's `MMCU_TARGET_PERIPHERALS`, and
+   **separately**, its `REQUIRES_BOARD`/`REQUIRES_BOARD_ANY_OF` against
+   this board's `MMCU_BOARD_BUSES` (see [Dependencies](dependencies.md)
+   and [Modular Board](board.md)) — two independent checks, never merged
+   into one combined set. A driver needing both a target peripheral and a
+   board bus (`CAN`, say — chip controller *and* board transceiver)
+   declares both fields and both checks must pass; a driver needing only
+   one declares only that field.
 
 Resolving one mapped application (`canopen-stack` → `canopen` →
 `mcp2515` (`REQUIRES SPI`) → `ring-buffer`; `imu` → `{bmi270 | mpu6050}`)
@@ -48,27 +49,64 @@ against two different platform/target/board combinations:
 ```
 resolve(mapped_app, platform=pico_sdk, target=rp2040, board=pico)
  └─ "imu" → bmi270 (rp2040's default_providers picks it;
-    REQUIRES_ANY_OF{I2C,SPI} ⊆ {GPIO,ADC,I2C,SPI,UART,PWM} ∪ {} ✓)
- └─ mcp2515: REQUIRES SPI ⊆ {GPIO,ADC,I2C,SPI,UART,PWM} ∪ {} ✓
+    REQUIRES_ANY_OF{I2C,SPI} ⊆ MMCU_TARGET_PERIPHERALS{GPIO,ADC,I2C,SPI,UART,PWM} ✓)
+ └─ mcp2515: REQUIRES SPI ⊆ MMCU_TARGET_PERIPHERALS{GPIO,ADC,I2C,SPI,UART,PWM} ✓
  → resolution succeeds, generated CMake emitted
 
 resolve(mapped_app, platform=mcu, target=cortex-m0, board=(none))
- └─ mcp2515: REQUIRES SPI ⊄ {GPIO, UART} ∪ {}
+ └─ mcp2515: REQUIRES SPI ⊄ MMCU_TARGET_PERIPHERALS{GPIO, UART}
  → resolution fails: "mcp2515 (required by canopen) requires peripheral
-   SPI, but MMCU_TARGET 'cortex-m0' (no board) does not provide it"
+   SPI, but MMCU_TARGET 'cortex-m0' does not provide it"
 ```
 
-A capability entirely board-provided would fail the opposite way — a
-driver `REQUIRES CAN` on a target whose chip has a CAN controller
-(`MMCU_TARGET_PERIPHERALS` includes `CAN`) but whose board never wired up
-a transceiver (`MMCU_BOARD_BUSES` doesn't include `CAN`) still fails here,
-even though the target side alone looks satisfied — the union has to
-contain the capability, not just one side of it.
+A board-dependent driver fails on the board side specifically — a driver
+`REQUIRES CAN` (target) `REQUIRES_BOARD CAN` (board) on a target whose
+chip has a CAN controller but whose board never wired up a transceiver
+fails with a *board* mismatch, distinct from a *target* mismatch, because
+the two checks are independent and the error names which one failed:
+
+```
+resolve(mapped_app, platform=pico_sdk, target=rp2040-can, board=pico)
+ └─ onboard-can: REQUIRES CAN ⊆ MMCU_TARGET_PERIPHERALS{...,CAN,...} ✓
+              REQUIRES_BOARD CAN ⊄ MMCU_BOARD_BUSES{} ✗
+ → resolution fails: "onboard-can (required by ...) requires board bus
+   CAN, but board 'pico' does not provide it (MMCU_BOARD_BUSES: (none))"
+```
 
 Only this phase can fail this way. A mapped application with an
 unresolved *name* fails in mapping, for every target identically; a
 mapped application that fails only against *some*
 platform/target/board combinations always fails here, in resolving.
+
+### Where version checking actually happens
+
+[Mapping](mapping.md) computes the maximum minimum version *requested* for
+a given name — but for an **open** (capability) requirement, that minimum
+applies to whichever candidate ends up chosen, and different candidates
+have different own versions (`bmi270` at `1.2.0`, `mpu6050` at `0.9.0`).
+Mapping can't check "is the minimum satisfied" for a capability, only
+compute what the minimum *is*; resolving is what actually filters
+candidates by it, as the first step of closing an open requirement (step 1
+above), before pin/default/single-candidate tie-breaking runs on whatever
+candidates are left. For an **unambiguous**, exact-name dependency,
+there's only one candidate to begin with, so mapping's version check
+(max-reduce, then compare against that one package's actual version) is
+already final — nothing more happens here for those.
+
+### Satisfiability means the whole subgraph
+
+"Single remaining candidate... satisfiable" means more than the
+candidate's own immediate `REQUIRES`/`REQUIRES_BOARD` passing — it means
+its **entire transitive closure** resolves cleanly against this
+target/board: every package it (recursively) depends on also passes its
+own peripheral/board/version checks. Since every package in `libraries/`,
+`drivers/`, and `modules/` is in-tree and known ahead of time, this is a
+plain bottom-up computation over an already-fully-known graph — evaluate
+leaf packages' satisfiability first, then propagate up — not a search or
+a SAT-style guess-and-backtrack: a candidate whose own peripherals check
+out but whose transitive `DEPENDS` fails somewhere further down is not a
+satisfiable candidate, full stop, computed in one deterministic pass with
+no need to backtrack and try another branch of *its* subgraph.
 
 ## Baseline resolver: `mmcu_use()`
 
@@ -87,13 +125,14 @@ mmcu_use(bmi270)
 1. Includes `<name>`'s `mmcu-module.cmake` (located by searching
    `libraries/*/*/`, `drivers/*/*/`, and `modules/*/*/`, one topic level
    deep, for a directory named `<name>`).
-2. Checks `REQUIRES`/`REQUIRES_ANY_OF` against the union of
-   `MMCU_TARGET_PERIPHERALS` and `MMCU_BOARD_BUSES` (see
-   [Modular Board](board.md)). On failure:
+2. Checks `REQUIRES`/`REQUIRES_ANY_OF` against `MMCU_TARGET_PERIPHERALS`,
+   and separately, `REQUIRES_BOARD`/`REQUIRES_BOARD_ANY_OF` against
+   `MMCU_BOARD_BUSES` (see [Modular Board](board.md)) — two independent
+   checks, not one merged set. On failure:
    ```
    FATAL_ERROR: module 'mcp2515' requires peripheral SPI, but
-   MMCU_TARGET 'cortex-m0-plain' (no board) does not provide it
-   (MMCU_TARGET_PERIPHERALS: GPIO UART; MMCU_BOARD_BUSES: (none))
+   MMCU_TARGET 'cortex-m0-plain' does not provide it
+   (MMCU_TARGET_PERIPHERALS: GPIO UART)
    ```
 3. Appends `MODULES`/`SOURCES` to `mmcu_app`'s `FILE_SET cxx_modules` /
    sources, skipping re-addition if `<name>` was already added by an
@@ -106,6 +145,21 @@ This baseline only ever names an exact module in `DEPENDS` — it has no
 capability indirection and no tie-break step, because there's nothing
 ambiguous left to close (see [Dependency DSL](dependency-dsl.md) for the
 evolution that adds that).
+
+**On the "two phases" framing**: `mmcu_use()` performs discovery,
+recursion, peripheral/board checking, and source-list insertion in one
+fused configure-time pass — it doesn't build a separate mapped-graph
+artifact and then resolve it as two distinct invocations. Mapping and
+resolving (see [Build Process](process.md)) are a **conceptual**
+decomposition, useful for reasoning about *why* a failure happened (a bad
+name vs. a target/board that lacks something), not a description of two
+independently-executable stages with a serialized intermediate format
+between them — neither this baseline nor the DSL resolver below
+materializes one. If a future implementation ever wants to cache mapping's
+output to skip re-walking the name graph when only the target changes,
+that cache's format, location, and invalidation rule would need their own
+specification; none is proposed here, and no performance claim should be
+read into the two-phase split beyond the failure-categorization one.
 
 ### Worked example
 
@@ -150,24 +204,41 @@ scripting language.
 1. Collect every `mmcu.yaml` under `libraries/`, `drivers/`, `modules/`,
    and the application's own manifest into a package index, keyed by
    `name`, with a secondary index from `provides` entries to the package
-   names that provide them.
+   names that provide them. **Reject at this step** if any two packages
+   declare the same `name` (duplicate), or if a `provides` entry equals
+   the literal `name` of a *different* package (a namespace collision —
+   see "Package names and capability names don't overlap" below); both
+   are configure-time errors, not something later steps paper over.
 2. Walk the application's `depends` list and recurse into every resolved
-   package's own `depends`, collecting, for each distinct `name`
-   encountered anywhere in the graph, every minimum version requested for
-   it (a capability name is resolved to one concrete package first — see
-   "Choosing among multiple providers" — then treated as that package's
-   name for the rest of this step). A diamond dependency just contributes
-   another entry to that package's list of requested minimums; it doesn't
-   need special-casing.
-3. For each distinct package name, take the **maximum of all minimum
-   versions requested for it** and check the in-tree package actually
-   provides at least that version — see "Version resolution" below for why
-   this replaces range-based conflict detection.
-4. Once the full set is resolved, check every package's
-   `peripherals.requires`/`any_of` against the union of
-   `MMCU_TARGET_PERIPHERALS` and `MMCU_BOARD_BUSES` (see
-   [Modular Board](board.md)).
-5. Emit generated CMake (below).
+   package's own `depends`, building the full graph. For an **exact-name**
+   dependency, this is just an index lookup. For a **capability**
+   dependency, this step does *not* pick a winner yet — it expands
+   **every** `provides`-matching candidate's own transitive `depends`
+   too (all of it is in-tree and already known, so there's nothing to
+   defer), keeping the requirement **open**, with every candidate's fully
+   expanded subgraph attached, until resolving picks one (see "Choosing
+   among multiple providers"). **Reject** if the graph contains a cycle
+   (`A` depends on `B` depends on `A`, however indirectly) — report the
+   full cycle, not just the last edge.
+3. For each distinct **package name** encountered (not capability name —
+   see the version-checking note below), take the maximum of all minimum
+   versions requested for it and check the in-tree package actually
+   provides at least that version — see "Version resolution" below for
+   why this replaces range-based conflict detection. A minimum requested
+   *of a capability* (`imu >= 1.0.0`) is carried on the open requirement
+   node instead, and checked per-candidate once a candidate is chosen —
+   see [Resolving](#resolving-to-a-concrete-platform-target-and-board)'s
+   "Where version checking actually happens."
+4. Close every open (capability) requirement: filter its candidates by the
+   version check above, then apply the tie-break in "Choosing among
+   multiple providers," where "satisfiable" means the candidate's *entire*
+   transitive closure resolves against this target/board — see
+   "Satisfiability means the whole subgraph" above.
+5. Check every resolved package's `peripherals.requires`/`any_of` against
+   `MMCU_TARGET_PERIPHERALS`, and separately, `peripherals.board_requires`/
+   `board_any_of` against `MMCU_BOARD_BUSES` (see [Modular Board](board.md))
+   — two independent checks, never merged.
+6. Emit generated CMake (below).
 
 ### Version resolution: minimal version selection, not SAT
 
@@ -251,23 +322,38 @@ fetch-only model ever proves insufficient.
 ### Choosing among multiple providers
 
 When a capability (`imu`) has more than one provider (`bmi270`,
-`mpu6050`), the resolver needs a tie-breaker:
+`mpu6050`), the resolver needs a tie-breaker, applied in this order —
+each step only runs if the previous one didn't produce exactly one
+candidate:
 
-- **Explicit pin** (highest priority): the application manifest names the
-  concrete package directly (`depends: [{name: bmi270, version: "^1.0"}]`)
-  instead of the capability.
-- **Board/target default**: a target may declare a default provider per
-  capability, e.g. in the target's own section of `mmcu.yaml` or a sibling
-  `mmcu-target.yaml`:
-  ```yaml
-  # targets/arm/rp2040/mmcu-target.yaml
-  default_providers:
-    imu: bmi270
-  ```
-- **Single remaining candidate**: if exactly one provider's
-  `peripherals.requires`/`any_of` is satisfiable by the target, use it.
-- **Otherwise**: resolution fails, listing all candidates and asking for an
-  explicit pin — never silently picks one of several equally-valid options.
+1. **Explicit pin** (highest priority): the application manifest names the
+   concrete package directly (`depends: [{name: bmi270, version: 1.0.0}]`)
+   instead of the capability.
+2. **Board default**: a board may declare a default provider per
+   capability, e.g. in a `boards/<name>/mmcu-board.yaml`:
+   ```yaml
+   # boards/pico-w/mmcu-board.yaml
+   default_providers:
+     wifi: cyw43439
+   ```
+3. **Target default**: failing a board-level default, a target may declare
+   one the same way, in its own `mmcu-target.yaml`:
+   ```yaml
+   # targets/arm/rp2040/mmcu-target.yaml
+   default_providers:
+     imu: bmi270
+   ```
+   Board defaults outrank target defaults because a board is more
+   specific: a capability's best default provider more often depends on
+   exactly which parts are soldered onto *this* board than on the chip
+   family alone.
+4. **Single remaining candidate**: if exactly one candidate is fully
+   satisfiable (its whole transitive closure resolves — see
+   "Satisfiability means the whole subgraph" above) against this
+   target/board, use it.
+5. **Otherwise**: resolution fails, listing all remaining candidates and
+   asking for an explicit pin — never silently picks one of several
+   equally-valid options.
 
 ### Generated CMake
 
@@ -277,6 +363,9 @@ its output:
 ```cmake
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+# MMCU_BOARD defaults from MMCU_TARGET (see Modular Board) but is its own
+# cache variable, independently overridable — this is what the resolver
+# actually receives, not an implicit target-to-board mapping it re-derives.
 execute_process(
     COMMAND
         "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/mmcu-deps.py"
@@ -284,8 +373,9 @@ execute_process(
         --app "${CMAKE_SOURCE_DIR}/mmcu.yaml"
         --target "${MMCU_TARGET}"
         --platform "${MMCU_PLATFORM}"
+        --board "${MMCU_BOARD}"
         --out "${CMAKE_BINARY_DIR}/mmcu-deps.cmake"
-        --lockfile "${CMAKE_SOURCE_DIR}/mmcu.lock.yaml"
+        --lockfile "${CMAKE_BINARY_DIR}/mmcu.lock.yaml"
     RESULT_VARIABLE _mmcu_deps_result
     OUTPUT_VARIABLE _mmcu_deps_output
     ERROR_VARIABLE _mmcu_deps_output
@@ -295,6 +385,10 @@ if(NOT _mmcu_deps_result EQUAL 0)
 endif()
 include("${CMAKE_BINARY_DIR}/mmcu-deps.cmake")
 ```
+
+The lockfile moved from `${CMAKE_SOURCE_DIR}` to `${CMAKE_BINARY_DIR}` —
+see "Lockfile" below for why it's keyed per build directory rather than
+one shared file at the repo root.
 
 Generated `mmcu-deps.cmake` is plain, boring CMake — no dynamic logic, all
 decisions already made by the resolver:
@@ -323,12 +417,31 @@ which files those are).
 read on subsequent runs: pins the exact resolved package graph (concrete
 provider chosen per capability, exact versions) so a second configure with
 an unrelated new package added to `libraries/`/`drivers/` doesn't silently
-change which `imu` provider gets picked. Regenerated only when the
-application manifest's `depends` changes or `--update` is passed
-explicitly — mirrors Cargo.lock/Conan's lockfile model. Since everything is
-in-tree (no registry fetch), the lockfile's only job is pinning the
-*choice* among multiple satisfying candidates, not pinning a downloaded
-artifact.
+change which `imu` provider gets picked. Since everything is in-tree (no
+registry fetch), the lockfile's only job is pinning the *choice* among
+multiple satisfying candidates, not pinning a downloaded artifact.
+
+Resolution depends on more than just the application's own `depends`, so
+invalidation has to track more than that:
+
+- the content of every manifest actually visited (transitive, not just
+  the application's direct dependencies — a change three levels down can
+  change which candidate is fully satisfiable),
+- `MMCU_PLATFORM`/`MMCU_TARGET`/`MMCU_BOARD`,
+- each visited target's/board's declared capability sets
+  (`MMCU_TARGET_PERIPHERALS`, `MMCU_BOARD_BUSES`) and default providers.
+
+The lockfile stores a hash over all of that as its validity key, alongside
+the resolved graph; a mismatch on any next run means "re-resolve," not
+"trust the pin." This is also why it lives per build directory
+(`${CMAKE_BINARY_DIR}/mmcu.lock.yaml`, not a single shared file at the
+repo root): a different `MMCU_TARGET`/`MMCU_BOARD` is a different build
+directory already (see [Build And Run](build.md)), so it naturally gets
+its own lockfile rather than one file trying to hold resolutions for every
+platform/target/board combination at once — the invalidation hash still
+covers `MMCU_BOARD` explicitly, though, since two differently-configured
+boards *could* in principle share one build directory's name if
+`MMCU_BOARD` is overridden independently of `MMCU_TARGET`.
 
 ### Error reporting
 
@@ -338,16 +451,28 @@ inside the normal CMake output. Categories of failure, each with a distinct
 message:
 
 - **Unknown package/capability**: name not found in the index.
+- **Duplicate package name**: two manifests declare the same `name` —
+  caught at index-collection time (step 1), reported with both packages'
+  paths.
+- **Capability/name collision**: a `provides` entry equals the literal
+  `name` of a different, unrelated package — also caught at step 1 (see
+  "Package names and capability names don't overlap" in
+  [Dependency DSL](dependency-dsl.md)).
+- **Dependency cycle**: reported with the full cycle (`A → B → C → A`),
+  not just the edge that closed the loop.
 - **Version too low**: the in-tree package's own `version` is lower than
   the maximum minimum requested for it anywhere in the graph — report the
   package, its actual version, the required minimum, and which path
   requested it.
-- **Ambiguous capability**: more than one provider, no pin/default/single-
-  candidate tie-breaker resolves it — list all candidates.
-- **Peripheral mismatch**: package name, missing peripheral, and the
-  target's and board's actual provided sets (`MMCU_TARGET_PERIPHERALS` and
-  `MMCU_BOARD_BUSES`) — since either one, or their absence, can be why the
-  union didn't contain the capability.
+- **Ambiguous capability**: more than one candidate remains after version
+  filtering, no pin/board-default/target-default/single-fully-satisfiable-
+  candidate tie-breaker resolves it — list all remaining candidates.
+- **Target peripheral mismatch**: package name, missing peripheral, and
+  the target's actual `MMCU_TARGET_PERIPHERALS`.
+- **Board bus mismatch**: package name, missing bus, and the board's
+  actual `MMCU_BOARD_BUSES` — reported separately from a target mismatch,
+  since the two checks are independent and a driver can fail either one
+  without the other.
 
 ## What this doesn't cover
 

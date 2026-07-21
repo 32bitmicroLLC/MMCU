@@ -42,11 +42,14 @@ mmcu.yaml (application manifest)
    dependency graph. This step never asks what
    `MMCU_PLATFORM`/`MMCU_TARGET` is building.
 2. **Resolving** (see [Resolving](resolving.md)) — binds that mapped graph
-   to a concrete `MMCU_PLATFORM`/`MMCU_TARGET` and its paired
-   [board](board.md): picks one concrete provider per capability (a choice
-   that can itself depend on the target), then checks the result against
-   the union of that target's and board's actual capabilities (see
-   [Modular Peripherals](peripherals.md)).
+   to a concrete `MMCU_PLATFORM`/`MMCU_TARGET` and `MMCU_BOARD` (see
+   [Modular Board](board.md)): picks one fully-satisfiable concrete
+   provider per open capability (a choice that can itself depend on the
+   target/board), then checks each resolved package's target-peripheral
+   and board-bus requirements **independently** against that target's and
+   board's actual declared capabilities (see
+   [Modular Peripherals](peripherals.md)) — never merged into one combined
+   set.
 
 ## Why two phases, not one
 
@@ -55,35 +58,57 @@ resolves differently against different targets — a different `imu`
 provider might win on `rp2040` than on `cortex-m0`, and a driver that
 mapped cleanly can still fail to resolve if the chosen target/board lacks
 the peripheral it needs. Conflating the two would make "the graph" look
-like it has one fixed shape, when only the mapping half does — and it
-would mean re-running the whole name/version walk every time someone just
-wants to try a different `MMCU_TARGET` against an unchanged set of
-requirements, instead of re-running only the half that actually depends on
-the target.
+like it has one fixed shape, when only the mapping half does.
 
 This also means a failure's *phase* tells you something about its cause
 before you even read the message: a mapped application with an unresolved
-package *name* fails in mapping, for every target identically (the
-manifests themselves don't add up); a mapped application that fails only
-against *some* platform/target/board combinations always fails in
-resolving (the manifests are fine, this particular hardware just doesn't
-have what's needed).
+package *name* or a dependency *cycle* fails in mapping, for every
+target/board identically (the manifests themselves don't add up); a
+mapped application that fails only against *some* platform/target/board
+combinations always fails in resolving (the manifests are fine, this
+particular hardware just doesn't have what's needed).
+
+**What this split is not**: neither implementation in this spec series —
+not `mmcu_use()`, not the `tools/mmcu-deps.py` resolver — actually runs
+mapping and resolving as two separate invocations with a cached,
+serialized artifact passed between them; both fuse the two into one
+configure-time pass (see [Resolving](resolving.md)'s note on this). The
+two-phase split here is a **conceptual decomposition**, useful for
+reasoning about what changed when a build starts failing and for keeping
+each phase's own doc focused — it is not a claim that changing
+`MMCU_TARGET` today skips re-running mapping's name/version walk. A
+future implementation could cache mapping's output for that reason, but
+its format, storage, and invalidation rule aren't specified here.
+
+## Where resolving actually runs
+
+Resolving happens during **CMake configure**, not inside `build.sh`
+itself: `./configure.sh` (or `build.sh`'s own auto-configure-if-missing
+step, see [Build And Run](build.md)) is what invokes `cmake`, and it's
+that `cmake` invocation — running the root `CMakeLists.txt`, which in the
+DSL case shells out to `tools/mmcu-deps.py` via `execute_process()` before
+`include()`ing its output — where mapping and resolving actually execute.
+By the time `build.sh` hands off to `cmake --build`/`ninja`, resolving has
+already finished; a resolving failure is a **configure** failure, and
+never gets as far as an actual compiler invocation.
 
 ## The edge kinds, by phase
 
 | From | To | Mechanism | Phase |
 |---|---|---|---|
-| application / library → library / driver / module (unambiguous name) | a named package | exact-name lookup, version check | 1 (Mapping) |
-| application / library → capability (ambiguous) | a set of candidate packages | left open | 1 (Mapping) |
-| open capability → one concrete package | tie-break: pin, target default, single candidate, else fail | resolved using a specific target/board | 2 (Resolving) |
-| driver → peripheral | membership check against `MMCU_TARGET_PERIPHERALS` ∪ `MMCU_BOARD_BUSES` | this target/board pair's declared set | 2 (Resolving) |
+| application / library / driver / module → library / driver / module (unambiguous name) | a named package | exact-name lookup, version check | 1 (Mapping) |
+| application / library / driver / module → capability (ambiguous) | every candidate, fully expanded, left open | version-minimum computed, not yet checked per-candidate | 1 (Mapping) |
+| open capability → one concrete package | version-filter, then tie-break: pin, board default, target default, single fully-satisfiable candidate, else fail | resolved using a specific target/board | 2 (Resolving) |
+| driver/module → target peripheral | membership check against `MMCU_TARGET_PERIPHERALS` | this target's declared set | 2 (Resolving) |
+| driver/module → board bus | membership check against `MMCU_BOARD_BUSES`, checked independently of the peripheral check above | this board's declared set | 2 (Resolving) |
 
 ## What this doesn't cover
 
 - **Mapping's own mechanics** (the requirement-graph walk, version
   max-reduce, what stays open) — [Mapping](mapping.md).
-- **Resolving's own mechanics** (tie-breaking, peripheral union check,
-  generated CMake, lockfile, error reporting) — [Resolving](resolving.md).
+- **Resolving's own mechanics** (tie-breaking, the independent target-
+  peripheral/board-bus checks, generated CMake, lockfile, error reporting)
+  — [Resolving](resolving.md).
 - **What an application's own manifest looks like** —
   [Application](application.md).
 - **What gets declared** for a package to participate at all —

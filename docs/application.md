@@ -67,31 +67,43 @@ because sometimes the requirement really is that generic.
 
 ## What application code imports
 
-The manifest resolves *which files get compiled in*; it says nothing about
-what application code writes in its `import` statements. Two different
-naming patterns coexist, on purpose:
+The manifest resolves *which files get compiled in*; it says nothing
+automatically about what application code writes in its `import`
+statements — and here the manifest's own two kinds of `depends` entry
+(exact package vs. open capability, see [Dependency DSL](dependency-dsl.md))
+lead to two different rules, not one:
 
-- **Stable, target-resolved names** — `cpu`, `gpio`, `uart`, `platform` —
-  covered by [Target Module Objects](target-modules.md) and
-  [Platform Modules](platform-modules.md). These are resolved by
+- **Stable, target/platform-resolved names** — `cpu`, `gpio`, `uart`,
+  `platform` — covered by [Target Module Objects](target-modules.md) and
+  [Platform Modules](platform-modules.md). Resolved by
   `MMCU_TARGET`/`MMCU_PLATFORM` selection, not by the application's own
-  manifest, and application code never names the concrete target/platform
-  module directly.
-- **Direct capability names** — `canopen`, `bmi270`, `ring_buffer` — for
-  everything reached through the application's own `depends`. The
-  manifest already names the capability (`imu`) or the concrete package
-  (`bmi270`); application code importing the same name it depended on is
-  not a layering violation the way importing a concrete *target* module
-  would be, because the application chose that dependency itself, in its
-  own manifest, rather than having it silently vary by build
-  configuration underneath it.
+  manifest; application code never names the concrete target/platform
+  module.
+- **An exact, pinned package** (`depends: {name: canopen-stack}`,
+  satisfied by exactly one package, `canopen`) — application code may
+  import that package's own module name directly (`import canopen;`).
+  There's only one possible answer, chosen by the application itself in
+  its own manifest, so naming it isn't hiding a build-configuration-
+  dependent choice.
+- **An open capability** (`depends: {name: imu}`, satisfied by *whichever*
+  provider resolving picks — `bmi270` on one target, `mpu6050` on
+  another) — application code must import the **capability's** stable
+  name (`import imu;`), never a concrete provider like `bmi270` directly.
+  Importing `bmi270` by name would silently break on any target/board
+  where resolving picks `mpu6050` instead — exactly the target-coupling
+  [Target Module Objects](target-modules.md)'s naming convention exists to
+  avoid, just recreated one layer up. The resolved driver is responsible
+  for exposing itself under that stable capability namespace (e.g.
+  `mmcu::imu::` — a re-export/alias, the same shape `gpio0`/`uart0` use
+  for target objects), not the application code naming it.
 
 ```cpp
 import platform;   // stable, target/platform-resolved
 import cpu;
 import gpio;
-import canopen;    // resolved from this application's own `depends`
-import bmi270;
+import canopen;    // exact pin — this application chose `canopen` specifically
+import imu;        // open capability — resolves to whichever driver won,
+                    // never named directly as `bmi270` or `mpu6050`
 ```
 
 ## One application today, more later

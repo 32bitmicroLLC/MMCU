@@ -31,7 +31,7 @@ kind: driver
 provides: [imu]                 # generic capability this satisfies
 modules: [driver.cppm]
 peripherals:
-  any_of: [i2c, spi]
+  any_of: [I2C, SPI]
 ```
 
 ### Library example
@@ -58,11 +58,31 @@ kind: driver
 provides: [imu]
 modules: [driver.cppm]
 peripherals:
-  requires: [i2c]
+  requires: [I2C]
 ```
 
 Two drivers `provides: [imu]` — the generic capability, not the concrete
 driver name, is what other manifests and the application depend on.
+
+### A driver needing both a target peripheral and a board bus
+
+```yaml
+# drivers/CANbus/onboard-can/mmcu.yaml
+name: onboard-can
+version: 1.0.0
+kind: driver
+provides: [onboard-can]
+modules: [driver.cppm]
+peripherals:
+  requires: [CAN]              # the target's on-die CAN controller
+  board_requires: [CAN]        # the board's CAN transceiver, checked separately
+```
+
+`peripherals.requires`/`any_of` check against the **target**'s declared
+peripherals only; `peripherals.board_requires`/`board_any_of` check
+against the **board**'s declared buses only (see
+[Modular Board](board.md)) — two independent fields, never merged into
+one combined check. A driver needing only one declares only that field.
 
 ### Application manifest
 
@@ -91,14 +111,38 @@ by whichever `provides: [imu]` package the resolver picks).
 | `provides` | capability names this package satisfies (defaults to `[name]` if omitted) |
 | `modules` / `sources` | files added to the build, same meaning as in [Dependencies](dependencies.md) |
 | `depends` | list of `{name, version}` — `version` is a **minimum** required version (plain semver, no ranges); see [Resolving](resolving.md) |
-| `peripherals.requires` | capability names that **all** must be in the target's provided set |
-| `peripherals.any_of` | capability names where **at least one** must be present |
+| `peripherals.requires` | capability names that **all** must be in `MMCU_TARGET_PERIPHERALS` |
+| `peripherals.any_of` | capability names where **at least one** must be in `MMCU_TARGET_PERIPHERALS` |
+| `peripherals.board_requires` | bus capability names that **all** must be in `MMCU_BOARD_BUSES` (see [Modular Board](board.md)) |
+| `peripherals.board_any_of` | bus capability names where **at least one** must be in `MMCU_BOARD_BUSES` |
 
 `depends.version` is deliberately a **minimum** only (no ranges, no
 exclusions) — see [Resolving](resolving.md#version-resolution-minimal-version-selection-not-sat)
 for why this manifest format doesn't support ranges: it's a resolution
 decision (minimal version selection over full SAT-style range solving),
 not a manifest-format limitation.
+
+Peripheral/bus capability names are conventionally **uppercase**
+(`I2C`, `SPI`, `CAN`, ...) to match `MMCU_TARGET_PERIPHERALS`/
+`MMCU_BOARD_BUSES` in `CMakeLists.txt` — the same string is compared on
+both sides, case-sensitively, so a manifest and a target/board block
+disagreeing on case would silently fail to match; there's no case-folding
+step to paper over it.
+
+## Package names and capability names don't overlap
+
+`depends` can name either an exact package (`mcp2515`) or a capability
+(`imu`) — see "Resolution algorithm" in [Resolving](resolving.md) for how
+the collector tells which. This only works because the two namespaces are
+kept disjoint: at collection time, it's a hard error for a package's
+`provides` entry to equal the literal `name` of a *different* package
+(e.g. a package named `imu` existing *and* some other package declaring
+`provides: [imu]`) — rejected immediately, not resolved by giving exact
+names precedence over capabilities or vice versa. Precedence would mean
+one of the two meanings is silently shadowed depending on how a
+dependency happened to be spelled; rejecting the collision outright means
+a manifest author finds out immediately, at the point they introduce it,
+which name is already taken and in which sense.
 
 ## What this doesn't cover
 
@@ -116,6 +160,6 @@ not a manifest-format limitation.
 - **Replacing `mmcu-module.cmake` immediately.** Until `tools/mmcu-deps.py`
   exists, the hand-written `mmcu_module()`/`mmcu_use()` mechanism in
   [Dependencies](dependencies.md) remains the working mechanism; this DSL
-  is a proposed evolution of it once version ranges or multi-provider
-  capabilities are actually needed, not a prerequisite for adding the first
-  driver.
+  is a proposed evolution of it once minimum-version constraints or
+  multi-provider capabilities are actually needed, not a prerequisite for
+  adding the first driver.
