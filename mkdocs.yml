@@ -15,6 +15,7 @@ nav:
   - Clean: clean.md
   - Platform: platform.md
   - Target Modules: target-modules.md
+  - Modular Target: target.md
   - Modular Peripherals: peripherals.md
   - ARM Targets:
       - Cortex-M0/M0+ Integration: targets-arm/cortex-m0-m0plus.md
