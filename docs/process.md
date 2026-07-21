@@ -1,9 +1,11 @@
 # Build Process: Mapping and Resolving
 
-**Status: proposed, not yet implemented** — see
-[Dependencies](dependencies.md)'s status note; this doc describes how
-[Mapping](mapping.md) and [Resolving](resolving.md) fit together, not a
-third mechanism of its own.
+**Status:** the configure-time YAML resolver now implements the first
+application-manifest path and writes a static solution file. This doc
+still describes the conceptual mapping/resolving split; the fuller
+per-package dependency mechanics remain specified across
+[Dependencies](dependencies.md), [Mapping](mapping.md), and
+[Resolving](resolving.md).
 
 Turning an [Application](application.md)'s stated requirements into a
 built binary is **two separate processes**, not one:

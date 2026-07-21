@@ -1,8 +1,10 @@
 # Resolving
 
-**Status: proposed, not yet implemented** — see
-[Dependencies](dependencies.md)'s status note; `tools/mmcu-deps.py` does
-not exist yet either.
+**Status:** `tools/mmcu-deps.py` now exists and is invoked by root
+`CMakeLists.txt` during configure for the real application manifest. This
+document still specifies the full resolver behavior; target/board
+peripheral checks and richer provider policy are deeper than the first
+implementation.
 
 **Resolving** is Phase 2 of the two-phase build process described in
 [Build Process](process.md); see that doc for how this phase relates to
@@ -363,16 +365,22 @@ Root `CMakeLists.txt` invokes the resolver at configure time and includes
 its output:
 
 ```cmake
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(MMCU_PYTHON "${CMAKE_SOURCE_DIR}/venv/bin/python" CACHE FILEPATH
+    "Python for MMCU tooling")
+if(NOT EXISTS "${MMCU_PYTHON}")
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    set(MMCU_PYTHON "${Python3_EXECUTABLE}" CACHE FILEPATH
+        "Python for MMCU tooling" FORCE)
+endif()
 
 # MMCU_BOARD defaults from MMCU_TARGET (see Modular Board) but is its own
 # cache variable, independently overridable — this is what the resolver
 # actually receives, not an implicit target-to-board mapping it re-derives.
 execute_process(
     COMMAND
-        "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/mmcu-deps.py"
+        "${MMCU_PYTHON}" "${CMAKE_SOURCE_DIR}/tools/mmcu-deps.py"
         --root "${CMAKE_SOURCE_DIR}"
-        --app "${CMAKE_SOURCE_DIR}/mmcu.yaml"
+        --app "${CMAKE_SOURCE_DIR}/applications/main/mmcu.yaml"
         --target "${MMCU_TARGET}"
         --platform "${MMCU_PLATFORM}"
         --board "${MMCU_BOARD}"
@@ -416,11 +424,14 @@ which files those are and recording that answer).
 
 ### Solution file
 
-`mmcu.solution.yaml`, written by the resolver on a successful resolution
-and read on subsequent runs, records the exact resolved package graph
-(concrete provider chosen per capability, exact versions, exact source and
-module files) for one platform/target/board tuple. Its YAML schema lives
-in [Dependency DSL](dependency-dsl.md#solution-mmcusolutionyaml).
+`mmcu.solution.yaml`, written by the resolver on a successful resolution,
+records the exact resolved package graph (concrete provider chosen per
+capability, exact versions, exact source and module files) for one
+platform/target/board tuple. Its YAML schema lives in
+[Dependency DSL](dependency-dsl.md#solution-mmcusolutionyaml). The current
+implementation writes the file for inspection and for the generated CMake
+projection; reusing a prior solution on a later configure is still future
+resolver work.
 
 Since everything is in-tree (no registry fetch), the solution file's job
 is pinning the *choice* among multiple satisfying candidates and making

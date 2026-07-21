@@ -1,0 +1,94 @@
+# Platform Tools
+
+Platform tools are installable utilities owned by a specific
+`MMCU_PLATFORM` or target family. They are not global MMCU requirements:
+install them only when working with the platform that needs them.
+
+For common build, documentation, and YAML tools, see [Tools](tools.md).
+
+## pico-sdk: picotool
+
+`picotool` belongs to the `pico_sdk` platform. It is used for
+`MMCU_PLATFORM=pico_sdk` builds targeting `rp2040` or `rp2350` when
+flashing the generated `.uf2` image.
+
+The normal install path is the pico-sdk platform installer:
+
+```sh
+./platforms/pico-sdk/pico-sdk-install.sh
+```
+
+That script vendors pico-sdk under `platforms/pico-sdk/pico-sdk` and builds
+a matching picotool under `platforms/pico-sdk/`.
+
+Installed layout:
+
+```text
+platforms/pico-sdk/bin/picotool
+platforms/pico-sdk/lib/cmake/picotool/
+platforms/pico-sdk/share/picotool/
+```
+
+`platforms/pico-sdk/pico-sdk-flash.sh` resolves picotool from
+`platforms/pico-sdk/bin/picotool` first, then falls back to `picotool` in
+`PATH`.
+
+## pico-sdk: picotool host prerequisites
+
+Building picotool with USB support requires host packages outside MMCU:
+
+| Tool / package | Used for |
+|---|---|
+| `pkg-config` | Detecting libusb during the picotool build |
+| libusb-1.0 development headers | USB support for `picotool load` / `picotool reboot` |
+| `sudo` and `udevadm` | Optional Linux udev-rule install via `--udev-rules` |
+
+If those USB prerequisites are not installed, either install the host
+packages or skip picotool when vendoring pico-sdk:
+
+```sh
+./platforms/pico-sdk/pico-sdk-install.sh --skip-picotool
+```
+
+Skipping picotool is fine for building `mmcu_app`, but flashing with
+`./flash.sh` then requires a usable `picotool` in `PATH`.
+
+## pico-sdk: Linux USB permissions
+
+On Linux, a non-root user usually needs udev rules to open RP2040/RP2350
+devices in BOOTSEL mode. Install the pico-sdk platform rule explicitly:
+
+```sh
+./platforms/pico-sdk/pico-sdk-install.sh --udev-rules
+```
+
+This installs `raspberrypi/picotool`'s own `udev/60-picotool.rules` to
+`/etc/udev/rules.d/60-picotool.rules` and reloads udev via `sudo`.
+
+This is never run implicitly by `./flash.sh` or any build command. If a
+device is already plugged in, unplug and replug it, or re-enter BOOTSEL
+mode, after installing the rule.
+
+## Related Commands
+
+Flash through MMCU's platform dispatcher:
+
+```sh
+./configure.sh --platform pico_sdk --target rp2040
+./flash.sh
+```
+
+Run the pico-sdk flash helper directly:
+
+```sh
+./platforms/pico-sdk/pico-sdk-flash.sh --uf2 build-rp2040-gcc/mmcu_app.uf2
+```
+
+Pass picotool options after `--`:
+
+```sh
+./flash.sh -- --ser 0123456789ABCDEF
+./platforms/pico-sdk/pico-sdk-flash.sh --uf2 mmcu_app.uf2 -- --verify
+```
+
+See [Flash](flash.md) for the full flashing flow and limitations.

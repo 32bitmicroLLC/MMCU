@@ -1,7 +1,8 @@
 # Tools
 
-This page lists the tools needed to configure, build, document, validate,
-run, and flash MMCU.
+This page lists the common tools needed to configure, build, document,
+validate, and run MMCU. Platform-installable tools are documented by their
+own platform pages.
 
 ## CMake
 
@@ -25,9 +26,9 @@ cmake -S . -B build
 cmake --build build
 ```
 
-`./configure.sh` selects `MMCU_PLATFORM`, `MMCU_TARGET`, and the toolchain
-file. `./build.sh` builds an already-configured build directory, creating
-the default native build first if needed.
+`./configure.sh` selects `MMCU_PLATFORM`, `MMCU_TARGET`, `MMCU_BOARD`, and
+the toolchain file. `./build.sh` builds an already-configured build
+directory, creating the default native build first if needed.
 
 ## Host Tools
 
@@ -39,6 +40,7 @@ environment.
 | Tool | Used for |
 |---|---|
 | POSIX shell / Bash | Running repo scripts such as `configure.sh`, `build.sh`, `docs.sh`, `platform.sh`, `run.sh`, and `flash.sh` |
+| Python 3 with PyYAML | Configure-time YAML manifest resolution through `tools/mmcu-deps.py` |
 | C++20 compiler with module support | Native builds and C++ module compilation |
 | C compiler | C/ASM startup, vendor support code, and mixed-language targets |
 
@@ -80,7 +82,7 @@ Optional Clang bare-metal toolchain:
 
 | Tool | Used for |
 |---|---|
-| `git` | Cloning CMSIS, pico-sdk, and picotool |
+| `git` | Cloning CMSIS and vendored platform SDKs |
 
 CMSIS-backed ARM targets can use a local CMSIS checkout via
 `./configure.sh --cmsis-dir <dir>`. If no CMSIS directory is supplied for
@@ -95,31 +97,9 @@ Real pico-sdk-backed targets require:
 
 That vendors pico-sdk under `platforms/pico-sdk/pico-sdk`.
 
-### Pico Flashing And picotool
-
-`./flash.sh` uses picotool for `MMCU_PLATFORM=pico_sdk` with
-`MMCU_TARGET=rp2040` or `MMCU_TARGET=rp2350`.
-
-The repo's pico-sdk installer can also build and install picotool:
-
-```sh
-./platforms/pico-sdk/pico-sdk-install.sh
-```
-
-Additional host packages for picotool with USB support:
-
-| Tool / package | Used for |
-|---|---|
-| `pkg-config` | Detecting libusb during picotool build |
-| libusb-1.0 development headers | USB support for `picotool load` / `picotool reboot` |
-| `sudo` and `udevadm` | Optional Linux udev-rule install via `--udev-rules` |
-
-The udev rule install is never implicit. It only runs when explicitly
-requested:
-
-```sh
-./platforms/pico-sdk/pico-sdk-install.sh --udev-rules
-```
+Platform-specific installable tools, flashing helpers, USB permissions,
+and SDK-local utilities belong with the platform that owns them. See
+[Platform Tools](platform-tools.md).
 
 ### Run And Debug Helpers
 
@@ -134,7 +114,8 @@ use `./flash.sh` for real hardware.
 ## Python Virtual Environment
 
 Python tools should be installed into a project-local virtual environment
-at `./venv/`.
+at `./venv/`. `CMakeLists.txt` prefers `./venv/bin/python` when it exists,
+then falls back to `find_package(Python3)`.
 
 Create it:
 
@@ -150,7 +131,7 @@ Install documentation tooling:
 python -m pip install -r requirements-docs.txt
 ```
 
-Install YAML validation tooling:
+Install YAML tooling used by the configure-time resolver and validators:
 
 ```sh
 python -m pip install -r requirements-yaml.txt
@@ -163,7 +144,8 @@ python -m pip install -r requirements-docs.txt -r requirements-yaml.txt
 ```
 
 Use `python` and `pip` from the activated virtual environment, not the
-system Python, when running optional documentation and YAML tooling.
+system Python, when running documentation, YAML validation, and resolver
+tooling.
 
 ## Documentation Tools
 
@@ -183,7 +165,8 @@ Common commands:
 
 ## YAML Tools
 
-Required only for validating YAML metadata and schemas:
+Required for configure-time manifest resolution and for validating YAML
+metadata and schemas:
 
 | Tool | Installed by | Used for |
 |---|---|---|
@@ -209,6 +192,7 @@ Native build only:
 
 ```text
 cmake
+python3 + PyYAML
 host C compiler
 host C++20 compiler with module support
 ninja (optional)
@@ -218,6 +202,7 @@ Generic bare-metal MCU build:
 
 ```text
 cmake
+python3 + PyYAML
 arm-none-eabi-gcc
 arm-none-eabi-g++
 arm-none-eabi-objdump (for listings)
@@ -225,18 +210,19 @@ git (if CMSIS is cloned automatically)
 ninja (optional)
 ```
 
-Pico SDK build and flash:
+Pico SDK build:
 
 ```text
 cmake
+python3 + PyYAML
 arm-none-eabi-gcc
 arm-none-eabi-g++
 git
-pkg-config
-libusb-1.0 development headers
-picotool (installed by platforms/pico-sdk/pico-sdk-install.sh)
 ninja (optional)
 ```
+
+Pico flashing uses platform-specific tooling documented in
+[Platform Tools](platform-tools.md) and [Flash](flash.md).
 
 Documentation and YAML validation:
 

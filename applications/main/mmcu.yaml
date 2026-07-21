@@ -1,6 +1,6 @@
-# Proposed manifest for the mmcu_app application (see docs/application.md,
-# docs/dependency-dsl.md) -- not yet read by CMakeLists.txt; the resolver
-# and mmcu.yaml support this describes are still a proposal, not wired up.
+# Manifest for the mmcu_app application (see docs/application.md,
+# docs/dependency-dsl.md). CMake reads this at configure time through
+# tools/mmcu-deps.py and records the concrete result in the build directory.
 
 name: mmcu_app
 kind: application

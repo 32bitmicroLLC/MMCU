@@ -1,7 +1,10 @@
 # Application
 
-**Status: proposed, not yet implemented** — see
-[Dependencies](dependencies.md)'s status note.
+**Status:** the application manifest exists and is read by the
+configure-time YAML resolver. The broader dependency model is still
+specified across [Dependencies](dependencies.md),
+[Dependency DSL](dependency-dsl.md), [Mapping](mapping.md), and
+[Resolving](resolving.md).
 
 An MMCU **application** is a `kind: application` module (see
 [Dependency DSL](dependency-dsl.md)) that states a set of requirements and
@@ -38,8 +41,10 @@ depends:
 minus the example `depends` entries above — there's nothing under
 `libraries/`/`drivers/`/`modules/` yet for the real
 `applications/main/main.cpp` to depend on, so its actual `depends` list is
-empty. Reading it is still proposed, not implemented (see the status note
-above) — the file documents intent for when the resolver exists.
+empty. CMake reads it during configure through `tools/mmcu-deps.py`; for
+today's empty dependency list, the generated dependency CMake is empty
+apart from comments and `mmcu.solution.yaml` records an empty resolved
+package graph.
 
 Same shape as every other `mmcu.yaml` in the repo — `depends` is the
 application's statement of *requirements*; there's nothing else an
@@ -117,18 +122,15 @@ import imu;        // open capability — resolves to whichever driver won,
 ## One application today, more later
 
 Right now there is exactly one application: one `mmcu_app` executable
-target, its entry point at `applications/main/main.cpp`, built from one
-flat `MMCU_MODULES` list in `CMakeLists.txt` — `CMakeLists.txt` doesn't
-read `applications/main/mmcu.yaml` yet, since this whole mechanism is
-still a proposal (see the status note above). The `applications/<name>/`
-layout, and that one manifest file, are already real (see
-[Project Layout](layout.md)); only the reader/resolver isn't. Nothing in
-this model requires staying single-application once that exists: a second
-application would be a second directory, `applications/<name>/`, with its
-own `mmcu.yaml` and `depends`, resolved independently against the same
-shared `libraries/`, `drivers/`, and `modules/` trees, producing its own
+target, its entry point at `applications/main/main.cpp`, built from the
+core target/platform module list in `CMakeLists.txt` plus whatever
+`tools/mmcu-deps.py` resolves from `applications/main/mmcu.yaml`. Nothing
+in this model requires staying single-application: a second application
+would be a second directory, `applications/<name>/`, with its own
+`mmcu.yaml` and `depends`, resolved independently against the same shared
+`libraries/`, `drivers/`, and `modules/` trees, producing its own
 executable target. That's a straightforward extension of this model, not
-a redesign of it — not proposed in more detail here because there's only
+a redesign of it — not specified in more detail here because there's only
 one application to build today.
 
 ## What this doesn't cover

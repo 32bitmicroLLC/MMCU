@@ -1,13 +1,14 @@
 # Configure: Platform, Target, Toolchain
 
-MMCU's top-level `CMakeLists.txt` exposes three cache variables that
+MMCU's top-level `CMakeLists.txt` exposes four cache variables that
 together select what gets built. `MMCU_PLATFORM` is the top-level choice;
-`MMCU_TARGET` and the toolchain both default from it and can be overridden
-independently.
+`MMCU_TARGET` and the toolchain both default from it, and `MMCU_BOARD`
+defaults from `MMCU_TARGET`; all can be overridden independently.
 
 ```
 MMCU_PLATFORM          native | mcu | pico_sdk
 MMCU_TARGET            defaults per platform, must be one of that platform's valid targets
+MMCU_BOARD             defaults per target for Pico-series targets, optional otherwise
 CMAKE_TOOLCHAIN_FILE   defaults per platform, overridable
 ```
 
@@ -68,6 +69,10 @@ few minutes.
 
 - If `CMAKE_TOOLCHAIN_FILE` is not set and the platform has a default one,
   it's filled in before `project()` runs.
+- If `MMCU_BOARD` is not set, Pico-series targets fill it from the default
+  board table in [Modular Board](board.md). If it is set, the YAML
+  resolver validates it against `boards/<name>/mmcu-board.yaml` during
+  configure.
 
 ## Why platform is resolved before `project()`
 
@@ -132,6 +137,7 @@ entry point (it never builds):
 ./configure.sh --platform mcu --target cortex-m0plus --compiler clang
 ./configure.sh --platform mcu --target cortex-m0 --toolchain-file cmake/toolchains/arm-none-eabi-clang.cmake
 ./configure.sh --platform pico_sdk --target rp2040            # real pico-sdk boot2/clocks (default), gcc
+./configure.sh --platform pico_sdk --target rp2040 --board pico-w
 ./configure.sh --platform pico_sdk --target rp2350-cmsis --compiler clang
 ```
 
@@ -143,18 +149,21 @@ pico_sdk` (`native` has no toolchain file). `MMCU_TARGET=rp2040`/`rp2350`
 directories default to `build` (native) or `build-<target>-<compiler>` (mcu,
 pico_sdk — the `-cmsis` suffix, if any, is already part of `<target>`),
 overridable with `--build-dir`. Run `./configure.sh --help` for the full
-option list, or `cmake --build <dir>` afterward to build.
+option list. `--board <name>` overrides the default `MMCU_BOARD` for the
+selected target. Run `cmake --build <dir>` afterward to build.
 
 `./configure.sh --interactive` (or `-i`) walks through the same choices as
 numbered menus instead of flags: platform, target (skipped when the platform
-has only one valid target), compiler (mcu/pico_sdk, forced to gcc for
-`rp2040`/`rp2350`), CPU/CMSIS overrides, linker map, build type, build
-directory, and clean. It prints a summary before running `cmake`.
+has only one valid target), board override, compiler (mcu/pico_sdk, forced
+to gcc for `rp2040`/`rp2350`), CPU/CMSIS overrides, linker map, build
+type, build directory, and clean. It prints a summary before running
+`cmake`.
 
 After configuring, `./configure.sh` writes `.config` (repo root,
-git-ignored) recording `MMCU_BUILD_DIR`/`MMCU_PLATFORM`/`MMCU_TARGET`, and
-prints `Run: ./build.sh`. `./build.sh`/`./run.sh` read `.config` as their
-default `--build-dir` — see [Build And Run](build.md) — so you don't have to
+git-ignored) recording
+`MMCU_BUILD_DIR`/`MMCU_PLATFORM`/`MMCU_TARGET`/`MMCU_BOARD`, and prints
+`Run: ./build.sh`. `./build.sh`/`./run.sh` read `.config` as their default
+`--build-dir` — see [Build And Run](build.md) — so you don't have to
 repeat `--build-dir <dir>` on every subsequent command.
 
 ## Direct CMake invocation
@@ -175,13 +184,17 @@ cmake -S . -B build-cortex-m0plus-clang \
 # pico_sdk, rp2040, gcc (default toolchain)
 cmake -S . -B build-rp2040-gcc \
     -DMMCU_PLATFORM=pico_sdk -DMMCU_TARGET=rp2040
+
+# pico_sdk, rp2040, Pico W board metadata
+cmake -S . -B build-rp2040-pico-w-gcc \
+    -DMMCU_PLATFORM=pico_sdk -DMMCU_TARGET=rp2040 -DMMCU_BOARD=pico-w
 ```
 
 ## How the build scripts use this
 
 - `./configure.sh` (see above) is the only script that sets
-  `MMCU_PLATFORM`/`MMCU_TARGET`/`CMAKE_TOOLCHAIN_FILE`. `--compiler
-  <gcc|clang>` picks the matching toolchain file
+  `MMCU_PLATFORM`/`MMCU_TARGET`/`MMCU_BOARD`/`CMAKE_TOOLCHAIN_FILE`.
+  `--compiler <gcc|clang>` picks the matching toolchain file
   (`cmake/toolchains/arm-none-eabi-<compiler>.cmake`) unless
   `--toolchain-file` overrides it; `--cpu` sets `MMCU_CPU`; `--linker-map`
   sets `MMCU_LINKER_MAP=ON`.

@@ -9,6 +9,7 @@ theme:
 nav:
   - Home: index.md
   - Tools: tools.md
+  - Platform Tools: platform-tools.md
   - Build And Run: build.md
   - Configure: configure.md
   - Run: run.md

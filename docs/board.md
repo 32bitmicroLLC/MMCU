@@ -17,18 +17,17 @@ board
  └── Connectors     — the physical connectors the board exposes
 ```
 
-**Status**: `PICO_BOARD` (`pico`/`pico2`, set by
-`mmcu_require_pico_sdk_foundation()` in `CMakeLists.txt`) is the only real,
-implemented piece today — and it isn't independent: it's derived 1:1 from
-`MMCU_TARGET` (`rp2040` → `pico`, `rp2350` → `pico2`), never chosen on its
-own. Every other facet below is proposed, same status as
-[Modular Target](target.md)'s non-CPU-core facets.
+**Status**: `MMCU_BOARD` is a real CMake cache variable and
+`configure.sh --board <name>` passes it through. The YAML resolver reads
+`boards/<name>/mmcu-board.yaml`, validates that the board is compatible
+with `MMCU_TARGET`, and uses `default_providers` during capability
+resolution. The deeper electrical facets below remain metadata for later
+checks, same status as [Modular Target](target.md)'s non-CPU-core facets.
 
 ## Board selection: `MMCU_BOARD`, defaulted from `MMCU_TARGET`
 
-A proposed `MMCU_BOARD` cache variable, following the same default/
-override pattern `MMCU_TARGET` itself uses relative to `MMCU_PLATFORM`
-(see [Configure](configure.md)):
+`MMCU_BOARD` follows the same default/override pattern `MMCU_TARGET`
+itself uses relative to `MMCU_PLATFORM` (see [Configure](configure.md)):
 
 ```cmake
 set(MMCU_BOARD "" CACHE STRING "Board (default: derived from MMCU_TARGET)")
@@ -40,16 +39,15 @@ set(MMCU_BOARD "" CACHE STRING "Board (default: derived from MMCU_TARGET)")
 | `rp2350` | `pico2` |
 | `emu`, `cortex-m0`, `cortex-m0plus` | *(none — no physical board modeled)* |
 
-This is the same mapping `mmcu_require_pico_sdk_foundation()` already
-hardcodes today via its `pico_board` argument — the proposal just gives it
-its own named, independently-overridable variable instead of an implicit
-function-call constant. That independence is what a Pico *W* would use:
-same `MMCU_TARGET=rp2040` (it's still an RP2040), but
-`MMCU_BOARD=pico-w` instead of the default `pico`, adding the CYW43439
+Root `CMakeLists.txt` also maps Pico-series `MMCU_BOARD` values to the
+pico-sdk's own `PICO_BOARD` names when building the pico-sdk-backed
+targets. That independence is what a Pico *W* uses: same
+`MMCU_TARGET=rp2040` (it's still an RP2040), but `MMCU_BOARD=pico-w`
+instead of the default `pico`, adding the CYW43439
 [bus](#buses-ethernet-can-rs485-rs232-sd-card-usb-wi-fi-bluetooth) this
 doc describes below — a board variant, not a new target. `native`/`mcu`
-platforms leave `MMCU_BOARD` empty: there's no physical carrier being
-modeled, just the bare chip target.
+platforms leave `MMCU_BOARD` empty by default: there's no physical carrier
+being modeled, just the bare chip target.
 
 An `MMCU_BOARD` value can name either a real purchasable board or a
 **board variant**: a deliberately modeled subset/profile of multiple real

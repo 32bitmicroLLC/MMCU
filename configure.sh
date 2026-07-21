@@ -3,6 +3,7 @@ set -euo pipefail
 
 PLATFORM="native"
 TARGET=""
+BOARD=""
 COMPILER="gcc"
 TOOLCHAIN_FILE=""
 _mmcu_effective_target=""
@@ -30,6 +31,7 @@ See docs/configure.md for the full MMCU_PLATFORM/MMCU_TARGET/toolchain model.
 Options:
   -p, --platform <name>     MMCU_PLATFORM: native, mcu, or pico_sdk (default: native)
   -t, --target <name>       MMCU_TARGET (default depends on --platform)
+      --board <name>        MMCU_BOARD override (default depends on MMCU_TARGET)
       --compiler <name>     mcu/pico_sdk platforms only: gcc or clang, selects
                              the default toolchain file (default: gcc)
       --toolchain-file <f>  Explicit CMAKE_TOOLCHAIN_FILE, overrides --compiler
@@ -168,6 +170,8 @@ run_interactive() {
     fi
 
     if [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "pico_sdk" ]]; then
+        BOARD="$(prompt_default "MMCU_BOARD override (blank = derive from target)" "$BOARD")"
+
         local compiler_values=(gcc clang)
         local compiler_labels=(
             "gcc   - arm-none-eabi-gcc/g++"
@@ -224,6 +228,7 @@ run_interactive() {
     echo "Summary:"
     echo "  MMCU_PLATFORM = $PLATFORM"
     echo "  MMCU_TARGET   = $TARGET"
+    [[ -n "$BOARD" ]] && echo "  MMCU_BOARD    = $BOARD"
     [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "pico_sdk" ]] && echo "  compiler      = $COMPILER"
     [[ -n "$CPU" ]] && echo "  MMCU_CPU      = $CPU"
     [[ -n "$CMSIS_DIR" ]] && echo "  MMCU_CMSIS_DIR = $CMSIS_DIR"
@@ -242,6 +247,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -t|--target)
             TARGET="${2:-}"
+            shift 2
+            ;;
+        --board)
+            BOARD="${2:-}"
             shift 2
             ;;
         --compiler)
@@ -420,6 +429,9 @@ CMAKE_ARGS=(
 if [[ -n "$TARGET" ]]; then
     CMAKE_ARGS+=(-DMMCU_TARGET="$TARGET")
 fi
+if [[ -n "$BOARD" ]]; then
+    CMAKE_ARGS+=(-DMMCU_BOARD="$BOARD")
+fi
 if [[ -n "$TOOLCHAIN_FILE" ]]; then
     CMAKE_ARGS+=(-DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE")
 fi
@@ -460,6 +472,7 @@ cat > .config <<CONFIG
 MMCU_BUILD_DIR=$BUILD_DIR
 MMCU_PLATFORM=$PLATFORM
 MMCU_TARGET=$TARGET
+MMCU_BOARD=$BOARD
 CONFIG
 
 echo "Run: ./build.sh"

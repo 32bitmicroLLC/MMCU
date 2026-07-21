@@ -1,7 +1,6 @@
 # Raspberry Pi Pico: the default board for MMCU_TARGET=rp2040.
-# Facets described in docs/board.md; PICO_BOARD is already real in
-# CMakeLists.txt today (mmcu_require_pico_sdk_foundation(rp2040 pico)),
-# this file is the proposed MMCU_BOARD declaration for it.
+# Facets described in docs/board.md; this is the default MMCU_BOARD
+# declaration for RP2040-family builds.
 
 name: pico
 target: rp2040

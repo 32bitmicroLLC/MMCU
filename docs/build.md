@@ -12,20 +12,23 @@ Plain `./build.sh` with no prior `./configure.sh` call still works: it
 configures `build/` with the `MMCU_PLATFORM=native` defaults first.
 
 `./configure.sh` writes `.config` (repo root, git-ignored) recording the
-build directory/platform/target it just configured. `./build.sh` and
+build directory/platform/target/board it just configured. `./build.sh` and
 `./run.sh` read it as their default `--build-dir` when none is given, so
 `./build.sh` right after `./configure.sh --platform mcu --target cortex-m0`
 builds `build-cortex-m0-gcc`, not plain `build`. If that directory gets
 deleted later, `./build.sh` reconfigures it using `.config`'s recorded
-platform/target rather than falling back to native. `.config` is purely a
-convenience for these two scripts — `clean.sh` doesn't consult it, and
-deleting `.config` is always safe (everything just falls back to plain
-`build`).
+platform/target/board rather than falling back to native. `.config` is
+purely a convenience for these two scripts — `clean.sh` doesn't consult
+it, and deleting `.config` is always safe (everything just falls back to
+plain `build`).
 
 ## Requirements
 
 - CMake 4.0 or newer
 - C++20-capable compiler with module support
+- Python 3 with PyYAML for the configure-time manifest resolver
+  (`tools/mmcu-deps.py`); install `requirements-yaml.txt` into `./venv/`
+  for the project-local setup
 - Ninja (optional, auto-detected by `configure.sh`)
 - `/usr/bin/clang++-20` / `/usr/bin/clang-20` for `--platform mcu --compiler clang`
 - `/usr/bin/arm-none-eabi-g++` / `/usr/bin/arm-none-eabi-gcc` for
@@ -42,6 +45,7 @@ deleting `.config` is always safe (everything just falls back to plain
 ./configure.sh                                        # native, emu target
 ./configure.sh --platform mcu --target cortex-m0       # mcu, gcc (default)
 ./configure.sh --platform mcu --target cortex-m0plus --compiler clang
+./configure.sh --platform pico_sdk --target rp2040 --board pico-w
 ./configure.sh --interactive                           # numbered menus instead of flags
 ```
 
@@ -50,6 +54,7 @@ Useful options:
 - `./configure.sh --clean`
 - `./configure.sh --type Debug`
 - `./configure.sh --build-dir <dir>`
+- `./configure.sh --board <board>`
 - `./configure.sh --cpu cortex-m4`
 - `./configure.sh --cmsis-dir third_party/CMSIS_6`
 - `./configure.sh --linker-map`
@@ -86,6 +91,113 @@ Useful options:
 <build-dir>/listings/mmcu_app.lst
 <build-dir>/listings/objects/*.lst
 ```
+
+## Manifest/resolver build flow
+
+The build wires the core target/platform modules directly in
+`CMakeLists.txt`, then reads the application manifest through
+`tools/mmcu-deps.py`. CMake remains the orchestrator, but the Python
+resolver runs during **configure**, not during `cmake --build`.
+
+The flow is:
+
+```text
+cmake configure
+  ├─ select MMCU_PLATFORM / MMCU_TARGET / MMCU_BOARD
+  ├─ optionally use ./venv/bin/python
+  ├─ validate YAML metadata
+  ├─ map applications/main/mmcu.yaml
+  ├─ resolve mapped graph against target/board
+  ├─ write <build-dir>/mmcu.solution.yaml
+  ├─ write <build-dir>/mmcu-deps.cmake
+  └─ include <build-dir>/mmcu-deps.cmake
+
+cmake build
+  └─ compile mmcu_app from normal CMake sources plus generated dependency sources
+```
+
+That distinction matters: resolver failures are configure failures. In
+the first implementation this includes bad dependency names, duplicate
+package/capability names, ambiguous capabilities, dependency cycles,
+minimum-version failures, and incompatible board/target pairs. The fuller
+model also treats missing target peripherals, missing board buses, and
+stale solution reuse as configure-time resolver concerns. Once configure
+succeeds, the build step is ordinary CMake/Ninja compilation.
+
+Python tooling for this path should live in a project-local virtual
+environment. The resolver needs PyYAML at configure time:
+
+```bash
+python3 -m venv ./venv
+. ./venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements-yaml.txt
+```
+
+`CMakeLists.txt` prefers the venv Python when it exists, falling back to
+`find_package(Python3)` otherwise:
+
+```cmake
+set(MMCU_PYTHON "${CMAKE_SOURCE_DIR}/venv/bin/python" CACHE FILEPATH
+    "Python for MMCU tooling")
+
+if(NOT EXISTS "${MMCU_PYTHON}")
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    set(MMCU_PYTHON "${Python3_EXECUTABLE}")
+endif()
+```
+
+The resolver invocation is:
+
+```cmake
+execute_process(
+    COMMAND
+        "${MMCU_PYTHON}" "${CMAKE_SOURCE_DIR}/tools/mmcu-deps.py"
+        --root "${CMAKE_SOURCE_DIR}"
+        --app "${CMAKE_SOURCE_DIR}/applications/main/mmcu.yaml"
+        --platform "${MMCU_PLATFORM}"
+        --target "${MMCU_TARGET}"
+        --board "${MMCU_BOARD}"
+        --out "${CMAKE_BINARY_DIR}/mmcu-deps.cmake"
+        --solution "${CMAKE_BINARY_DIR}/mmcu.solution.yaml"
+    RESULT_VARIABLE _mmcu_deps_result
+    OUTPUT_VARIABLE _mmcu_deps_output
+    ERROR_VARIABLE _mmcu_deps_output
+)
+
+if(NOT _mmcu_deps_result EQUAL 0)
+    message(FATAL_ERROR "Dependency resolution failed:\n${_mmcu_deps_output}")
+endif()
+
+include("${CMAKE_BINARY_DIR}/mmcu-deps.cmake")
+```
+
+For the real application today,
+`applications/main/mmcu.yaml` contains `depends: []` because
+`applications/main/main.cpp` imports only `cpu`, `gpio`, and `uart` —
+stable target/platform-resolved modules that do not go through the
+application manifest. The expected generated solution is therefore empty
+on the dependency side:
+
+```yaml
+schema: mmcu.solution/v1
+app:
+  name: mmcu_app
+  manifest: applications/main/mmcu.yaml
+
+requirements: []
+packages: []
+
+outputs:
+  modules: []
+  sources: []
+```
+
+`mmcu-deps.cmake` may likewise be empty apart from comments. The
+application still builds because `main.cpp` and the target/platform
+modules are normal CMake inputs; the manifest only contributes additional
+libraries, drivers, modules, and generated source lists once the app
+actually depends on them.
 
 ## Bare-Metal Build
 

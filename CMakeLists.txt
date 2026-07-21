@@ -10,6 +10,7 @@ set(MMCU_PLATFORM "native" CACHE STRING "MMCU platform: native, mcu, or pico_sdk
 set_property(CACHE MMCU_PLATFORM PROPERTY STRINGS native mcu pico_sdk)
 
 set(MMCU_TARGET "" CACHE STRING "MMCU target to build (default depends on MMCU_PLATFORM)")
+set(MMCU_BOARD "" CACHE STRING "MMCU board (default depends on MMCU_TARGET)")
 
 if(MMCU_PLATFORM STREQUAL "native")
     set(_mmcu_valid_targets emu)
@@ -41,6 +42,14 @@ elseif(NOT MMCU_TARGET IN_LIST _mmcu_valid_targets)
         "(expected one of: ${_mmcu_valid_targets})")
 endif()
 set_property(CACHE MMCU_TARGET PROPERTY STRINGS ${_mmcu_valid_targets})
+
+if(NOT MMCU_BOARD)
+    if(MMCU_TARGET STREQUAL "rp2040" OR MMCU_TARGET STREQUAL "rp2040-cmsis")
+        set(MMCU_BOARD "pico" CACHE STRING "MMCU board (default depends on MMCU_TARGET)" FORCE)
+    elseif(MMCU_TARGET STREQUAL "rp2350" OR MMCU_TARGET STREQUAL "rp2350-cmsis")
+        set(MMCU_BOARD "pico2" CACHE STRING "MMCU board (default depends on MMCU_TARGET)" FORCE)
+    endif()
+endif()
 
 set(MMCU_PICO_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platforms/pico-sdk/pico-sdk" CACHE PATH
     "Vendored pico-sdk checkout used by the rp2040/rp2350 targets")
@@ -173,6 +182,31 @@ function(mmcu_require_pico_sdk_foundation pico_platform pico_board)
     pico_add_extra_outputs(mmcu_app)
 endfunction()
 
+function(mmcu_pico_sdk_board_for_target out_var pico_platform)
+    if(pico_platform STREQUAL "rp2040")
+        if(MMCU_BOARD STREQUAL "pico-w" OR MMCU_BOARD STREQUAL "pico-wh" OR MMCU_BOARD STREQUAL "pico-w-all")
+            set(_mmcu_pico_board "pico_w")
+        elseif(MMCU_BOARD STREQUAL "pico" OR MMCU_BOARD STREQUAL "pico-h" OR MMCU_BOARD STREQUAL "pico-all")
+            set(_mmcu_pico_board "pico")
+        else()
+            message(FATAL_ERROR
+                "MMCU_BOARD '${MMCU_BOARD}' is not compatible with MMCU_TARGET=rp2040")
+        endif()
+    elseif(pico_platform STREQUAL "rp2350-arm-s")
+        if(MMCU_BOARD STREQUAL "pico2-w" OR MMCU_BOARD STREQUAL "pico2-w-with-headers" OR MMCU_BOARD STREQUAL "pico-w-all")
+            set(_mmcu_pico_board "pico2_w")
+        elseif(MMCU_BOARD STREQUAL "pico2" OR MMCU_BOARD STREQUAL "pico2-with-headers" OR MMCU_BOARD STREQUAL "pico-all")
+            set(_mmcu_pico_board "pico2")
+        else()
+            message(FATAL_ERROR
+                "MMCU_BOARD '${MMCU_BOARD}' is not compatible with MMCU_TARGET=rp2350")
+        endif()
+    else()
+        message(FATAL_ERROR "Unsupported pico-sdk platform: ${pico_platform}")
+    endif()
+    set(${out_var} "${_mmcu_pico_board}" PARENT_SCOPE)
+endfunction()
+
 if(MMCU_TARGET STREQUAL "emu")
     list(APPEND MMCU_MODULES
         src/emu.cppm
@@ -213,12 +247,14 @@ elseif(MMCU_TARGET STREQUAL "rp2040")
     list(APPEND MMCU_MODULES
         targets/arm/rp2040/rp2040.cppm
     )
-    mmcu_require_pico_sdk_foundation(rp2040 pico)
+    mmcu_pico_sdk_board_for_target(_mmcu_pico_board rp2040)
+    mmcu_require_pico_sdk_foundation(rp2040 "${_mmcu_pico_board}")
 elseif(MMCU_TARGET STREQUAL "rp2350")
     list(APPEND MMCU_MODULES
         targets/arm/rp2350/rp2350.cppm
     )
-    mmcu_require_pico_sdk_foundation(rp2350-arm-s pico2)
+    mmcu_pico_sdk_board_for_target(_mmcu_pico_board rp2350-arm-s)
+    mmcu_require_pico_sdk_foundation(rp2350-arm-s "${_mmcu_pico_board}")
 elseif(MMCU_TARGET STREQUAL "rp2040-cmsis")
     mmcu_require_cmsis()
     list(APPEND MMCU_MODULES
@@ -257,6 +293,33 @@ if(MMCU_LINKER_MAP)
         -Wl,--cref
     )
 endif()
+
+set(MMCU_PYTHON "${CMAKE_CURRENT_SOURCE_DIR}/venv/bin/python" CACHE FILEPATH
+    "Python interpreter for MMCU configure-time tooling")
+if(NOT EXISTS "${MMCU_PYTHON}")
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    set(MMCU_PYTHON "${Python3_EXECUTABLE}" CACHE FILEPATH
+        "Python interpreter for MMCU configure-time tooling" FORCE)
+endif()
+
+execute_process(
+    COMMAND
+        "${MMCU_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/mmcu-deps.py"
+        --root "${CMAKE_CURRENT_SOURCE_DIR}"
+        --app "${CMAKE_CURRENT_SOURCE_DIR}/applications/main/mmcu.yaml"
+        --platform "${MMCU_PLATFORM}"
+        --target "${MMCU_TARGET}"
+        --board "${MMCU_BOARD}"
+        --out "${CMAKE_CURRENT_BINARY_DIR}/mmcu-deps.cmake"
+        --solution "${CMAKE_CURRENT_BINARY_DIR}/mmcu.solution.yaml"
+    RESULT_VARIABLE _mmcu_deps_result
+    OUTPUT_VARIABLE _mmcu_deps_output
+    ERROR_VARIABLE _mmcu_deps_output
+)
+if(NOT _mmcu_deps_result EQUAL 0)
+    message(FATAL_ERROR "Dependency resolution failed:\n${_mmcu_deps_output}")
+endif()
+include("${CMAKE_CURRENT_BINARY_DIR}/mmcu-deps.cmake")
 
 target_sources(mmcu_app
     PRIVATE

@@ -115,10 +115,12 @@ if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
     if [[ -n "$CONFIG_BUILD_DIR" && "$CONFIG_BUILD_DIR" == "$BUILD_DIR" ]]; then
         CONFIG_PLATFORM="$(read_config_var MMCU_PLATFORM)"
         CONFIG_TARGET="$(read_config_var MMCU_TARGET)"
+        CONFIG_BOARD="$(read_config_var MMCU_BOARD)"
         CONFIGURE_ARGS=(--build-dir "$BUILD_DIR")
         [[ -n "$CONFIG_PLATFORM" ]] && CONFIGURE_ARGS+=(--platform "$CONFIG_PLATFORM")
         [[ -n "$CONFIG_TARGET" ]] && CONFIGURE_ARGS+=(--target "$CONFIG_TARGET")
-        echo "==> $BUILD_DIR is not configured yet; reconfiguring using .config (MMCU_PLATFORM=${CONFIG_PLATFORM:-native}${CONFIG_TARGET:+ MMCU_TARGET=$CONFIG_TARGET})"
+        [[ -n "$CONFIG_BOARD" ]] && CONFIGURE_ARGS+=(--board "$CONFIG_BOARD")
+        echo "==> $BUILD_DIR is not configured yet; reconfiguring using .config (MMCU_PLATFORM=${CONFIG_PLATFORM:-native}${CONFIG_TARGET:+ MMCU_TARGET=$CONFIG_TARGET}${CONFIG_BOARD:+ MMCU_BOARD=$CONFIG_BOARD})"
         "$SCRIPT_DIR/configure.sh" "${CONFIGURE_ARGS[@]}"
     else
         echo "==> $BUILD_DIR is not configured yet; configuring with MMCU_PLATFORM=native defaults"

@@ -1,8 +1,10 @@
 # Dependency DSL: YAML Manifests
 
-**Status: proposed, not yet implemented** — see
-[Dependencies](dependencies.md)'s status note; `mmcu.yaml` doesn't exist
-anywhere in the repo today, including at the repo root.
+**Status:** `applications/main/mmcu.yaml` exists today as the real
+application's manifest, and `tools/mmcu-deps.py` is wired into CMake as the
+configure-time YAML resolver. This document is still the normative shape
+of the manifest and solution formats; some deeper dependency semantics
+remain ahead of the first implementation.
 
 [Dependencies](dependencies.md) defines the dependency chain (application →
 library → driver → peripheral) and a hand-written `mmcu-module.cmake`
@@ -88,7 +90,7 @@ one combined check. A driver needing only one declares only that field.
 ### Application manifest
 
 ```yaml
-# mmcu.yaml (repo root, or an app-specific one under applications/<name>/)
+# applications/main/mmcu.yaml
 name: mmcu_app
 kind: application
 depends:
@@ -298,9 +300,10 @@ default providers.
   is the separate concern covered by
   [Target Module Objects](target-modules.md) /
   [Platform Modules](platform-modules.md).
-- **Replacing `mmcu-module.cmake` immediately.** Until `tools/mmcu-deps.py`
-  exists, the hand-written `mmcu_module()`/`mmcu_use()` mechanism in
-  [Dependencies](dependencies.md) remains the working mechanism; this DSL
-  is a proposed evolution of it once minimum-version constraints or
-  multi-provider capabilities are actually needed, not a prerequisite for
-  adding the first driver.
+- **Replacing every hand-written CMake declaration immediately.**
+  `tools/mmcu-deps.py` now exists and is used for the application manifest,
+  but the hand-written `MMCU_MODULES`/target source setup in root
+  `CMakeLists.txt` still owns the core target/platform modules. The YAML
+  path is the extension point for in-tree libraries, drivers, modules,
+  version constraints, and multi-provider capabilities as those packages
+  are added.
