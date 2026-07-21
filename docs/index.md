@@ -31,4 +31,5 @@ MMCU is a modular C++20 project scaffold built around CMake module support.
 - [Platform Modules](platform-modules.md)
 - [Native Linux Platform](platforms-native/linux.md)
 - [Bare-Metal MCU Platform](platforms-baremetal/mcu.md)
+- [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)
 - [Book](book/index.md)

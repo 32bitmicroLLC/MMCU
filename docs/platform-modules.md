@@ -65,23 +65,32 @@ Concrete platform modules may exist internally:
 
 ```cpp
 export module native;
-export module baremetal;
+export module mcu;
+export module pico_sdk;
 ```
 
 They are implementation details. CMake selects one of them based on which
 build script and target invoked it. `native` implements `halt()` with the
-host's `exit`; `baremetal` implements `halt()` with an infinite loop and a
-`wait_for_event()` call from `cpu`.
+host's `exit`. `mcu` and `pico_sdk` both implement the bare-metal side of the
+contract (an infinite loop plus a `wait_for_event()` call from `cpu`), but are
+distinct modules because they sit on different vendor foundations: `mcu` on
+hand-rolled startup plus CMSIS-Core, `pico_sdk` on Raspberry Pi's pico-sdk for
+RP2040/RP2350. See [Native Linux Platform](platforms-native/linux.md),
+[Bare-Metal MCU Platform](platforms-baremetal/mcu.md), and
+[Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md). Target
+selection implies which bare-metal implementation is linked in; there is no
+separate platform flag.
 
 ## Rule
 
 - public application import: `platform`
 - public API: `mmcu::platform::halt()`, `mmcu::platform::panic(message)`,
   `mmcu::platform::is_native`, `mmcu::platform::is_baremetal`
-- concrete platform is selected by the build script (`build.sh` vs
-  `build-baremetal.sh`)
-- concrete platform modules (`native`, `baremetal`) are internal
-  implementation details
+- concrete platform is selected by the build script and target (`build.sh` is
+  always `native`; `build-baremetal.sh --target <name>` selects `mcu` or
+  `pico_sdk` depending on `<name>`'s vendor foundation)
+- concrete platform modules (`native`, `mcu`, `pico_sdk`) are internal
+  implementation details, and more may be added for other vendor foundations
 - `platform` does not own target/board selection; that stays with `target`
   as described in [Target Module Objects](target-modules.md)
 

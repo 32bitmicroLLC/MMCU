@@ -64,6 +64,12 @@ vcpkg_installed/
 # third-party dependencies fetched by CMake
 third_party/
 
+# vendored pico-sdk checkout and its installed picotool
+platforms/pico-sdk/pico-sdk/
+platforms/pico-sdk/bin/
+platforms/pico-sdk/lib/
+platforms/pico-sdk/share/
+
 # debug information files
 *.dwo
 

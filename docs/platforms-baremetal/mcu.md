@@ -5,10 +5,13 @@ module described in [Platform Modules](../platform-modules.md) for the
 bare-metal side of MMCU: freestanding execution on a microcontroller, with no
 host operating system underneath it.
 
-This is the `baremetal` module referenced in `platform-modules.md`. It sits
-above the concrete CPU/board `target` modules described in
+This is the `mcu` module referenced in `platform-modules.md`, one of possibly
+several concrete bare-metal implementations distinguished by vendor
+foundation. It sits above the concrete CPU/board `target` modules described in
 [ARM Cortex-M0/M0+ Target Integration](../targets-arm/cortex-m0-m0plus.md); it
-does not replace them.
+does not replace them. Targets built on a different vendor foundation, such as
+pico-sdk, use their own platform implementation instead; see
+[Bare-Metal pico-sdk Platform](pico-sdk.md).
 
 ## Scope
 
@@ -102,14 +105,17 @@ This is illustrative, not final source. It shows the shape: no exceptions, no
 allocation, `[[noreturn]]` on `halt()`, and `panic()` degrading gracefully
 (dropping output) rather than blocking forever if the UART is never ready.
 
-## One Module, Every Target
+## One Module, Every Hand-Rolled Target
 
 Unlike the ARM target modules (`cortex_m0`, `cortex_m0plus`), which each need
 their own startup file, linker script, and CPU flags, `platforms/baremetal/
-mcu/mcu.cppm` is a single module shared by every bare-metal target, including
-`emu`. `halt()` and `panic()` only need `cpu` and `uart`, which are already
-target-independent. A future target only needs its own `target` module
-(startup/linker/CPU flags); it does not need its own `platform` module.
+mcu/mcu.cppm` is a single module shared by every hand-rolled bare-metal
+target, including `emu`. `halt()` and `panic()` only need `cpu` and `uart`,
+which are already target-independent. A future hand-rolled target only needs
+its own `target` module (startup/linker/CPU flags); it does not need its own
+`platform` module. Targets built on a full vendor SDK foundation instead, like
+pico-sdk's `rp2040`/`rp2350`, use that foundation's own platform module (see
+[Bare-Metal pico-sdk Platform](pico-sdk.md)) rather than this one.
 
 ## Build Script Direction
 
