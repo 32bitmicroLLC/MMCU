@@ -27,6 +27,7 @@ MMCU is a modular C++20 project scaffold built around CMake module support.
 - [Build And Run](build.md)
 - [Configure: Platform, Target, Toolchain](configure.md)
 - [Run](run.md)
+- [Clean](clean.md)
 - [Project Layout](layout.md)
 - [Target Modules](target-modules.md)
 - [ARM Cortex-M0/M0+ Target Integration](targets-arm/cortex-m0-m0plus.md)

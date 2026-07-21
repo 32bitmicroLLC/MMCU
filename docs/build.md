@@ -117,3 +117,6 @@ directly for native, under QEMU for mcu — dispatching on the configured
 ```bash
 ./clean.sh
 ```
+
+Discovers and removes every configured MMCU build directory (`build`,
+`build-cortex-m0-gcc`, ...) — see [Clean](clean.md).
