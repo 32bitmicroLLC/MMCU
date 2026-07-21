@@ -1,0 +1,16 @@
+schema: mmcu.module/v1
+name: platform-cmsis-6-debugger
+kind: platform
+version: 6.0.0
+description: CMSIS Debugger VS Code extension and workflow for Arm Cortex-M debugging.
+metadata:
+  links:
+    documentation:
+      - label: CMSIS Debugger repository
+        url: https://github.com/Open-CMSIS-Pack/vscode-cmsis-debugger
+    support_repositories:
+      - label: Open-CMSIS-Pack vscode-cmsis-debugger
+        url: https://github.com/Open-CMSIS-Pack/vscode-cmsis-debugger
+provides:
+  - cmsis-debugger
+  - cmsis-6-debugger

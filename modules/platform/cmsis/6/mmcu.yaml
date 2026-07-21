@@ -2,8 +2,42 @@ schema: mmcu.module/v1
 name: platform-cmsis-6
 kind: platform
 version: 6.0.0
-description: Arm CMSIS version 6 platform module for CMSIS-Core and CMSIS-Pack based MMCU builds.
+description: Arm CMSIS version 6 aggregate platform module.
+metadata:
+  links:
+    documentation:
+      - label: CMSIS 6 Introduction
+        url: https://arm-software.github.io/CMSIS_6/latest/General/index.html
+    support_repositories:
+      - label: ARM-software CMSIS_6
+        url: https://github.com/ARM-software/CMSIS_6
 provides:
   - cmsis
   - cmsis-6
-  - cmsis-core
+depends:
+  - name: platform-cmsis-6-core
+    version: 6.0.0
+  - name: platform-cmsis-6-driver
+    version: 6.0.0
+  - name: platform-cmsis-6-rtos2
+    version: 6.0.0
+  - name: platform-cmsis-6-dsp
+    version: 6.0.0
+  - name: platform-cmsis-6-nn
+    version: 6.0.0
+  - name: platform-cmsis-6-view
+    version: 6.0.0
+  - name: platform-cmsis-6-compiler
+    version: 6.0.0
+  - name: platform-cmsis-6-toolbox
+    version: 6.0.0
+  - name: platform-cmsis-6-solution
+    version: 6.0.0
+  - name: platform-cmsis-6-debugger
+    version: 6.0.0
+  - name: platform-cmsis-6-stream
+    version: 6.0.0
+  - name: platform-cmsis-6-dap
+    version: 6.0.0
+  - name: platform-cmsis-6-zone
+    version: 6.0.0

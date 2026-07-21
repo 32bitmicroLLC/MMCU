@@ -1,0 +1,16 @@
+schema: mmcu.module/v1
+name: platform-cmsis-6-stream
+kind: platform
+version: 6.0.0
+description: CMSIS-Stream tools and methods for optimizing DSP and ML block data streams.
+metadata:
+  links:
+    documentation:
+      - label: CMSIS-Stream README
+        url: https://github.com/ARM-software/CMSIS-Stream/blob/main/README.md
+    support_repositories:
+      - label: ARM-software CMSIS-Stream
+        url: https://github.com/ARM-software/CMSIS-Stream
+provides:
+  - cmsis-stream
+  - cmsis-6-stream

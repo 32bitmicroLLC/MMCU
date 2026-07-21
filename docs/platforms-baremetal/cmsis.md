@@ -88,6 +88,19 @@ The CMSIS platform is represented in the MMCU module graph under
 ```text
 modules/platform/cmsis/mmcu.yaml
 modules/platform/cmsis/6/mmcu.yaml
+modules/platform/cmsis/6/core/mmcu.yaml
+modules/platform/cmsis/6/driver/mmcu.yaml
+modules/platform/cmsis/6/rtos2/mmcu.yaml
+modules/platform/cmsis/6/dsp/mmcu.yaml
+modules/platform/cmsis/6/nn/mmcu.yaml
+modules/platform/cmsis/6/view/mmcu.yaml
+modules/platform/cmsis/6/compiler/mmcu.yaml
+modules/platform/cmsis/6/toolbox/mmcu.yaml
+modules/platform/cmsis/6/solution/mmcu.yaml
+modules/platform/cmsis/6/debugger/mmcu.yaml
+modules/platform/cmsis/6/stream/mmcu.yaml
+modules/platform/cmsis/6/dap/mmcu.yaml
+modules/platform/cmsis/6/zone/mmcu.yaml
 ```
 
 `modules/platform/cmsis/mmcu.yaml` declares the CMSIS platform family:
@@ -110,8 +123,54 @@ schema: mmcu.module/v1
 name: platform-cmsis-6
 kind: platform
 version: 6.0.0
-provides: [cmsis, cmsis-6, cmsis-core]
+provides: [cmsis, cmsis-6]
+depends:
+  - name: platform-cmsis-6-core
+    version: 6.0.0
+  - name: platform-cmsis-6-driver
+    version: 6.0.0
+  - name: platform-cmsis-6-rtos2
+    version: 6.0.0
+  - name: platform-cmsis-6-dsp
+    version: 6.0.0
+  - name: platform-cmsis-6-nn
+    version: 6.0.0
+  - name: platform-cmsis-6-view
+    version: 6.0.0
+  - name: platform-cmsis-6-compiler
+    version: 6.0.0
+  - name: platform-cmsis-6-toolbox
+    version: 6.0.0
+  - name: platform-cmsis-6-solution
+    version: 6.0.0
+  - name: platform-cmsis-6-debugger
+    version: 6.0.0
+  - name: platform-cmsis-6-stream
+    version: 6.0.0
+  - name: platform-cmsis-6-dap
+    version: 6.0.0
+  - name: platform-cmsis-6-zone
+    version: 6.0.0
 ```
+
+The component modules follow the taxonomy in Arm's
+[CMSIS 6 Introduction](https://arm-software.github.io/CMSIS_6/latest/General/index.html):
+
+| MMCU module | Capability | CMSIS area |
+|---|---|---|
+| `platform-cmsis-6-core` | `cmsis-core` | Cortex-M core access |
+| `platform-cmsis-6-driver` | `cmsis-driver` | Generic peripheral driver interfaces |
+| `platform-cmsis-6-rtos2` | `cmsis-rtos2` | RTOS API |
+| `platform-cmsis-6-dsp` | `cmsis-dsp` | DSP and math kernels |
+| `platform-cmsis-6-nn` | `cmsis-nn` | Neural-network kernels |
+| `platform-cmsis-6-view` | `cmsis-view` | Event Recorder and Component Viewer |
+| `platform-cmsis-6-compiler` | `cmsis-compiler` | Compiler abstraction and retarget support |
+| `platform-cmsis-6-toolbox` | `cmsis-toolbox` | Pack/build command-line tooling |
+| `platform-cmsis-6-solution` | `cmsis-solution` | CMSIS solution workflow |
+| `platform-cmsis-6-debugger` | `cmsis-debugger` | Debug workflow |
+| `platform-cmsis-6-stream` | `cmsis-stream` | Stream-oriented DSP/ML graph tooling |
+| `platform-cmsis-6-dap` | `cmsis-dap` | Debug Access Port firmware/interface |
+| `platform-cmsis-6-zone` | `cmsis-zone` | Resource and partition description |
 
 These module declarations are resolver metadata. The platform-local scripts
 and vendored inputs still live under `platforms/cmsis/`.

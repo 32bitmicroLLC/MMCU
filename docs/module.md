@@ -146,6 +146,28 @@ does not yet implement every normalized field in this document.
 interface. Declarative fact modules such as a board profile may omit it
 when their identity is already the stable versioned contract.
 
+## `metadata`
+
+`metadata` records provenance and descriptive facts that help reviewers audit
+the declaration but do not affect dependency resolution. The implemented
+schema currently accepts `metadata.links`:
+
+```yaml
+metadata:
+  links:
+    documentation:
+      - label: CMSIS-Core documentation
+        url: https://arm-software.github.io/CMSIS_6/latest/Core/index.html
+    support_repositories:
+      - label: ARM-software CMSIS_6
+        url: https://github.com/ARM-software/CMSIS_6
+```
+
+`metadata.links.documentation` should point to official specifications,
+reference manuals, guides, or product documentation. `metadata.links.support_repositories`
+should point to official source, support, examples, tooling, or issue-tracking
+repositories.
+
 ## Namespaces
 
 MMCU uses separate namespaces and rejects ambiguous collisions during

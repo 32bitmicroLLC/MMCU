@@ -192,6 +192,12 @@ class Dependency(BaseModel):
     version: str | None = None
 
 
+class ModuleMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    links: Links | None = None
+
+
 class ModuleManifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -213,6 +219,7 @@ class ModuleManifest(BaseModel):
     depends: list[str | Dependency] | None = None
     modules: list[str] | None = None
     sources: list[str] | None = None
+    metadata: ModuleMetadata | None = None
 
     @model_validator(mode="after")
     def unique_lists(self) -> "ModuleManifest":

@@ -96,16 +96,34 @@ the installer/configure/build scripts and vendored external inputs.
 Current CMSIS declarations:
 
 ```text
-modules/platform/cmsis/mmcu.yaml      # platform family: platform-cmsis
-modules/platform/cmsis/6/mmcu.yaml    # concrete version: platform-cmsis-6
+modules/platform/cmsis/mmcu.yaml            # platform family: platform-cmsis
+modules/platform/cmsis/6/mmcu.yaml          # concrete aggregate: platform-cmsis-6
+modules/platform/cmsis/6/core/mmcu.yaml     # CMSIS-Core
+modules/platform/cmsis/6/driver/mmcu.yaml   # CMSIS-Driver
+modules/platform/cmsis/6/rtos2/mmcu.yaml    # CMSIS-RTOS2
+modules/platform/cmsis/6/dsp/mmcu.yaml      # CMSIS-DSP
+modules/platform/cmsis/6/nn/mmcu.yaml       # CMSIS-NN
+modules/platform/cmsis/6/view/mmcu.yaml     # CMSIS-View
+modules/platform/cmsis/6/compiler/mmcu.yaml # CMSIS-Compiler
+modules/platform/cmsis/6/toolbox/mmcu.yaml  # CMSIS-Toolbox
+modules/platform/cmsis/6/solution/mmcu.yaml # CMSIS Solution
+modules/platform/cmsis/6/debugger/mmcu.yaml # CMSIS Debugger
+modules/platform/cmsis/6/stream/mmcu.yaml   # CMSIS-Stream
+modules/platform/cmsis/6/dap/mmcu.yaml      # CMSIS-DAP
+modules/platform/cmsis/6/zone/mmcu.yaml     # CMSIS-Zone
 ```
 
 The family module depends on the concrete CMSIS 6 module. The versioned
-module provides `cmsis`, `cmsis-6`, and `cmsis-core` capabilities. The
-package names intentionally use `platform-cmsis` / `platform-cmsis-6`
-instead of plain `cmsis`, so a capability named `cmsis` can remain a
-resolver-selected platform capability without colliding with an exact
-package name.
+aggregate module provides `cmsis` and `cmsis-6` capabilities and depends on
+the component modules named by the official CMSIS 6 overview: Core, Driver,
+RTOS2, DSP, NN, View, Compiler, Toolbox, Solution, Debugger, Stream, DAP, and
+Zone. Component capabilities stay specific (`cmsis-core`, `cmsis-driver`,
+`cmsis-toolbox`, and so on), so a dependency can ask for all of CMSIS or for
+one CMSIS subsystem.
+
+Package names intentionally use `platform-cmsis-*` instead of plain
+`cmsis-*`, so capability names such as `cmsis` and `cmsis-core` remain
+resolver-selected capabilities without colliding with exact package names.
 
 ## Rule
 

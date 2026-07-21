@@ -1,0 +1,16 @@
+schema: mmcu.module/v1
+name: platform-cmsis-6-view
+kind: platform
+version: 6.0.0
+description: CMSIS-View Event Recorder and Component Viewer technology.
+metadata:
+  links:
+    documentation:
+      - label: CMSIS-View documentation
+        url: https://arm-software.github.io/CMSIS-View/latest/
+    support_repositories:
+      - label: ARM-software CMSIS-View
+        url: https://github.com/ARM-software/CMSIS-View
+provides:
+  - cmsis-view
+  - cmsis-6-view

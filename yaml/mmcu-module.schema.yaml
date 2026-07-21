@@ -86,6 +86,11 @@ fields:
     unique_items: true
     description: Ordinary source files added to the selected target.
 
+  metadata:
+    type: metadata
+    required: false
+    description: Non-resolver metadata such as documentation and support repository provenance.
+
 schemas:
   dependency:
     unknown_fields: reject
@@ -97,6 +102,37 @@ schemas:
       version:
         type: semver
         required: false
+
+  metadata:
+    unknown_fields: reject
+    fields:
+      links:
+        type: links
+        required: false
+        description: Documentation and source/support repository provenance.
+
+  links:
+    unknown_fields: reject
+    fields:
+      documentation:
+        type: list[link]
+        required: true
+        min_length: 1
+      support_repositories:
+        type: list[link]
+        required: true
+        min_length: 1
+
+  link:
+    unknown_fields: reject
+    fields:
+      label:
+        type: str
+        required: true
+        min_length: 1
+      url:
+        type: url
+        required: true
 
 validators:
   - every modules path must be relative

@@ -49,8 +49,9 @@ organized by topic the same way both of those are.
   SoC peripherals.
 - `modules/platform/<name>/` — platform foundation specifications. For
   example, `modules/platform/cmsis/` declares the CMSIS platform family and
-  `modules/platform/cmsis/6/` declares the concrete CMSIS 6 platform module
-  used by `MMCU_PLATFORM=cmsis`.
+  `modules/platform/cmsis/6/` declares the concrete CMSIS 6 aggregate and
+  component modules used by `MMCU_PLATFORM=cmsis`: Core, Driver, RTOS2, DSP,
+  NN, View, Compiler, Toolbox, Solution, Debugger, Stream, DAP, and Zone.
 - `modules/<topic>/` — generic C++ facilities with **no hardware or
   protocol awareness at all**. A ring buffer, a CRC-16 routine, or a
   fixed-point type behaves identically whether it's used inside a UART

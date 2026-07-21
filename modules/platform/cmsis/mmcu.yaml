@@ -2,6 +2,14 @@ schema: mmcu.module/v1
 name: platform-cmsis
 kind: platform
 description: Arm CMSIS platform family for MMCU bare-metal builds.
+metadata:
+  links:
+    documentation:
+      - label: CMSIS 6 Introduction
+        url: https://arm-software.github.io/CMSIS_6/latest/General/index.html
+    support_repositories:
+      - label: ARM-software CMSIS_6
+        url: https://github.com/ARM-software/CMSIS_6
 provides:
   - cmsis-platform
   - platform-cmsis
