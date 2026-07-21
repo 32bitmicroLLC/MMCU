@@ -1,0 +1,11 @@
+schema: mmcu.module/v1
+name: adc
+kind: module
+version: 1.0.0
+description: Core ADC hardware abstraction C++20 module.
+provides: [adc]
+modules:
+  - ../../../src/core/adc.cppm
+depends:
+  - name: mem
+    version: 1.0.0

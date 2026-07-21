@@ -4,7 +4,10 @@ MMCU application code should import stable generic modules only.
 
 ```cpp
 import cpu;
+import adc;
 import gpio;
+import i2c;
+import spi;
 import uart;
 ```
 
@@ -17,7 +20,10 @@ Target-selected default objects live in the generic module namespaces:
 
 ```cpp
 mmcu::cpu::core
+mmcu::adc::adc0
 mmcu::gpio::gpio0
+mmcu::i2c::i2c0
+mmcu::spi::spi0
 mmcu::uart::uart0
 ```
 
@@ -61,18 +67,21 @@ them.
 
 ## Rule
 
-- public application imports: `cpu`, `gpio`, `uart`
-- public default objects: `mmcu::cpu::core`, `mmcu::gpio::gpio0`, `mmcu::uart::uart0`
+- public application imports: `cpu`, `gpio`, `uart`, `i2c`, `spi`, `adc`
+- public default objects: `mmcu::cpu::core`, `mmcu::gpio::gpio0`,
+  `mmcu::uart::uart0`, `mmcu::i2c::i2c0`, `mmcu::spi::spi0`,
+  `mmcu::adc::adc0`
 - concrete targets are selected by CMake/build scripts
 - concrete target modules are internal implementation details
 
 This avoids a separate `target` import and avoids `mmcu::target::` in
 application code.
 
-See [Modular Peripherals](peripherals.md) for how `cpu`/`gpio`/`uart` and
-their default objects (`core`/`gpio0`/`uart0`) are actually implemented in
-`src/core/`, and what makes them portable across targets in the first
-place. Their YAML module specifications live in `modules/core/`.
+See [Modular Peripherals](peripherals.md) for how `cpu`/`gpio`/`uart`/
+`i2c`/`spi`/`adc` and their default objects (`core`/`gpio0`/`uart0`/
+`i2c0`/`spi0`/`adc0`) are actually implemented in `src/core/`, and what
+makes them portable across targets in the first place. Their YAML module
+specifications live in `modules/core/`.
 See [Modular Target](target.md) for what a target is composed of
 underneath this naming — CPU core, memories, MMU, floating-point, debug,
 and peripherals as independent facets.

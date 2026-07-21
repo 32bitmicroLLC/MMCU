@@ -1,0 +1,11 @@
+schema: mmcu.module/v1
+name: multicore
+kind: module
+version: 1.0.0
+description: Raspberry Pi RP-series multicore control module.
+provides: [multicore]
+modules:
+  - ../../../src/pico/multicore.cppm
+depends:
+  - name: mem
+    version: 1.0.0

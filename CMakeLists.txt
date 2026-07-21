@@ -103,6 +103,17 @@ set(MMCU_MODULES
     src/core/cpu.cppm
     src/core/gpio.cppm
     src/core/uart.cppm
+    src/core/i2c.cppm
+    src/core/spi.cppm
+    src/core/adc.cppm
+)
+set(MMCU_PICO_MODULES
+    src/pico/pio.cppm
+    src/pico/sio.cppm
+    src/pico/multicore.cppm
+)
+set(MMCU_RP2350_MODULES
+    src/pico/hstx.cppm
 )
 
 function(mmcu_require_cmsis)
@@ -246,12 +257,15 @@ elseif(MMCU_TARGET STREQUAL "cortex-m0plus")
 elseif(MMCU_TARGET STREQUAL "rp2040")
     list(APPEND MMCU_MODULES
         targets/arm/rp2040/rp2040.cppm
+        ${MMCU_PICO_MODULES}
     )
     mmcu_pico_sdk_board_for_target(_mmcu_pico_board rp2040)
     mmcu_require_pico_sdk_foundation(rp2040 "${_mmcu_pico_board}")
 elseif(MMCU_TARGET STREQUAL "rp2350")
     list(APPEND MMCU_MODULES
         targets/arm/rp2350/rp2350.cppm
+        ${MMCU_PICO_MODULES}
+        ${MMCU_RP2350_MODULES}
     )
     mmcu_pico_sdk_board_for_target(_mmcu_pico_board rp2350-arm-s)
     mmcu_require_pico_sdk_foundation(rp2350-arm-s "${_mmcu_pico_board}")
@@ -259,6 +273,7 @@ elseif(MMCU_TARGET STREQUAL "rp2040-cmsis")
     mmcu_require_cmsis()
     list(APPEND MMCU_MODULES
         targets/arm/rp2040/rp2040.cppm
+        ${MMCU_PICO_MODULES}
     )
     target_sources(mmcu_app PRIVATE
         targets/arm/rp2040/startup_rp2040.s
@@ -273,6 +288,8 @@ elseif(MMCU_TARGET STREQUAL "rp2350-cmsis")
     mmcu_require_cmsis()
     list(APPEND MMCU_MODULES
         targets/arm/rp2350/rp2350.cppm
+        ${MMCU_PICO_MODULES}
+        ${MMCU_RP2350_MODULES}
     )
     target_sources(mmcu_app PRIVATE
         targets/arm/rp2350/startup_rp2350.s

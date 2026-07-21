@@ -1,8 +1,8 @@
 # Modular Target
 
 [Target Module Objects](target-modules.md) covers the *naming* convention
-(`cpu`/`gpio`/`uart`, resolved to a concrete target). This doc covers what
-a target itself is *composed of* underneath that naming: a target
+(`cpu`/`gpio`/`uart`/`i2c`/`spi`/`adc`, resolved to a concrete target).
+This doc covers what a target itself is *composed of* underneath that naming: a target
 (`MMCU_TARGET`) is a bundle of six independently-varying facets, not one
 monolithic thing.
 

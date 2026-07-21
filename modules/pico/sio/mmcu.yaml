@@ -1,0 +1,11 @@
+schema: mmcu.module/v1
+name: sio
+kind: module
+version: 1.0.0
+description: Raspberry Pi RP-series single-cycle IO module.
+provides: [sio]
+modules:
+  - ../../../src/pico/sio.cppm
+depends:
+  - name: mem
+    version: 1.0.0

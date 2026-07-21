@@ -18,21 +18,28 @@ capability offered*, not by mechanism — every `mmcu.yaml` in any of the
 three uses the identical `provides`/`depends` shape.
 
 `modules/` holds MMCU module specifications. `modules/core/` is reserved
-for the built-in core module specs implemented in `src/core/`; the rest of
-`modules/` holds generic, hardware-independent reusable building blocks
-like ring buffers, CRC routines, fixed-point types, and small containers
-that [Libraries](libraries.md) and [Drivers](drivers.md) compose on top
-of, organized by topic the same way both of those are.
+for portable built-in core module specs implemented in `src/core/`.
+`modules/pico/` is reserved for Raspberry Pi RP-series-specific module
+specs implemented in `src/pico/`. The rest of `modules/` holds generic,
+hardware-independent reusable building blocks like ring buffers, CRC
+routines, fixed-point types, and small containers that
+[Libraries](libraries.md) and [Drivers](drivers.md) compose on top of,
+organized by topic the same way both of those are.
 
-## Distinction from `libraries/`, `drivers/`, `modules/core/`, and `src/core/`
+## Distinction from `libraries/`, `drivers/`, `modules/core/`, `modules/pico/`, and implementation trees
 
 - `drivers/<topic>/` — drivers for *specific physical parts*: an IMU, a
   stepper controller, an EEPROM chip.
 - `libraries/<topic>/` — protocol/format/interface *implementations*: a
   bus protocol, a display technology, a data format.
 - `modules/core/<name>/` — built-in core module specifications for stable
-  MMCU interfaces (`mem`, `cpu`, `gpio`, `uart`, `emu`). These are part of
-  the framework's core surface, not optional third-party-style packages.
+  MMCU interfaces (`mem`, `cpu`, `gpio`, `uart`, `i2c`, `spi`, `adc`,
+  `emu`). These are part of the framework's core surface, not optional
+  third-party-style packages.
+- `modules/pico/<name>/` — Raspberry Pi RP-series-specific module
+  specifications (`pio`, `sio`, `hstx`, `multicore`). These are not
+  portable MCU abstractions; they are selected only for `rp2040`/`rp2350`
+  targets.
 - `modules/<topic>/` — generic C++ facilities with **no hardware or
   protocol awareness at all**. A ring buffer, a CRC-16 routine, or a
   fixed-point type behaves identically whether it's used inside a UART
@@ -40,10 +47,12 @@ of, organized by topic the same way both of those are.
   anything from `drivers/`, `libraries/`, `platforms/`, or `targets/`.
 - `src/core/` — C++20 implementation files for `modules/core/`. These
   provide the stable generic *hardware abstraction* imports (`cpu`,
-  `gpio`, `uart` — see [Target Module Objects](target-modules.md)).
+  `gpio`, `uart`, `i2c`, `spi`, `adc` — see
+  [Target Module Objects](target-modules.md)).
+- `src/pico/` — C++20 implementation files for `modules/pico/`.
   If a module needs target-specific behavior, keep the stable spec in
-  `modules/core/`/`src/core/` and put the concrete target-specific part in
-  `targets/` or `platforms/`.
+  `modules/core/`/`src/core/` and put the concrete target-specific or
+  family-specific part in `targets/`, `platforms/`, or `modules/pico/`.
 
 ## Position in the dependency chain
 
@@ -75,7 +84,15 @@ modules/
     cpu/
     gpio/
     uart/
+    i2c/
+    spi/
+    adc/
     emu/
+  pico/
+    pio/
+    sio/
+    hstx/
+    multicore/
   Containers/
     RingBuffer/
     FixedVector/
@@ -169,6 +186,7 @@ it's relevant to. When adding a module that spans topics, decide the
 primary topic first (the one it's most fundamentally *about*), put the
 real directory there, and symlink from the rest.
 
-`modules/core/` exists for the built-in core specs. Additional generic
+`modules/core/` exists for portable built-in core specs. `modules/pico/`
+exists for Raspberry Pi RP-series-specific specs. Additional generic
 module topic directories are still created on demand when the first module
 in that topic lands.

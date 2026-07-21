@@ -53,7 +53,7 @@ details, see `docs/setup.md`.
 ├── docs/                       # MkDocs documentation sources
 ├── drivers/                    # device/peripheral drivers
 ├── libraries/                  # functional libraries
-├── modules/                    # MMCU module specifications, including core specs
+├── modules/                    # MMCU module specifications: core, pico, generic
 ├── platforms/                  # vendor/platform SDK integrations
 ├── src/                        # C++20 implementations, including src/core
 ├── targets/                    # target-specific modules/startup/linker files

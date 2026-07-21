@@ -1,0 +1,11 @@
+schema: mmcu.module/v1
+name: pio
+kind: module
+version: 1.0.0
+description: Raspberry Pi RP-series Programmable I/O module.
+provides: [pio]
+modules:
+  - ../../../src/pico/pio.cppm
+depends:
+  - name: mem
+    version: 1.0.0

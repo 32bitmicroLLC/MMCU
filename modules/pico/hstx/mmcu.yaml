@@ -1,0 +1,11 @@
+schema: mmcu.module/v1
+name: hstx
+kind: module
+version: 1.0.0
+description: Raspberry Pi RP2350 high-speed serial transmit module.
+provides: [hstx]
+modules:
+  - ../../../src/pico/hstx.cppm
+depends:
+  - name: mem
+    version: 1.0.0

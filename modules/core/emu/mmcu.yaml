@@ -7,9 +7,15 @@ provides: [emu]
 modules:
   - ../../../src/core/emu.cppm
 depends:
+  - name: adc
+    version: 1.0.0
   - name: gpio
     version: 1.0.0
+  - name: i2c
+    version: 1.0.0
   - name: mem
+    version: 1.0.0
+  - name: spi
     version: 1.0.0
   - name: uart
     version: 1.0.0

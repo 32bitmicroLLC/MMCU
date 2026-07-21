@@ -79,12 +79,18 @@ modules/core/
   cpu/mmcu.yaml
   gpio/mmcu.yaml
   uart/mmcu.yaml
+  i2c/mmcu.yaml
+  spi/mmcu.yaml
+  adc/mmcu.yaml
   emu/mmcu.yaml
 src/core/
   mem.cppm
   cpu.cppm
   gpio.cppm
   uart.cppm
+  i2c.cppm
+  spi.cppm
+  adc.cppm
   emu.cppm
 ```
 

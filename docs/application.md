@@ -89,7 +89,8 @@ statements — and here the manifest's own two kinds of `depends` entry
 lead to two different rules, not one:
 
 - **Stable, target/platform-resolved names** — `cpu`, `gpio`, `uart`,
-  `platform` — covered by [Target Module Objects](target-modules.md) and
+  `i2c`, `spi`, `adc`, `platform` — covered by
+  [Target Module Objects](target-modules.md) and
   [Platform Modules](platform-modules.md). Resolved by
   `MMCU_TARGET`/`MMCU_PLATFORM` selection, not by the application's own
   manifest; application code never names the concrete target/platform

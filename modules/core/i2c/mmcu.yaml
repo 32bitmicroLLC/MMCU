@@ -1,0 +1,11 @@
+schema: mmcu.module/v1
+name: i2c
+kind: module
+version: 1.0.0
+description: Core I2C hardware abstraction C++20 module.
+provides: [i2c]
+modules:
+  - ../../../src/core/i2c.cppm
+depends:
+  - name: mem
+    version: 1.0.0

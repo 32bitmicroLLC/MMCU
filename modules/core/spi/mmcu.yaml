@@ -1,0 +1,11 @@
+schema: mmcu.module/v1
+name: spi
+kind: module
+version: 1.0.0
+description: Core SPI hardware abstraction C++20 module.
+provides: [spi]
+modules:
+  - ../../../src/core/spi.cppm
+depends:
+  - name: mem
+    version: 1.0.0

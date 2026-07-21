@@ -36,8 +36,12 @@
   and friends) — see [Application](application.md); `applications/main/`
   is `mmcu_app`'s.
 - `modules/core/`: YAML specifications for MMCU's built-in core modules
-  (`mem`, `cpu`, `gpio`, `uart`, `emu`).
+  (`mem`, `cpu`, `gpio`, `uart`, `i2c`, `spi`, `adc`, `emu`).
 - `src/core/`: C++20 implementations of the built-in core module specs.
+- `modules/pico/`: YAML specifications for Raspberry Pi RP-series modules
+  (`pio`, `sio`, `hstx`, `multicore`) that are intentionally not portable
+  core modules.
+- `src/pico/`: C++20 implementations of the Pico-specific module specs.
 - `targets/`: concrete CPU/board target modules (startup, linker script,
   register layout).
 - `platforms/`: vendor SDK *foundations* a target builds against
@@ -48,8 +52,9 @@
   motors, storage, ...), organized by device category — see
   [Drivers](drivers.md).
 - `modules/`: MMCU module specifications. `modules/core/` is reserved for
-  built-in core specs; other topics hold generic, hardware-independent
-  modules (containers, algorithms, utility types) that `libraries/` and
-  `drivers/` build on — see [Modules](modules.md).
+  portable built-in core specs; `modules/pico/` is reserved for
+  Raspberry Pi RP-series-specific specs; other topics hold generic,
+  hardware-independent modules (containers, algorithms, utility types)
+  that `libraries/` and `drivers/` build on — see [Modules](modules.md).
 - `mkdocs.yml`: MkDocs site configuration.
 - `docs/`: Markdown sources for project documentation.

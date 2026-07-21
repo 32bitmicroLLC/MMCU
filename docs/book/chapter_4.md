@@ -13,6 +13,9 @@ outside the generic modules.
 - `cpu`: generic CPU control hooks.
 - `gpio`: generic GPIO abstraction.
 - `uart`: generic UART abstraction.
+- `i2c`: generic I2C controller abstraction.
+- `spi`: generic SPI controller abstraction.
+- `adc`: generic ADC abstraction.
 - `emu`: emulator-style placeholder device layout and instances.
 
 ## `mem`
