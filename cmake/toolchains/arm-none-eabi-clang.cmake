@@ -23,7 +23,15 @@ set(CMAKE_ASM_COMPILER_TARGET arm-none-eabi)
 
 include("${CMAKE_CURRENT_LIST_DIR}/../mmcu-target-defaults.cmake")
 
-set(CMAKE_C_FLAGS_INIT "${MMCU_ARCH_FLAGS} -ffreestanding -fdata-sections -ffunction-sections")
-set(CMAKE_CXX_FLAGS_INIT "${MMCU_ARCH_FLAGS} -ffreestanding -fdata-sections -ffunction-sections -fno-exceptions -fno-rtti -fno-use-cxa-atexit")
+# Only -mcpu/-mthumb are set globally here (CMAKE_*_FLAGS_INIT seeds
+# CMAKE_C_FLAGS/CMAKE_CXX_FLAGS/CMAKE_ASM_FLAGS/CMAKE_EXE_LINKER_FLAGS, which
+# apply to *every* add_executable() in the whole build — including
+# pico-sdk's own internal executables (e.g. boot_stage2) when
+# MMCU_RP2_FOUNDATION=pico-sdk pulls it in via add_subdirectory(). Everything
+# else (-ffreestanding, -fno-exceptions, entry symbol, -nostdlib,
+# --gc-sections, ...) is applied per-target to mmcu_app only, in
+# CMakeLists.txt, so it can never leak into pico-sdk's own targets.
+set(CMAKE_C_FLAGS_INIT "${MMCU_ARCH_FLAGS}")
+set(CMAKE_CXX_FLAGS_INIT "${MMCU_ARCH_FLAGS}")
 set(CMAKE_ASM_FLAGS_INIT "${MMCU_ARCH_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS_INIT "${MMCU_ARCH_FLAGS} -nostdlib -Wl,--gc-sections -Wl,-e,${MMCU_ENTRY_SYMBOL}")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "${MMCU_ARCH_FLAGS}")

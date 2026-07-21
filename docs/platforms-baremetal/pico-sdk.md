@@ -2,17 +2,20 @@
 
 > **Actual implementation status:** `rp2040`/`rp2350` under
 > `MMCU_PLATFORM=pico_sdk` are now real, buildable targets (see
-> [RP2040/RP2350 Target Integration](../targets-arm/rp2040-rp2350.md)), but
-> they diverge from this document's original proposal: they use CMSIS-Core
-> plus hand-rolled startup/linker script (the same foundation as
-> `cortex-m0`/`cortex-m0plus`), **not** pico-sdk's own boot2/linker/register
-> headers as proposed below. `mmcu::platform`'s `pico_sdk` module
-> (`halt()`/`panic()`) described in this doc, and the vendored-pico-sdk
-> `Required Dependency`/`Proposed Layout` sections below, are not
-> implemented — `src/platform.cppm` itself doesn't exist yet for any
+> [RP2040/RP2350 Target Integration](../targets-arm/rp2040-rp2350.md)). By
+> default (`MMCU_RP2_FOUNDATION=pico-sdk`) they *do* build against pico-sdk's
+> own boot2/clock-tree/linker infrastructure via `pico_runtime`/
+> `pico_standard_link`, close to this document's original proposal — a
+> `--rp2-foundation cmsis` fallback (CMSIS-Core plus hand-rolled startup, the
+> same foundation as `cortex-m0`/`cortex-m0plus`) also exists for anyone who
+> wants clang or doesn't want to vendor pico-sdk. What's still not
+> implemented: `mmcu::platform`'s `pico_sdk` module (`halt()`/`panic()`)
+> described below and the exact `Required Dependency`/`Proposed Layout`
+> file lists below — `mmcu_app`'s actual CMake wiring lives in the root
+> `CMakeLists.txt`, not a separate `platforms/baremetal/pico_sdk/
+> pico_sdk.cppm`, and `src/platform.cppm` itself doesn't exist yet for any
 > platform (`native`, `mcu`, or `pico_sdk`). The rest of this document
-> remains the design for that deeper pico-sdk integration, should it happen
-> later; it does not describe what `--platform pico_sdk` currently builds.
+> remains the design for that layer, should it happen later.
 
 This document specifies a second concrete implementation of the generic
 `platform` module described in [Platform Modules](../platform-modules.md):
