@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SDK_DIR="platforms/pico-sdk/pico-sdk"
-BUILD_DIR="platforms/pico-sdk/build"
-PICOTOOL_PREFIX="platforms/pico-sdk"
+SDK_DIR="pico-sdk"
+BUILD_DIR="build"
+PICOTOOL_PREFIX="."
 BUILD_TYPE="Release"
 GENERATOR=""
 BOARD="pico"
@@ -13,12 +13,15 @@ CLEAN=0
 
 usage() {
     cat <<'EOF'
-Usage: ./pico-sdk-build.sh [options]
+Usage: ./platforms/pico-sdk/pico-sdk-build.sh [options]
 
 Options:
-  -d, --build-dir <dir>        Build directory (default: platforms/pico-sdk/build)
-      --sdk-dir <dir>          pico-sdk checkout (default: platforms/pico-sdk/pico-sdk)
-      --picotool-prefix <dir>  picotool install prefix (default: platforms/pico-sdk)
+  -d, --build-dir <dir>        Build directory, relative to platforms/pico-sdk/
+                                (default: build)
+      --sdk-dir <dir>          pico-sdk checkout, relative to platforms/pico-sdk/
+                                (default: pico-sdk)
+      --picotool-prefix <dir>  picotool install prefix, relative to
+                                platforms/pico-sdk/ (default: .)
   -b, --board <name>           PICO_BOARD (default: pico)
   -t, --type <type>            CMAKE_BUILD_TYPE (default: Release)
   -G, --generator <name>       CMake generator (default: Ninja if available)
@@ -28,7 +31,7 @@ Options:
   -h, --help                   Show this help
 
 Configures and builds the pico-sdk smoke-test project in platforms/pico-sdk/.
-Run ./pico-sdk-install.sh first.
+Run ./platforms/pico-sdk/pico-sdk-install.sh first.
 EOF
 }
 

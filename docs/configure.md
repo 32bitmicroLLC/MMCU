@@ -142,8 +142,9 @@ cmake -S . -B build-cortex-m0plus-clang \
   directory was already configured with, auto-configuring `native`/`emu`
   defaults if the directory doesn't exist yet. See
   [Build And Run](build.md).
-- pico-sdk's own `./pico-sdk-install.sh`/`-configure.sh`/`-build.sh`/`-clean.sh`
-  (see [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)) are
+- pico-sdk's own `./platforms/pico-sdk/pico-sdk-install.sh`/
+  `pico-sdk-configure.sh`/`pico-sdk-build.sh`/`pico-sdk-clean.sh` (see
+  [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)) are
   unrelated to `MMCU_PLATFORM=pico_sdk` above — they build the standalone
   `platforms/pico-sdk/` smoke-test project, not `mmcu_app`, since the
   `rp2040`/`rp2350` target modules don't exist yet.

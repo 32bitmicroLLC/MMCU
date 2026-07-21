@@ -7,20 +7,22 @@ TARGETS=()
 
 usage() {
     cat <<'EOF'
-Usage: ./pico-sdk-clean.sh [options] [paths...]
+Usage: ./platforms/pico-sdk/pico-sdk-clean.sh [options] [paths...]
 
 Options:
   -n, --dry-run   Print what would be removed without deleting
   -a, --all       Also remove the vendored pico-sdk checkout and picotool
   -h, --help      Show this help
 
-Defaults:
-  If no paths are provided, removes: platforms/pico-sdk/build
+Paths are relative to platforms/pico-sdk/.
 
-  --all additionally removes platforms/pico-sdk/pico-sdk and the picotool
-  install (platforms/pico-sdk/bin, lib, share). Both are left alone by
-  default so re-running ./pico-sdk-build.sh does not need to re-clone or
-  rebuild them.
+Defaults:
+  If no paths are provided, removes: build
+
+  --all additionally removes pico-sdk (the vendored checkout) and the
+  picotool install (bin/picotool, lib/cmake/picotool, share/picotool). Both
+  are left alone by default so re-running pico-sdk-build.sh does not need
+  to re-clone or rebuild them.
 EOF
 }
 
@@ -49,15 +51,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 if [[ ${#TARGETS[@]} -eq 0 ]]; then
-    TARGETS=("platforms/pico-sdk/build")
+    TARGETS=("build")
 fi
 
 if [[ $REMOVE_ALL -eq 1 ]]; then
     TARGETS+=(
-        "platforms/pico-sdk/pico-sdk"
-        "platforms/pico-sdk/bin/picotool"
-        "platforms/pico-sdk/lib/cmake/picotool"
-        "platforms/pico-sdk/share/picotool"
+        "pico-sdk"
+        "bin/picotool"
+        "lib/cmake/picotool"
+        "share/picotool"
     )
 fi
 
@@ -82,5 +84,5 @@ for target in "${TARGETS[@]}"; do
 done
 
 if [[ $REMOVED_ANY -eq 0 ]]; then
-    echo "Nothing to clean. Run ./pico-sdk-install.sh and ./pico-sdk-build.sh first, or pass --all to also check the vendored pico-sdk/picotool install."
+    echo "Nothing to clean. Run pico-sdk-install.sh and pico-sdk-build.sh first, or pass --all to also check the vendored pico-sdk/picotool install."
 fi

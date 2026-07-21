@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SDK_DIR="platforms/pico-sdk/pico-sdk"
-BUILD_DIR="platforms/pico-sdk/build"
-PICOTOOL_PREFIX="platforms/pico-sdk"
+SDK_DIR="pico-sdk"
+BUILD_DIR="build"
+PICOTOOL_PREFIX="."
 BUILD_TYPE="Release"
 GENERATOR=""
 BOARD="pico"
@@ -12,12 +12,15 @@ CLEAN=0
 
 usage() {
     cat <<'EOF'
-Usage: ./pico-sdk-configure.sh [options]
+Usage: ./platforms/pico-sdk/pico-sdk-configure.sh [options]
 
 Options:
-  -d, --build-dir <dir>        Build directory (default: platforms/pico-sdk/build)
-      --sdk-dir <dir>          pico-sdk checkout (default: platforms/pico-sdk/pico-sdk)
-      --picotool-prefix <dir>  picotool install prefix (default: platforms/pico-sdk)
+  -d, --build-dir <dir>        Build directory, relative to platforms/pico-sdk/
+                                (default: build)
+      --sdk-dir <dir>          pico-sdk checkout, relative to platforms/pico-sdk/
+                                (default: pico-sdk)
+      --picotool-prefix <dir>  picotool install prefix, relative to
+                                platforms/pico-sdk/ (default: .)
   -b, --board <name>           PICO_BOARD (default: pico)
   -t, --type <type>            CMAKE_BUILD_TYPE (default: Release)
   -G, --generator <name>       CMake generator (default: Ninja if available)
@@ -26,11 +29,11 @@ Options:
   -h, --help                   Show this help
 
 Configures (but does not build) the pico-sdk smoke-test project in
-platforms/pico-sdk/. Run ./pico-sdk-install.sh first.
+platforms/pico-sdk/. Run ./platforms/pico-sdk/pico-sdk-install.sh first.
 
 Points CMake's picotool_DIR straight at the picotool package config
 installed under --picotool-prefix/lib/cmake/picotool (see
-./pico-sdk-install.sh), instead of letting pico-sdk rebuild picotool from
+pico-sdk-install.sh), instead of letting pico-sdk rebuild picotool from
 source into the build directory on every configure.
 EOF
 }
@@ -90,7 +93,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 if [[ ! -e "$SDK_DIR/pico_sdk_init.cmake" ]]; then
-    echo "Error: pico-sdk not found at $SDK_DIR. Run ./pico-sdk-install.sh first." >&2
+    echo "Error: pico-sdk not found at $SDK_DIR. Run ./platforms/pico-sdk/pico-sdk-install.sh first." >&2
     exit 1
 fi
 
@@ -103,7 +106,7 @@ if [[ -z "$GENERATOR" ]] && command -v ninja >/dev/null 2>&1; then
 fi
 
 CMAKE_ARGS=(
-    -S platforms/pico-sdk
+    -S .
     -B "$BUILD_DIR"
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
     -DPICO_SDK_PATH="$SCRIPT_DIR/$SDK_DIR"

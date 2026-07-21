@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SDK_DIR="platforms/pico-sdk/pico-sdk"
+SDK_DIR="pico-sdk"
 SDK_GIT_TAG="2.3.0"
-PICOTOOL_PREFIX="platforms/pico-sdk"
+PICOTOOL_PREFIX="."
 PICOTOOL_GIT_TAG="2.3.0"
 CLEAN=0
 SKIP_PICOTOOL=0
 
 usage() {
     cat <<'EOF'
-Usage: ./pico-sdk-install.sh [options]
+Usage: ./platforms/pico-sdk/pico-sdk-install.sh [options]
 
 Options:
-  -d, --dir <path>             pico-sdk checkout directory
-                                (default: platforms/pico-sdk/pico-sdk)
+  -d, --dir <path>             pico-sdk checkout directory, relative to
+                                platforms/pico-sdk/ (default: pico-sdk)
       --tag <tag>               pico-sdk git tag to clone (default: 2.3.0)
-      --picotool-prefix <dir>   picotool install prefix
-                                (default: platforms/pico-sdk)
+      --picotool-prefix <dir>   picotool install prefix, relative to
+                                platforms/pico-sdk/ (default: .)
       --picotool-tag <tag>      picotool git tag to build (default: 2.3.0)
       --skip-picotool           Do not build/install picotool
   -c, --clean                   Remove existing pico-sdk checkout and
@@ -29,8 +29,8 @@ then builds and installs a matching picotool with USB support. All
 artifacts stay under platforms/pico-sdk/.
 
 picotool is installed with the standard GNUInstallDirs layout under
---picotool-prefix (default platforms/pico-sdk, the same root pico-sdk and
-build artifacts live under):
+--picotool-prefix (default platforms/pico-sdk itself, the same root pico-sdk
+and build artifacts live under):
 
   <prefix>/bin/picotool
   <prefix>/lib/cmake/picotool/...

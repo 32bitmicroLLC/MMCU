@@ -62,7 +62,7 @@ directories. It does not touch:
 - `third_party/` (vendored CMSIS_6 checkout, shared across build
   directories — see [Build And Run](build.md)).
 - `platforms/pico-sdk/` (vendored pico-sdk/picotool and its own build
-  directory — use `./pico-sdk-clean.sh` instead, see
+  directory — use `./platforms/pico-sdk/pico-sdk-clean.sh` instead, see
   [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)).
 
 ## Options
