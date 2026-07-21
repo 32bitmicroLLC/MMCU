@@ -1,0 +1,32 @@
+# Raspberry Pi Pico W: a board variant of MMCU_TARGET=rp2040 (same chip,
+# same MMCU_TARGET), adding the CYW43439 wireless chip -- the worked
+# example in docs/board.md for how MMCU_BOARD varies independently of
+# MMCU_TARGET rather than needing a new target.
+
+name: pico-w
+target: rp2040
+
+power:
+  regulation: DC-DC          # onboard buck-boost switching regulator (not LDO)
+  input_voltage_min: 1.8     # VSYS, volts
+  input_voltage_max: 5.5
+rails: [3.3]                 # volts, what the board actually supplies
+
+analog_io:
+  adc_channels_broken_out: 3   # ADC0-ADC2 on GP26-GP28 (ADC3 is internal, VSYS/3)
+
+digital_io:
+  gpio_broken_out: 26          # GP0-GP22, GP25; GP23/24/25/29 are repurposed
+                                # for the CYW43439 link (power, SPI, IRQ) on
+                                # this board instead of plain GPIO/LED/ADC3
+
+buses: [WIFI, BLUETOOTH]
+
+connectors:
+  - USB-MICRO-B
+  - HEADER-0.1IN-20PIN-DUAL
+  - SWD-3PIN
+
+default_providers:
+  wifi: cyw43439
+  bluetooth: cyw43439

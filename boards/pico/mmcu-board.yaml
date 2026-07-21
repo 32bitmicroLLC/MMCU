@@ -1,0 +1,26 @@
+# Raspberry Pi Pico: the default board for MMCU_TARGET=rp2040.
+# Facets described in docs/board.md; PICO_BOARD is already real in
+# CMakeLists.txt today (mmcu_require_pico_sdk_foundation(rp2040 pico)),
+# this file is the proposed MMCU_BOARD declaration for it.
+
+name: pico
+target: rp2040
+
+power:
+  regulation: DC-DC          # onboard buck-boost switching regulator (not LDO)
+  input_voltage_min: 1.8     # VSYS, volts
+  input_voltage_max: 5.5
+rails: [3.3]                 # volts, what the board actually supplies
+
+analog_io:
+  adc_channels_broken_out: 3   # ADC0-ADC2 on GP26-GP28 (ADC3 is internal, VSYS/3)
+
+digital_io:
+  gpio_broken_out: 26          # GP0-GP22, GP25 (onboard LED)
+
+buses: []                    # no onboard transceivers/radios
+
+connectors:
+  - USB-MICRO-B
+  - HEADER-0.1IN-20PIN-DUAL   # 40-pin 0.1" through-hole (2x20)
+  - SWD-3PIN                  # unpopulated debug test points
