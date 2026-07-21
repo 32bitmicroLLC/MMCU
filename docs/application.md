@@ -18,11 +18,12 @@ target, and board and turned into a build.
 
 ## The application manifest
 
-The application would carry its own `mmcu.yaml` (repo root, as `mmcu_app`'s
-manifest):
+The application would carry its own `mmcu.yaml`, alongside its entry point
+under `applications/<name>/` (`applications/main/` for `mmcu_app` — see
+[Project Layout](layout.md)):
 
 ```yaml
-# mmcu.yaml
+# applications/main/mmcu.yaml
 name: mmcu_app
 kind: application
 depends:
@@ -32,6 +33,13 @@ depends:
     version: 1.0.0        # generic capability — see Dependency DSL
   - name: ring-buffer      # a module, depended on directly
 ```
+
+`applications/main/mmcu.yaml` exists in the repo today with this shape,
+minus the example `depends` entries above — there's nothing under
+`libraries/`/`drivers/`/`modules/` yet for the real
+`applications/main/main.cpp` to depend on, so its actual `depends` list is
+empty. Reading it is still proposed, not implemented (see the status note
+above) — the file documents intent for when the resolver exists.
 
 Same shape as every other `mmcu.yaml` in the repo — `depends` is the
 application's statement of *requirements*; there's nothing else an
@@ -110,18 +118,18 @@ import imu;        // open capability — resolves to whichever driver won,
 
 Right now there is exactly one application: one `mmcu_app` executable
 target, its entry point at `applications/main/main.cpp`, built from one
-flat `MMCU_MODULES` list in `CMakeLists.txt` — no manifest yet, since this
-whole mechanism is still a proposal (see the status note above). The
-`applications/<name>/` layout is already real, though (see
-[Project Layout](layout.md)); only the per-application `mmcu.yaml`
-manifest is not. Nothing in this model requires staying single-application
-once the manifest exists: a second application would be a second
-directory, `applications/<name>/`, with its own `mmcu.yaml` and `depends`,
-resolved independently against the same shared `libraries/`, `drivers/`,
-and `modules/` trees, producing its own executable target. That's a
-straightforward extension of this model, not a redesign of it — not
-proposed in more detail here because there's only one application to
-build today.
+flat `MMCU_MODULES` list in `CMakeLists.txt` — `CMakeLists.txt` doesn't
+read `applications/main/mmcu.yaml` yet, since this whole mechanism is
+still a proposal (see the status note above). The `applications/<name>/`
+layout, and that one manifest file, are already real (see
+[Project Layout](layout.md)); only the reader/resolver isn't. Nothing in
+this model requires staying single-application once that exists: a second
+application would be a second directory, `applications/<name>/`, with its
+own `mmcu.yaml` and `depends`, resolved independently against the same
+shared `libraries/`, `drivers/`, and `modules/` trees, producing its own
+executable target. That's a straightforward extension of this model, not
+a redesign of it — not proposed in more detail here because there's only
+one application to build today.
 
 ## What this doesn't cover
 

@@ -1,0 +1,14 @@
+# Proposed manifest for the mmcu_app application (see docs/application.md,
+# docs/dependency-dsl.md) -- not yet read by CMakeLists.txt; the resolver
+# and mmcu.yaml support this describes are still a proposal, not wired up.
+
+name: mmcu_app
+kind: application
+
+# applications/main/main.cpp only imports the stable, target/platform-
+# resolved modules (cpu, gpio, uart -- see docs/target-modules.md) and
+# nothing from libraries/, drivers/, or modules/, which don't have any
+# packages in them yet (see docs/libraries.md, docs/drivers.md,
+# docs/modules.md: those trees are created on demand). There is nothing
+# for this application to depend on today.
+depends: []
