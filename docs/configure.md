@@ -17,7 +17,7 @@ CMAKE_TOOLCHAIN_FILE   defaults per platform, overridable
 |---|---|---|---|
 | `native` (default) | `emu` | `emu` | host compiler, no toolchain file |
 | `mcu` | `emu` | `emu`, `cortex-m0`, `cortex-m0plus` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
-| `pico_sdk` | `rp2040` | `rp2040`, `rp2350` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
+| `pico_sdk` | `rp2040` | `rp2040`, `rp2350`, `rp2040-cmsis`, `rp2350-cmsis` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
 
 `native` and `mcu` both default to the `emu` target: `emu` is a placeholder
 GPIO/UART register layout with no CMSIS or real hardware dependency, so the
@@ -26,22 +26,24 @@ freestanding ARM Thumb-2 binary (`mcu`) — see
 [Native Linux Platform](platforms-native/linux.md) and
 [Bare-Metal MCU Platform](platforms-baremetal/mcu.md).
 
-`pico_sdk`'s `rp2040`/`rp2350` targets (see
-[RP2040/RP2350 Target Integration](targets-arm/rp2040-rp2350.md)) build
-against one of two foundations, selected by `MMCU_RP2_FOUNDATION`:
+`pico_sdk` has four targets, two chips × two foundations (see
+[RP2040/RP2350 Target Integration](targets-arm/rp2040-rp2350.md)):
 
-| `MMCU_RP2_FOUNDATION` | default? | foundation | compilers |
+| `MMCU_TARGET` | chip/core | foundation | compilers |
 |---|---|---|---|
-| `pico-sdk` | yes | vendored pico-sdk: real boot2, clock tree, linker script | gcc only |
-| `cmsis` | no | hand-rolled startup/linker, CMSIS-Core only (same as `cortex-m0`/`cortex-m0plus`) | gcc, clang |
+| `rp2040` (default) | RP2040, Cortex-M0+ | vendored pico-sdk: real boot2, clock tree, linker script | gcc only |
+| `rp2350` | RP2350, Cortex-M33 | vendored pico-sdk: real boot2, clock tree, linker script | gcc only |
+| `rp2040-cmsis` | RP2040, Cortex-M0+ | hand-rolled startup/linker, CMSIS-Core only (same as `cortex-m0`/`cortex-m0plus`) | gcc, clang |
+| `rp2350-cmsis` | RP2350, Cortex-M33 | hand-rolled startup/linker, CMSIS-Core only | gcc, clang |
 
-The default (`pico-sdk`) requires the vendored checkout at
+`rp2040`/`rp2350` require the vendored pico-sdk checkout at
 `platforms/pico-sdk/pico-sdk` — run
 `./platforms/pico-sdk/pico-sdk-install.sh` first (see
 [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)); configure
 fails with a clear error pointing at that script if it's missing. That
 vendored checkout is otherwise unrelated to `mmcu_app` — it's the same one
 `platforms/pico-sdk/`'s separate, standalone smoke-test project uses.
+`rp2040-cmsis`/`rp2350-cmsis` need none of that — only CMSIS_6.
 
 ## Validation rules
 
@@ -86,8 +88,8 @@ a default `-mcpu` value and linker entry symbol:
 | `cortex-m0` | `cortex-m0` | `Reset_Handler` |
 | `cortex-m0plus` | `cortex-m0plus` | `Reset_Handler` |
 | `emu` (built via `mcu` platform) | `cortex-m3` | `main` |
-| `rp2040` | `cortex-m0plus` | `Reset_Handler` |
-| `rp2350` | `cortex-m33` (`-mfloat-abi=soft`) | `Reset_Handler` |
+| `rp2040`, `rp2040-cmsis` | `cortex-m0plus` | `Reset_Handler` |
+| `rp2350`, `rp2350-cmsis` | `cortex-m33` (`-mfloat-abi=soft`) | `Reset_Handler` |
 
 The CPU can be overridden with `-DMMCU_CPU=<cpu>`. Compiler paths are
 overridable cache variables (`MMCU_ARM_GCC`, `MMCU_ARM_GXX`, `MMCU_CLANG_CC`,
@@ -106,11 +108,10 @@ for **every** `add_executable()` in the whole build). Everything else
 linker entry symbol) is applied only to `mmcu_app` via
 `target_compile_options()`/`target_link_options()` in `CMakeLists.txt`
 (`mmcu_apply_freestanding_options()`), not globally. This matters once a
-build pulls in more than one executable target — which
-`MMCU_RP2_FOUNDATION=pico-sdk` does, via pico-sdk's own `add_subdirectory()`
-tree (e.g. its `boot_stage2` build) — see
-[RP2040/RP2350 Target Integration](targets-arm/rp2040-rp2350.md) for the bug
-this caused before it was fixed.
+build pulls in more than one executable target — which `rp2040`/`rp2350`
+does, via pico-sdk's own `add_subdirectory()` tree (e.g. its `boot_stage2`
+build) — see [RP2040/RP2350 Target Integration](targets-arm/rp2040-rp2350.md)
+for the bug this caused before it was fixed.
 
 ## `./configure.sh`
 
@@ -122,27 +123,25 @@ entry point (it never builds):
 ./configure.sh --platform mcu --target cortex-m0             # mcu, gcc (default)
 ./configure.sh --platform mcu --target cortex-m0plus --compiler clang
 ./configure.sh --platform mcu --target cortex-m0 --toolchain-file cmake/toolchains/arm-none-eabi-clang.cmake
-./configure.sh --platform pico_sdk --target rp2040            # pico_sdk, pico-sdk foundation (default), gcc
-./configure.sh --platform pico_sdk --target rp2350 --rp2-foundation cmsis --compiler clang
+./configure.sh --platform pico_sdk --target rp2040            # real pico-sdk boot2/clocks (default), gcc
+./configure.sh --platform pico_sdk --target rp2350-cmsis --compiler clang
 ```
 
 `--compiler`/`--toolchain-file` apply to `--platform mcu` or `--platform
-pico_sdk` (`native` has no toolchain file). `--rp2-foundation` only applies
-to `--platform pico_sdk`, and `--rp2-foundation pico-sdk` (the default) only
-supports `--compiler gcc` (see
+pico_sdk` (`native` has no toolchain file). `MMCU_TARGET=rp2040`/`rp2350`
+(the pico-sdk-backed targets) only support `--compiler gcc` — use
+`rp2040-cmsis`/`rp2350-cmsis` for clang (see
 [RP2040/RP2350 Target Integration](targets-arm/rp2040-rp2350.md)). Build
-directories default to `build` (native), `build-<target>-<compiler>` (mcu,
-pico_sdk with `--rp2-foundation pico-sdk`), or
-`build-<target>-cmsis-<compiler>` (pico_sdk with `--rp2-foundation cmsis`),
+directories default to `build` (native) or `build-<target>-<compiler>` (mcu,
+pico_sdk — the `-cmsis` suffix, if any, is already part of `<target>`),
 overridable with `--build-dir`. Run `./configure.sh --help` for the full
 option list, or `cmake --build <dir>` afterward to build.
 
 `./configure.sh --interactive` (or `-i`) walks through the same choices as
 numbered menus instead of flags: platform, target (skipped when the platform
-has only one valid target), rp2 foundation (pico_sdk only), compiler
-(mcu/pico_sdk, forced to gcc for the pico-sdk foundation), CPU/CMSIS
-overrides, linker map, build type, build directory, and clean. It prints a
-summary before running `cmake`.
+has only one valid target), compiler (mcu/pico_sdk, forced to gcc for
+`rp2040`/`rp2350`), CPU/CMSIS overrides, linker map, build type, build
+directory, and clean. It prints a summary before running `cmake`.
 
 ## Direct CMake invocation
 
@@ -181,7 +180,7 @@ cmake -S . -B build-rp2040-gcc \
   [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)) build the
   standalone `platforms/pico-sdk/` smoke-test project, not `mmcu_app` — but
   `pico-sdk-install.sh` is also the prerequisite for building `mmcu_app`
-  itself with `--rp2-foundation pico-sdk` (the default for
+  with `MMCU_TARGET=rp2040`/`rp2350` (the default target for
   `MMCU_PLATFORM=pico_sdk`), since both use the same vendored checkout at
-  `platforms/pico-sdk/pico-sdk`. `--rp2-foundation cmsis` needs none of
+  `platforms/pico-sdk/pico-sdk`. `rp2040-cmsis`/`rp2350-cmsis` need none of
   that — only CMSIS_6, the same as `cortex-m0`/`cortex-m0plus`.

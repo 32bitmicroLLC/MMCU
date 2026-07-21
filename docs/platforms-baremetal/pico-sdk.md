@@ -2,13 +2,14 @@
 
 > **Actual implementation status:** `rp2040`/`rp2350` under
 > `MMCU_PLATFORM=pico_sdk` are now real, buildable targets (see
-> [RP2040/RP2350 Target Integration](../targets-arm/rp2040-rp2350.md)). By
-> default (`MMCU_RP2_FOUNDATION=pico-sdk`) they *do* build against pico-sdk's
-> own boot2/clock-tree/linker infrastructure via `pico_runtime`/
-> `pico_standard_link`, close to this document's original proposal — a
-> `--rp2-foundation cmsis` fallback (CMSIS-Core plus hand-rolled startup, the
-> same foundation as `cortex-m0`/`cortex-m0plus`) also exists for anyone who
-> wants clang or doesn't want to vendor pico-sdk. What's still not
+> [RP2040/RP2350 Target Integration](../targets-arm/rp2040-rp2350.md)).
+> `MMCU_TARGET=rp2040`/`rp2350` (the default target) *do* build against
+> pico-sdk's own boot2/clock-tree/linker infrastructure via `pico_runtime`/
+> `pico_standard_link`, close to this document's original proposal —
+> `rp2040-cmsis`/`rp2350-cmsis` targets (CMSIS-Core plus hand-rolled
+> startup, the same foundation as `cortex-m0`/`cortex-m0plus`) also exist
+> for anyone who wants clang or doesn't want to vendor pico-sdk. What's
+> still not
 > implemented: `mmcu::platform`'s `pico_sdk` module (`halt()`/`panic()`)
 > described below and the exact `Required Dependency`/`Proposed Layout`
 > file lists below — `mmcu_app`'s actual CMake wiring lives in the root
