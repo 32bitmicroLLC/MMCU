@@ -1,0 +1,28 @@
+name: str()
+target: str(required=False)
+virtual: bool(required=False)
+compatible_targets: list(str(), required=False)
+power: include('power')
+rails: list(num())
+analog_io: include('analog_io', required=False)
+digital_io: include('digital_io', required=False)
+buses: list(enum('BLUETOOTH', 'CAN', 'ETHERNET', 'RS232', 'RS485', 'SD-CARD', 'USB', 'WIFI'))
+connectors: list(str())
+default_providers: map(str(), key=str(), required=False)
+links: include('links', required=False)
+---
+power:
+  regulation: enum('DC-DC', 'LDO', 'LDO;DC-DC')
+  input_voltage_min: num()
+  input_voltage_max: num()
+analog_io:
+  adc_channels_broken_out: int(min=0, required=False)
+digital_io:
+  gpio_broken_out: int(min=0, required=False)
+  internal_pins: list(str(), required=False)
+links:
+  documentation: list(include('link'))
+  support_repositories: list(include('link'))
+link:
+  label: str()
+  url: str()

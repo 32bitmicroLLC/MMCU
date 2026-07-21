@@ -1,0 +1,171 @@
+# MMCU YAML schema description for boards/*/mmcu-board.yaml.
+#
+# Tooling loads this file with PyYAML and uses it as the source of truth
+# for Pydantic validation models.
+
+schema: mmcu.schema/v1
+name: mmcu-board
+file_name: mmcu-board.yaml
+applies_to:
+  - boards/*/mmcu-board.yaml
+
+description: >
+  Board declaration used by MMCU's proposed board resolver. A board may be a
+  real purchasable board with one target, or a virtual board variant that
+  models the common subset of several real boards.
+
+rules:
+  unknown_fields: reject
+  identity:
+    one_of:
+      - description: Real board
+        required: [name, target]
+        forbidden: [compatible_targets]
+      - description: Virtual board variant
+        required: [name, virtual, compatible_targets]
+        required_values:
+          virtual: true
+        forbidden: [target]
+
+fields:
+  name:
+    type: str
+    required: true
+    pattern: "^[a-z0-9][a-z0-9-]*$"
+    description: Stable MMCU_BOARD name.
+
+  target:
+    type: str
+    required_when: real_board
+    pattern: "^[a-z0-9][a-z0-9-]*$"
+    description: Concrete MMCU_TARGET hosted by a real board.
+
+  virtual:
+    type: bool
+    default: false
+    description: True when the board is a virtual/common-subset variant.
+
+  compatible_targets:
+    type: list[str]
+    required_when: virtual_board
+    min_items: 1
+    unique_items: true
+    item_pattern: "^[a-z0-9][a-z0-9-]*$"
+    description: Concrete targets this virtual board profile can represent.
+
+  power:
+    type: object
+    required: true
+    schema: power
+
+  rails:
+    type: list[float]
+    required: true
+    min_items: 1
+    unique_items: true
+    description: Board-supplied rail voltages, in volts.
+
+  analog_io:
+    type: object
+    required: false
+    schema: analog_io
+
+  digital_io:
+    type: object
+    required: false
+    schema: digital_io
+
+  buses:
+    type: list[enum]
+    required: true
+    unique_items: true
+    enum:
+      - BLUETOOTH
+      - CAN
+      - ETHERNET
+      - RS232
+      - RS485
+      - SD-CARD
+      - USB
+      - WIFI
+    description: Board-level buses or transceivers available to dependencies.
+
+  connectors:
+    type: list[str]
+    required: true
+    min_items: 1
+    unique_items: true
+    description: Physical connectors or abstract connector classes.
+
+  default_providers:
+    type: map[str, str]
+    required: false
+    key_pattern: "^[a-z0-9][a-z0-9-]*$"
+    value_pattern: "^[a-z0-9][a-z0-9-]*$"
+    description: Preferred provider package per board-level capability.
+
+  links:
+    type: object
+    required: false
+    schema: links
+    description: Official documentation and support repository provenance.
+
+schemas:
+  power:
+    unknown_fields: reject
+    fields:
+      regulation:
+        type: enum
+        required: true
+        enum: [DC-DC, LDO, LDO;DC-DC]
+      input_voltage_min:
+        type: float
+        required: true
+      input_voltage_max:
+        type: float
+        required: true
+    validators:
+      - input_voltage_min <= input_voltage_max
+
+  analog_io:
+    unknown_fields: reject
+    fields:
+      adc_channels_broken_out:
+        type: int
+        required: false
+        minimum: 0
+
+  digital_io:
+    unknown_fields: reject
+    fields:
+      gpio_broken_out:
+        type: int
+        required: false
+        minimum: 0
+      internal_pins:
+        type: list[str]
+        required: false
+        unique_items: true
+
+  links:
+    unknown_fields: reject
+    fields:
+      documentation:
+        type: list[link]
+        required: true
+        min_items: 1
+      support_repositories:
+        type: list[link]
+        required: true
+        min_items: 1
+
+  link:
+    unknown_fields: reject
+    fields:
+      label:
+        type: str
+        required: true
+        min_length: 1
+      url:
+        type: url
+        required: true

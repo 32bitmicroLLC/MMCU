@@ -38,3 +38,17 @@ connectors:
 default_providers:
   wifi: cyw43439
   bluetooth: cyw43439
+
+links:
+  documentation:
+    - label: Raspberry Pi Pico-series documentation
+      url: https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html
+    - label: Raspberry Pi Pico product page
+      url: https://www.raspberrypi.com/products/raspberry-pi-pico/
+    - label: Raspberry Pi Pico 2 product page
+      url: https://www.raspberrypi.com/products/raspberry-pi-pico-2/
+  support_repositories:
+    - label: raspberrypi/pico-sdk
+      url: https://github.com/raspberrypi/pico-sdk
+    - label: raspberrypi/pico-examples
+      url: https://github.com/raspberrypi/pico-examples

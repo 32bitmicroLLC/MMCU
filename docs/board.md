@@ -81,7 +81,9 @@ schema are:
 
 A board's facets are declared the same way a target's are — a per-board
 block in `CMakeLists.txt`, or (in the [Dependency DSL](dependency-dsl.md)
-evolution) a `boards/<name>/mmcu-board.yaml`:
+evolution) a `boards/<name>/mmcu-board.yaml`. The YAML schema contract is
+documented in [YAML Schemas](yaml.md) and stored in
+`yaml/mmcu-board.schema.yaml`.
 
 ```yaml
 # boards/pico/mmcu-board.yaml
@@ -89,6 +91,17 @@ name: pico
 buses: []
 rails: [3.3]
 connectors: [USB-MICRO-B, HEADER-0.1IN-20PIN-DUAL-CASTELLATED, SWD-3PIN-CASTELLATED]
+links:
+  documentation:
+    - label: Raspberry Pi Pico-series documentation
+      url: https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html
+    - label: Raspberry Pi Pico product page
+      url: https://www.raspberrypi.com/products/raspberry-pi-pico/
+  support_repositories:
+    - label: raspberrypi/pico-sdk
+      url: https://github.com/raspberrypi/pico-sdk
+    - label: raspberrypi/pico-examples
+      url: https://github.com/raspberrypi/pico-examples
 ```
 
 ```yaml
@@ -122,6 +135,17 @@ default_providers:
   wifi: cyw43439
   bluetooth: cyw43439
 ```
+
+The optional `links` block records provenance for board declarations:
+
+| Field | Meaning |
+|---|---|
+| `links.documentation` | Official product, reference, datasheet, pinout, or hardware-design documentation used to model this board |
+| `links.support_repositories` | Official source repositories that provide SDK support, examples, board headers, or other software support for this board |
+
+Each entry is a `{label, url}` pair. These links are documentation
+metadata only; resolving doesn't use them to decide whether a dependency
+is satisfiable.
 
 ## Power Supply (LDO/DC-DC)
 

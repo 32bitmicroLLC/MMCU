@@ -24,3 +24,15 @@ connectors:
   - USB-MICRO-B
   - HEADER-0.1IN-20PIN-DUAL-CASTELLATED  # 40-pin edge holes, no presoldered pins
   - SWD-3PIN-CASTELLATED                  # unpopulated debug through-hole pads
+
+links:
+  documentation:
+    - label: Raspberry Pi Pico-series documentation
+      url: https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html
+    - label: Raspberry Pi Pico product page
+      url: https://www.raspberrypi.com/products/raspberry-pi-pico/
+  support_repositories:
+    - label: raspberrypi/pico-sdk
+      url: https://github.com/raspberrypi/pico-sdk
+    - label: raspberrypi/pico-examples
+      url: https://github.com/raspberrypi/pico-examples
