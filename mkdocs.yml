@@ -35,6 +35,7 @@ nav:
   - Project Layout: layout.md
   - Libraries: libraries.md
   - Drivers: drivers.md
+  - Module Definition: module.md
   - Modules: modules.md
   - Application: application.md
   - Dependencies: dependencies.md

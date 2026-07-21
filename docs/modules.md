@@ -1,5 +1,9 @@
 # Modules
 
+For the singular definition of an MMCU module as a C++20-backed,
+versioned capability provider, see [Module Definition](module.md). This
+page defines the `modules/` directory tree specifically.
+
 A **module**, in the sense [Dependencies](dependencies.md) and
 [Dependency DSL](dependency-dsl.md) already use the word, is a composable
 code block that exposes one or more **capabilities** (its `provides:`
