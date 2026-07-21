@@ -42,6 +42,9 @@
   (`pio`, `sio`, `hstx`, `multicore`) that are intentionally not portable
   core modules.
 - `src/pico/`: C++20 implementations of the Pico-specific module specs.
+- `modules/arm/`: YAML specifications for Arm Cortex-M common and
+  core-specific modules — see [Arm Modules](modules/arm.md).
+- `src/arm/`: C++20 implementations of the Arm module specs.
 - `targets/`: concrete CPU/board target modules (startup, linker script,
   register layout).
 - `platforms/`: vendor SDK *foundations* a target builds against
@@ -53,7 +56,8 @@
   [Drivers](drivers.md).
 - `modules/`: MMCU module specifications. `modules/core/` is reserved for
   portable built-in core specs; `modules/pico/` is reserved for
-  Raspberry Pi RP-series-specific specs; other topics hold generic,
+  Raspberry Pi RP-series-specific specs; `modules/arm/` is reserved for
+  Arm Cortex-M common and core-specific specs; other topics hold generic,
   hardware-independent modules (containers, algorithms, utility types)
   that `libraries/` and `drivers/` build on — see [Modules](modules.md).
 - `mkdocs.yml`: MkDocs site configuration.

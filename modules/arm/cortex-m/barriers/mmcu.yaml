@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m-barriers
+kind: module
+version: 1.0.0
+description: Common Arm Cortex-M memory and instruction barrier interface.
+provides: [arm-cortex-m-barriers]
+modules:
+  - ../../../../src/arm/cortex_m/barriers.cppm
+depends: []

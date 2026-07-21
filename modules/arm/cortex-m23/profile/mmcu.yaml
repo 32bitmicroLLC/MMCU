@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m23-profile
+kind: module
+version: 1.0.0
+description: Arm Cortex-M23 profile facts, including TrustZone capability markers.
+provides: [arm-cortex-m23-profile]
+modules:
+  - ../../../../src/arm/cortex_m23/profile.cppm
+depends: []

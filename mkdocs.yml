@@ -37,6 +37,7 @@ nav:
   - Drivers: drivers.md
   - Module Definition: module.md
   - Modules: modules.md
+  - Arm Modules: modules/arm.md
   - Application: application.md
   - Dependencies: dependencies.md
   - Dependency DSL: dependency-dsl.md

@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m-core-registers
+kind: module
+version: 1.0.0
+description: Common Arm Cortex-M core register access interface.
+provides: [arm-cortex-m-core-registers]
+modules:
+  - ../../../../src/arm/cortex_m/core_registers.cppm
+depends: []

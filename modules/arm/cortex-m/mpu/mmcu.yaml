@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m-mpu
+kind: module
+version: 1.0.0
+description: Common Arm Cortex-M Memory Protection Unit interface.
+provides: [arm-cortex-m-mpu]
+modules:
+  - ../../../../src/arm/cortex_m/mpu.cppm
+depends: []

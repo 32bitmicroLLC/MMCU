@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m-dwt
+kind: module
+version: 1.0.0
+description: Common Arm Cortex-M Data Watchpoint and Trace interface.
+provides: [arm-cortex-m-dwt]
+modules:
+  - ../../../../src/arm/cortex_m/dwt.cppm
+depends: []

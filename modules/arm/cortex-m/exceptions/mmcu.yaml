@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m-exceptions
+kind: module
+version: 1.0.0
+description: Common Arm Cortex-M exception identity and handler interface.
+provides: [arm-cortex-m-exceptions]
+modules:
+  - ../../../../src/arm/cortex_m/exceptions.cppm
+depends: []

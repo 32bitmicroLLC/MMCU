@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m3-profile
+kind: module
+version: 1.0.0
+description: Arm Cortex-M3 profile facts.
+provides: [arm-cortex-m3-profile]
+modules:
+  - ../../../../src/arm/cortex_m3/profile.cppm
+depends: []

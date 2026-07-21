@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m33-profile
+kind: module
+version: 1.0.0
+description: Arm Cortex-M33 profile facts, including TrustZone/DSP/FPU capability markers.
+provides: [arm-cortex-m33-profile]
+modules:
+  - ../../../../src/arm/cortex_m33/profile.cppm
+depends: []

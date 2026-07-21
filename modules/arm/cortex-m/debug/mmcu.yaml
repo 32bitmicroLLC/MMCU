@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m-debug
+kind: module
+version: 1.0.0
+description: Common Arm Cortex-M debug control interface.
+provides: [arm-cortex-m-debug]
+modules:
+  - ../../../../src/arm/cortex_m/debug.cppm
+depends: []

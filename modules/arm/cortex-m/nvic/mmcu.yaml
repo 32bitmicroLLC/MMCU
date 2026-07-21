@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m-nvic
+kind: module
+version: 1.0.0
+description: Common Arm Cortex-M Nested Vectored Interrupt Controller interface.
+provides: [arm-cortex-m-nvic]
+modules:
+  - ../../../../src/arm/cortex_m/nvic.cppm
+depends: []

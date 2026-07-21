@@ -20,13 +20,15 @@ three uses the identical `provides`/`depends` shape.
 `modules/` holds MMCU module specifications. `modules/core/` is reserved
 for portable built-in core module specs implemented in `src/core/`.
 `modules/pico/` is reserved for Raspberry Pi RP-series-specific module
-specs implemented in `src/pico/`. The rest of `modules/` holds generic,
+specs implemented in `src/pico/`. `modules/arm/` is reserved for Arm
+Cortex-M common and core-specific module specs implemented in `src/arm/`;
+see [Arm Modules](modules/arm.md). The rest of `modules/` holds generic,
 hardware-independent reusable building blocks like ring buffers, CRC
 routines, fixed-point types, and small containers that
 [Libraries](libraries.md) and [Drivers](drivers.md) compose on top of,
 organized by topic the same way both of those are.
 
-## Distinction from `libraries/`, `drivers/`, `modules/core/`, `modules/pico/`, and implementation trees
+## Distinction from `libraries/`, `drivers/`, `modules/core/`, `modules/pico/`, `modules/arm/`, and implementation trees
 
 - `drivers/<topic>/` — drivers for *specific physical parts*: an IMU, a
   stepper controller, an EEPROM chip.
@@ -40,6 +42,10 @@ organized by topic the same way both of those are.
   specifications (`pio`, `sio`, `hstx`, `multicore`). These are not
   portable MCU abstractions; they are selected only for `rp2040`/`rp2350`
   targets.
+- `modules/arm/<profile>/<name>/` — Arm Cortex-M common and core-specific
+  specifications such as NVIC, SysTick, SCB, MPU, exceptions, barriers,
+  sleep, and core profile facts. These are processor-core facilities, not
+  SoC peripherals.
 - `modules/<topic>/` — generic C++ facilities with **no hardware or
   protocol awareness at all**. A ring buffer, a CRC-16 routine, or a
   fixed-point type behaves identically whether it's used inside a UART
@@ -50,9 +56,11 @@ organized by topic the same way both of those are.
   `gpio`, `uart`, `i2c`, `spi`, `adc` — see
   [Target Module Objects](target-modules.md)).
 - `src/pico/` — C++20 implementation files for `modules/pico/`.
+- `src/arm/` — C++20 implementation files for `modules/arm/`.
   If a module needs target-specific behavior, keep the stable spec in
   `modules/core/`/`src/core/` and put the concrete target-specific or
-  family-specific part in `targets/`, `platforms/`, or `modules/pico/`.
+  family-specific part in `targets/`, `platforms/`, `modules/pico/`, or
+  `modules/arm/`.
 
 ## Position in the dependency chain
 
@@ -93,6 +101,11 @@ modules/
     sio/
     hstx/
     multicore/
+  arm/
+    cortex-m/
+    cortex-m0/
+    cortex-m0plus/
+    cortex-m33/
   Containers/
     RingBuffer/
     FixedVector/
@@ -187,6 +200,7 @@ primary topic first (the one it's most fundamentally *about*), put the
 real directory there, and symlink from the rest.
 
 `modules/core/` exists for portable built-in core specs. `modules/pico/`
-exists for Raspberry Pi RP-series-specific specs. Additional generic
-module topic directories are still created on demand when the first module
-in that topic lands.
+exists for Raspberry Pi RP-series-specific specs. `modules/arm/` exists
+for Arm Cortex-M common and core-specific specs. Additional generic module
+topic directories are still created on demand when the first module in
+that topic lands.

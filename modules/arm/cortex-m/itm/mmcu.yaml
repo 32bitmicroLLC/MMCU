@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m-itm
+kind: module
+version: 1.0.0
+description: Common Arm Cortex-M Instrumentation Trace Macrocell interface.
+provides: [arm-cortex-m-itm]
+modules:
+  - ../../../../src/arm/cortex_m/itm.cppm
+depends: []

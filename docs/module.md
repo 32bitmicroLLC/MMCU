@@ -797,6 +797,7 @@ map into it as follows:
 | [Drivers](drivers.md) | `drivers/<topic>/<name>/mmcu.yaml` | `driver` |
 | Core modules | `modules/core/<name>/mmcu.yaml` + `src/core/<name>.cppm` | `module` |
 | Pico-specific modules | `modules/pico/<name>/mmcu.yaml` + `src/pico/<name>.cppm` | `module` |
+| Arm Cortex-M modules | `modules/arm/<profile>/<name>/mmcu.yaml` + `src/arm/<profile>/<name>.cppm` | `module` |
 | [Modules](modules.md) | `modules/<topic>/<name>/mmcu.yaml` | `module` |
 | [Modular Peripherals](peripherals.md) | target/driver capability facts | `peripheral` |
 | [Modular Target](target.md) | target CMake/YAML facts | `target` |

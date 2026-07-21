@@ -46,6 +46,7 @@ MMCU is a modular C++20 project scaffold built around CMake module support.
 - [Drivers](drivers.md)
 - [Module Definition](module.md)
 - [Modules](modules.md)
+- [Arm Modules](modules/arm.md)
 - [Application](application.md)
 - [Dependencies: Applications, Libraries, Drivers, Peripherals](dependencies.md)
 - [Dependency DSL: YAML Manifests](dependency-dsl.md)

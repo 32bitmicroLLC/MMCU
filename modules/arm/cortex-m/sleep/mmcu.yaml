@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m-sleep
+kind: module
+version: 1.0.0
+description: Common Arm Cortex-M sleep and event interface.
+provides: [arm-cortex-m-sleep]
+modules:
+  - ../../../../src/arm/cortex_m/sleep.cppm
+depends: []

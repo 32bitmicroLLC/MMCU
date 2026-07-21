@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: arm-cortex-m7-profile
+kind: module
+version: 1.0.0
+description: Arm Cortex-M7 profile facts, including DSP/FPU/cache capability markers.
+provides: [arm-cortex-m7-profile]
+modules:
+  - ../../../../src/arm/cortex_m7/profile.cppm
+depends: []
