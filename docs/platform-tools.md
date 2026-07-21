@@ -9,8 +9,8 @@ For common build, documentation, and YAML tools, see [Tools](tools.md).
 ## cmsis: CMSIS_6, CMSIS-Toolbox, and packs
 
 CMSIS_6 belongs to the `cmsis` platform when installed explicitly. It is
-used by `MMCU_PLATFORM=cmsis` targets and by CMSIS-only target variants
-such as `rp2040-cmsis` and `rp2350-cmsis`.
+used by `MMCU_PLATFORM=cmsis` targets such as `cortex-m0` and
+`cortex-m0plus`.
 
 The normal install path is:
 

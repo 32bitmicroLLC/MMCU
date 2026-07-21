@@ -32,7 +32,8 @@ context instead.
 
 Options:
   -d, --build-dir <dir>      MMCU build directory (default: build-cmsis-<target>-<compiler>)
-  -t, --target <name>        MMCU_TARGET (default: cortex-m0)
+  -t, --target <name>        MMCU_TARGET: cortex-m0 or cortex-m0plus
+                              (default: cortex-m0)
       --board <name>         MMCU_BOARD override
       --compiler <name>      gcc or clang (default: gcc)
       --toolchain-file <f>   Explicit CMAKE_TOOLCHAIN_FILE
@@ -103,6 +104,16 @@ if [[ -n "$CSOLUTION" ]]; then
     csolution convert "$CSOLUTION" "${CSOLUTION_ARGS[@]}"
     exit 0
 fi
+
+case "$TARGET" in
+    cortex-m0|cortex-m0plus)
+        ;;
+    *)
+        echo "Error: CMSIS CMake wrapper targets are: cortex-m0, cortex-m0plus." >&2
+        echo "       Raspberry Pi Pico boards use --platform pico_sdk with --target rp2040 or rp2350." >&2
+        exit 1
+        ;;
+esac
 
 if [[ -z "$BUILD_DIR" ]]; then
     BUILD_DIR="build-cmsis-${TARGET}-${COMPILER}"

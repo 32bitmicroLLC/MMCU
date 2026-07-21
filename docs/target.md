@@ -43,8 +43,8 @@ symbol:
 | `cortex-m0` | `cortex-m0` |
 | `cortex-m0plus` | `cortex-m0plus` |
 | `emu` | `cortex-m3` |
-| `rp2040`, `rp2040-cmsis` | `cortex-m0plus` |
-| `rp2350`, `rp2350-cmsis` | `cortex-m33` |
+| `rp2040` | `cortex-m0plus` |
+| `rp2350` | `cortex-m33` |
 
 `MMCU_CPU` is overridable and feeds `MMCU_ARCH_FLAGS` (`-mcpu=... -mthumb`),
 applied toolchain-wide via `CMAKE_*_FLAGS_INIT` — the one facet that's
@@ -111,12 +111,12 @@ Cortex-M with MPU enabled), not because anything today needs it.
 
 **Proposed**, though the ABI choice it would formalize is already real.
 `cmake/mmcu-target-defaults.cmake` appends `-mfloat-abi=soft` for
-`rp2350`/`rp2350-cmsis` — Cortex-M33 has an *optional* single-precision
-FPU, but MMCU currently builds for it in software-float mode regardless of
-whether that particular chip variant has the FPU wired in, since nothing
-in the build tracks "does this target actually have a hardware FPU" as its
-own fact. The proposed declaration separates "does the silicon have one"
-from "does this build use it":
+`rp2350` — Cortex-M33 has an *optional* single-precision FPU, but MMCU
+currently builds for it in software-float mode regardless of whether that
+particular chip variant has the FPU wired in, since nothing in the build
+tracks "does this target actually have a hardware FPU" as its own fact. The
+proposed declaration separates "does the silicon have one" from "does this
+build use it":
 
 ```cmake
 set(MMCU_TARGET_FPU NONE)          # NONE | SINGLE | DOUBLE

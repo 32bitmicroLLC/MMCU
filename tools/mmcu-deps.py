@@ -22,15 +22,11 @@ except ModuleNotFoundError as exc:  # pragma: no cover - depends on host env.
 PACKAGE_ROOTS = ("libraries", "drivers", "modules")
 TARGET_DEFAULT_BOARDS = {
     "rp2040": "pico",
-    "rp2040-cmsis": "pico",
     "rp2350": "pico2",
-    "rp2350-cmsis": "pico2",
 }
 TARGET_CHIPS = {
     "rp2040": "rp2040",
-    "rp2040-cmsis": "rp2040",
     "rp2350": "rp2350",
-    "rp2350-cmsis": "rp2350",
 }
 
 

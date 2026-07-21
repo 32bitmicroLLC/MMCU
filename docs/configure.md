@@ -18,8 +18,8 @@ CMAKE_TOOLCHAIN_FILE   defaults per platform, overridable
 |---|---|---|---|
 | `native` (default) | `emu` | `emu` | host compiler, no toolchain file |
 | `mcu` | `emu` | `emu`, `cortex-m0`, `cortex-m0plus` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
-| `cmsis` | `cortex-m0` | `cortex-m0`, `cortex-m0plus`, `rp2040-cmsis`, `rp2350-cmsis` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
-| `pico_sdk` | `rp2040` | `rp2040`, `rp2350`, `rp2040-cmsis`, `rp2350-cmsis` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
+| `cmsis` | `cortex-m0` | `cortex-m0`, `cortex-m0plus` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
+| `pico_sdk` | `rp2040` | `rp2040`, `rp2350` | `cmake/toolchains/arm-none-eabi-gcc.cmake` |
 
 `native` and `mcu` both default to the `emu` target: `emu` is a placeholder
 GPIO/UART register layout with no CMSIS or real hardware dependency, so the
@@ -28,21 +28,18 @@ freestanding ARM Thumb-2 binary (`mcu`) — see
 [Native Linux Platform](platforms-native/linux.md) and
 [Bare-Metal MCU Platform](platforms-baremetal/mcu.md).
 
-`cmsis` is the explicit CMSIS-Core platform for hand-rolled Arm Cortex-M
-startup/linker integrations. It uses the same target implementations as the
-CMSIS-backed Cortex-M and Pico targets, but selects them through a platform
-whose installed dependency is Arm CMSIS_6 rather than pico-sdk. See
+`cmsis` is the explicit generic CMSIS-Core platform for hand-rolled Arm
+Cortex-M startup/linker integrations. It is intentionally not a Raspberry Pi
+Pico board platform; Pico-family boards are modeled by `pico_sdk`. See
 [Bare-Metal CMSIS Platform](platforms-baremetal/cmsis.md).
 
-`pico_sdk` has four targets, two chips × two foundations (see
+`pico_sdk` has two active targets, one per supported RP chip (see
 [RP2040/RP2350 Target Integration](targets-arm/rp2040-rp2350.md)):
 
 | `MMCU_TARGET` | chip/core | foundation | compilers |
 |---|---|---|---|
 | `rp2040` (default) | RP2040, Cortex-M0+ | vendored pico-sdk: real boot2, clock tree, linker script | gcc only |
 | `rp2350` | RP2350, Cortex-M33 | vendored pico-sdk: real boot2, clock tree, linker script | gcc only |
-| `rp2040-cmsis` | RP2040, Cortex-M0+ | hand-rolled startup/linker, CMSIS-Core only (same as `cortex-m0`/`cortex-m0plus`) | gcc, clang |
-| `rp2350-cmsis` | RP2350, Cortex-M33 | hand-rolled startup/linker, CMSIS-Core only | gcc, clang |
 
 `rp2040`/`rp2350` require the vendored pico-sdk checkout at
 `platforms/pico-sdk/pico-sdk` — run
@@ -59,9 +56,9 @@ with a long, noisy build log). In `--interactive` mode it offers to run
 clear error pointing at that script — it never runs it automatically
 without being asked, since it clones a large repository and can take a
 few minutes.
-`rp2040-cmsis`/`rp2350-cmsis` need none of that — only CMSIS_6. New
-CMSIS-only workflows should prefer `MMCU_PLATFORM=cmsis`; these targets
-remain accepted under `pico_sdk` for compatibility.
+Pico-sdk may include or consume CMSIS-style headers internally, but that is
+an implementation detail of the vendor SDK. It does not make Pico boards
+compatible with `MMCU_PLATFORM=cmsis`.
 
 ## Validation rules
 
@@ -111,8 +108,8 @@ a default `-mcpu` value and linker entry symbol:
 | `cortex-m0` | `cortex-m0` | `Reset_Handler` |
 | `cortex-m0plus` | `cortex-m0plus` | `Reset_Handler` |
 | `emu` (built via `mcu` platform) | `cortex-m3` | `main` |
-| `rp2040`, `rp2040-cmsis` | `cortex-m0plus` | `Reset_Handler` |
-| `rp2350`, `rp2350-cmsis` | `cortex-m33` (`-mfloat-abi=soft`) | `Reset_Handler` |
+| `rp2040` | `cortex-m0plus` | `Reset_Handler` |
+| `rp2350` | `cortex-m33` (`-mfloat-abi=soft`) | `Reset_Handler` |
 
 The CPU can be overridden with `-DMMCU_CPU=<cpu>`. Compiler paths are
 overridable cache variables (`MMCU_ARM_GCC`, `MMCU_ARM_GXX`, `MMCU_CLANG_CC`,
@@ -151,7 +148,6 @@ entry point (it never builds):
 ./configure.sh                                              # native
 ./configure.sh --platform mcu --target cortex-m0             # mcu, gcc (default)
 ./configure.sh --platform cmsis --target cortex-m0            # CMSIS-Core, gcc (default)
-./configure.sh --platform cmsis --target rp2350-cmsis --compiler clang
 ./configure.sh --platform mcu --target cortex-m0plus --compiler clang
 ./configure.sh --platform mcu --target cortex-m0 --toolchain-file cmake/toolchains/arm-none-eabi-clang.cmake
 ./configure.sh --platform pico_sdk --target rp2040            # real pico-sdk boot2/clocks (default), gcc
@@ -161,9 +157,9 @@ entry point (it never builds):
 `--compiler`/`--toolchain-file` apply to `--platform mcu`, `--platform
 cmsis`, or `--platform pico_sdk` (`native` has no toolchain file).
 `MMCU_TARGET=rp2040`/`rp2350`
-(the pico-sdk-backed targets) only support `--compiler gcc` — use
-`rp2040-cmsis`/`rp2350-cmsis` for clang (see
-[RP2040/RP2350 Target Integration](targets-arm/rp2040-rp2350.md)). Build
+(the pico-sdk-backed targets) only support `--compiler gcc` for now. Clang
+support for pico-sdk requires a configured Arm Clang runtime/sysroot and is
+not wired yet. Build
 directories default to `build` (native), `build-<target>-<compiler>` (mcu and
 pico_sdk), or `build-cmsis-<target>-<compiler>` (cmsis),
 overridable with `--build-dir`. Run `./configure.sh --help` for the full
@@ -237,7 +233,6 @@ cmake -S . -B build-rp2040-pico-w-gcc \
   [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)) build the
   standalone `platforms/pico-sdk/` smoke-test project, not `mmcu_app` — but
   `pico-sdk-install.sh` is also the prerequisite for building `mmcu_app`
-  with `MMCU_TARGET=rp2040`/`rp2350` (the default target for
+  with `MMCU_TARGET=rp2040`/`rp2350` (the targets for
   `MMCU_PLATFORM=pico_sdk`), since both use the same vendored checkout at
-  `platforms/pico-sdk/pico-sdk`. `rp2040-cmsis`/`rp2350-cmsis` need none of
-  that — only CMSIS_6, the same as `cortex-m0`/`cortex-m0plus`.
+  `platforms/pico-sdk/pico-sdk`.

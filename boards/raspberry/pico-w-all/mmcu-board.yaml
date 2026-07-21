@@ -10,7 +10,7 @@
 name: pico-w-all
 virtual: true
 compatible_targets: [rp2040, rp2350]
-platforms: [pico_sdk, cmsis]
+platforms: [pico_sdk]
 
 power:
   regulation: DC-DC          # common onboard buck-boost switching regulator class

@@ -3,7 +3,7 @@
 
 name: pico2-w
 target: rp2350
-platforms: [pico_sdk, cmsis]
+platforms: [pico_sdk]
 
 power:
   regulation: DC-DC          # onboard buck-boost switching regulator (not LDO)

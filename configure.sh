@@ -37,8 +37,7 @@ Options:
                              the default toolchain file (default: gcc)
       --toolchain-file <f>  Explicit CMAKE_TOOLCHAIN_FILE, overrides --compiler
       --cpu <cpu>           MMCU_CPU override (mcu/cmsis/pico_sdk, default target-derived)
-      --cmsis-dir <path>    MMCU_CMSIS_DIR (cortex-m0, cortex-m0plus,
-                             rp2040-cmsis, rp2350-cmsis)
+      --cmsis-dir <path>    MMCU_CMSIS_DIR (cortex-m0, cortex-m0plus)
       --cmsis-git-tag <tag> MMCU_CMSIS_GIT_TAG (default: v6.3.0)
       --linker-map          Enable MMCU_LINKER_MAP (mmcu_app.map + --cref)
       --arm-gcc <path>      MMCU_ARM_GCC override
@@ -57,7 +56,6 @@ Examples:
   ./configure.sh
   ./configure.sh --platform mcu --target cortex-m0
   ./configure.sh --platform cmsis --target cortex-m0
-  ./configure.sh --platform cmsis --target rp2350-cmsis --compiler clang
   ./configure.sh --platform mcu --target cortex-m0plus --compiler clang
   ./configure.sh --platform mcu --target cortex-m0 --toolchain-file cmake/toolchains/arm-none-eabi-clang.cmake
   ./configure.sh --platform pico_sdk --target rp2040
@@ -109,10 +107,10 @@ prompt_yes_no() {
 
 default_board_for_target() {
     case "$1" in
-        rp2040|rp2040-cmsis)
+        rp2040)
             echo "pico"
             ;;
-        rp2350|rp2350-cmsis)
+        rp2350)
             echo "pico2"
             ;;
         *)
@@ -149,9 +147,7 @@ platform = sys.argv[2]
 target = sys.argv[3]
 target_chips = {
     "rp2040": "rp2040",
-    "rp2040-cmsis": "rp2040",
     "rp2350": "rp2350",
-    "rp2350-cmsis": "rp2350",
 }
 chip = target_chips.get(target, target)
 
@@ -205,7 +201,11 @@ prompt_board_choice() {
 
     mapfile -t board_rows < <(list_compatible_boards "$PLATFORM" "$TARGET")
     if [[ ${#board_rows[@]} -eq 0 ]]; then
-        BOARD="$(prompt_default "MMCU_BOARD override (blank = derive from target)" "$BOARD")"
+        if [[ -n "$default_board" ]]; then
+            BOARD="$(prompt_default "MMCU_BOARD override (blank = derive from target)" "$BOARD")"
+        else
+            BOARD="$(prompt_default "MMCU_BOARD override (blank = no board)" "$BOARD")"
+        fi
         return
     fi
 
@@ -242,8 +242,8 @@ run_interactive() {
     local platform_labels=(
         "native   - host build, emu target"
         "mcu      - generic bare-metal: emu, cortex-m0, cortex-m0plus"
-        "cmsis    - CMSIS-Core bare-metal ARM: cortex-m0, cortex-m0plus, rp2040-cmsis, rp2350-cmsis"
-        "pico_sdk - bare-metal RP2040/RP2350: rp2040, rp2350 (pico-sdk), rp2040-cmsis, rp2350-cmsis"
+        "cmsis    - generic CMSIS-Core bare-metal ARM: cortex-m0, cortex-m0plus"
+        "pico_sdk - Raspberry Pi Pico SDK: rp2040, rp2350"
     )
     local platform_default=1
     case "$PLATFORM" in
@@ -270,21 +270,17 @@ run_interactive() {
             )
             ;;
         cmsis)
-            target_values=(cortex-m0 cortex-m0plus rp2040-cmsis rp2350-cmsis)
+            target_values=(cortex-m0 cortex-m0plus)
             target_labels=(
                 "cortex-m0     - CMSIS-Core Cortex-M0 target"
                 "cortex-m0plus - CMSIS-Core Cortex-M0+ target"
-                "rp2040-cmsis  - Cortex-M0+ (RP2040), CMSIS-Core only, gcc or clang"
-                "rp2350-cmsis  - Cortex-M33 (RP2350), CMSIS-Core only, gcc or clang"
             )
             ;;
         pico_sdk)
-            target_values=(rp2040 rp2350 rp2040-cmsis rp2350-cmsis)
+            target_values=(rp2040 rp2350)
             target_labels=(
                 "rp2040        - Cortex-M0+ (RP2040), real pico-sdk boot2/clocks, gcc only"
                 "rp2350        - Cortex-M33 (RP2350), real pico-sdk boot2/clocks, gcc only"
-                "rp2040-cmsis  - Cortex-M0+ (RP2040), CMSIS-Core only, gcc or clang"
-                "rp2350-cmsis  - Cortex-M33 (RP2350), CMSIS-Core only, gcc or clang"
             )
             ;;
     esac
@@ -493,7 +489,7 @@ if [[ "$PLATFORM" == "pico_sdk" ]]; then
     if [[ ( "$_mmcu_effective_target" == "rp2040" || "$_mmcu_effective_target" == "rp2350" ) \
           && "$COMPILER" == "clang" && -z "$TOOLCHAIN_FILE" ]]; then
         echo "Error: MMCU_TARGET=$_mmcu_effective_target only supports --compiler gcc for now;" >&2
-        echo "       use --target ${_mmcu_effective_target}-cmsis for clang (see --help)." >&2
+        echo "       pico-sdk clang support requires a configured ARM clang runtime/sysroot and is not wired yet." >&2
         exit 1
     fi
 fi
@@ -535,12 +531,12 @@ if [[ "$PLATFORM" == "pico_sdk" \
         if prompt_yes_no "Run ./platforms/pico-sdk/pico-sdk-install.sh now? (clones pico-sdk + builds picotool; can take a few minutes)" "y"; then
             "$SCRIPT_DIR/platforms/pico-sdk/pico-sdk-install.sh"
         else
-            echo "Aborted. Run ./platforms/pico-sdk/pico-sdk-install.sh first, or use --target ${_mmcu_effective_target}-cmsis instead." >&2
+            echo "Aborted. Run ./platforms/pico-sdk/pico-sdk-install.sh first." >&2
             exit 1
         fi
     else
         echo "Error: MMCU_TARGET=$_mmcu_effective_target requires a vendored pico-sdk checkout at platforms/pico-sdk/pico-sdk." >&2
-        echo "       Run ./platforms/pico-sdk/pico-sdk-install.sh first, or use --target ${_mmcu_effective_target}-cmsis instead." >&2
+        echo "       Run ./platforms/pico-sdk/pico-sdk-install.sh first." >&2
         exit 1
     fi
 fi

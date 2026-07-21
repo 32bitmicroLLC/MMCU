@@ -29,7 +29,9 @@ With --csolution, it invokes CMSIS-Toolbox cbuild.
 
 Options:
   -d, --build-dir <dir>      MMCU build directory (default: build-cmsis-<target>-<compiler>)
-  -t, --target <name>        MMCU_TARGET for CMake wrapper mode (default: cortex-m0)
+  -t, --target <name>        MMCU_TARGET for CMake wrapper mode:
+                              cortex-m0 or cortex-m0plus
+                              (default: cortex-m0)
       --board <name>         MMCU_BOARD override
       --compiler <name>      gcc or clang (default: gcc)
   -b, --type <type>          CMAKE_BUILD_TYPE (default: Release)

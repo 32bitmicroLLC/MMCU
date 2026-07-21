@@ -337,7 +337,7 @@ candidate:
    capability, e.g. in a `boards/raspberry/<name>/mmcu-board.yaml`:
    ```yaml
    # boards/raspberry/pico-w/mmcu-board.yaml
-   platforms: [pico_sdk, cmsis]
+   platforms: [pico_sdk]
    default_providers:
      wifi: cyw43439
    ```

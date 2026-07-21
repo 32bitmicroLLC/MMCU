@@ -75,11 +75,12 @@ Optional Clang bare-metal toolchain:
 
 | Tool | Default path or command | Used for |
 |---|---|---|
-| Clang C compiler | `/usr/bin/clang-20` | `--platform mcu --compiler clang`, `--platform cmsis --compiler clang`, and CMSIS-backed Pico targets |
+| Clang C compiler | `/usr/bin/clang-20` | `--platform mcu --compiler clang` and `--platform cmsis --compiler clang` |
 | Clang C++ compiler | `/usr/bin/clang++-20` | C++ module compilation for Clang bare-metal builds |
 
-`rp2040` and `rp2350` pico-sdk-backed targets are GCC-only for now. Use
-`rp2040-cmsis` or `rp2350-cmsis` for Clang.
+`rp2040` and `rp2350` pico-sdk-backed targets are GCC-only for now. Clang
+support for pico-sdk requires a configured Arm clang runtime/sysroot and is
+not wired yet.
 
 ### Source Control And Vendor SDKs
 

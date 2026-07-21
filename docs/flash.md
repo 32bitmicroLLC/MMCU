@@ -29,8 +29,8 @@ first with `./configure.sh`.
 | `MMCU_PLATFORM` | `MMCU_TARGET` | flash script | notes |
 |---|---|---|---|
 | `pico_sdk` | `rp2040`, `rp2350` | `platforms/pico-sdk/pico-sdk-flash.sh` | flashes `mmcu_app.uf2` via `picotool load -f -x` |
-| `pico_sdk` | `rp2040-cmsis`, `rp2350-cmsis` | — | rejected: no `.uf2` produced (see [RP2040/RP2350 Target Integration](targets-arm/rp2040-rp2350.md)) |
 | `native`, `mcu` | any | — | rejected: no real hardware target |
+| `cmsis` | any | — | rejected: generic CMSIS-Core builds do not produce `.uf2` images |
 
 ## How dispatch works
 
@@ -140,9 +140,9 @@ work without it, and it never blocks the actual flash attempt):
 
 ## Not implemented
 
-- `rp2040-cmsis`/`rp2350-cmsis` have no flash path (no `.uf2`; would need
-  a hand-rolled flashing mechanism, e.g. via a debug probe, since they
-  don't link against pico-sdk at all).
+- Generic `cmsis` builds have no flash path. They would need a
+  target-specific flashing mechanism, e.g. via a debug probe, since they
+  do not link against pico-sdk and do not produce `.uf2` images.
 - No mass-storage-drag-and-drop fallback (copying the `.uf2` onto the
   `RPI-RP2`/`RP2350` USB drive) — `picotool load` is used unconditionally,
   since it works whether or not that drive happens to be mounted.

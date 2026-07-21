@@ -21,19 +21,18 @@ elseif(MMCU_PLATFORM STREQUAL "mcu")
     set(_mmcu_default_target "emu")
     set(_mmcu_default_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchains/arm-none-eabi-gcc.cmake")
 elseif(MMCU_PLATFORM STREQUAL "cmsis")
-    # CMSIS is the first-class Arm CMSIS-Core platform. It uses hand-rolled
-    # startup/linker integration plus CMSIS-Core headers, without a vendor SDK.
-    set(_mmcu_valid_targets cortex-m0 cortex-m0plus rp2040-cmsis rp2350-cmsis)
+    # CMSIS is the first-class generic Arm CMSIS-Core platform. It is not a
+    # Raspberry Pi Pico board platform; Pico-family boards use pico_sdk.
+    set(_mmcu_valid_targets cortex-m0 cortex-m0plus)
     set(_mmcu_default_target "cortex-m0")
     set(_mmcu_default_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchains/arm-none-eabi-gcc.cmake")
 elseif(MMCU_PLATFORM STREQUAL "pico_sdk")
     # rp2040/rp2350 build against the vendored pico-sdk (real boot2, clock
     # tree, linker script via pico_runtime/pico_standard_link — the same
-    # foundation pico-sdk itself uses). rp2040-cmsis/rp2350-cmsis are the
-    # earlier, minimal first-pass: hand-rolled startup/linker script plus
-    # CMSIS-Core only, no vendored pico-sdk required, gcc or clang. See
-    # docs/targets-arm/rp2040-rp2350.md.
-    set(_mmcu_valid_targets rp2040 rp2350 rp2040-cmsis rp2350-cmsis)
+    # foundation pico-sdk itself uses). pico-sdk may contain or consume
+    # CMSIS-style headers internally, but that does not make it the cmsis
+    # platform.
+    set(_mmcu_valid_targets rp2040 rp2350)
     set(_mmcu_default_target "rp2040")
     set(_mmcu_default_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchains/arm-none-eabi-gcc.cmake")
 else()
@@ -50,9 +49,9 @@ endif()
 set_property(CACHE MMCU_TARGET PROPERTY STRINGS ${_mmcu_valid_targets})
 
 if(NOT MMCU_BOARD)
-    if(MMCU_TARGET STREQUAL "rp2040" OR MMCU_TARGET STREQUAL "rp2040-cmsis")
+    if(MMCU_TARGET STREQUAL "rp2040")
         set(MMCU_BOARD "pico" CACHE STRING "MMCU board (default depends on MMCU_TARGET)" FORCE)
-    elseif(MMCU_TARGET STREQUAL "rp2350" OR MMCU_TARGET STREQUAL "rp2350-cmsis")
+    elseif(MMCU_TARGET STREQUAL "rp2350")
         set(MMCU_BOARD "pico2" CACHE STRING "MMCU board (default depends on MMCU_TARGET)" FORCE)
     endif()
 endif()
@@ -66,16 +65,14 @@ if(MMCU_TARGET STREQUAL "rp2040" OR MMCU_TARGET STREQUAL "rp2350")
     if(NOT EXISTS "${MMCU_PICO_SDK_DIR}/pico_sdk_init.cmake")
         message(FATAL_ERROR
             "MMCU_TARGET '${MMCU_TARGET}' requires a vendored pico-sdk checkout at "
-            "${MMCU_PICO_SDK_DIR}. Run ./platforms/pico-sdk/pico-sdk-install.sh first, "
-            "or use MMCU_TARGET=${MMCU_TARGET}-cmsis instead.")
+            "${MMCU_PICO_SDK_DIR}. Run ./platforms/pico-sdk/pico-sdk-install.sh first.")
     endif()
     if(CMAKE_TOOLCHAIN_FILE MATCHES "arm-none-eabi-clang")
         message(FATAL_ERROR
             "MMCU_TARGET '${MMCU_TARGET}' only supports --compiler gcc for now: "
             "pico-sdk's C sources need libc headers (newlib/picolibc) that plain "
             "clang-20 does not locate without a configured ARM clang runtime/sysroot "
-            "(e.g. the LLVM Embedded Toolchain for Arm). Use "
-            "MMCU_TARGET=${MMCU_TARGET}-cmsis to use clang.")
+            "(e.g. the LLVM Embedded Toolchain for Arm).")
     endif()
     # Must be included before project(): it defines the pico_sdk_init() macro
     # used after project() below, and preloads pico-sdk's own toolchain
@@ -156,6 +153,11 @@ function(mmcu_require_cmsis)
     endif()
 
     target_include_directories(mmcu_app PRIVATE "${_cmsis_core_include}")
+    target_compile_definitions(mmcu_app PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:MMCU_USE_CMSIS_CPU=1>
+    )
+    message(STATUS "MMCU CMSIS-Core include: ${_cmsis_core_include}")
+    message(STATUS "MMCU CMSIS-Core path: CMake headers, not CMSIS-Toolbox cbuild")
 endfunction()
 
 function(mmcu_set_entry_symbol symbol)
@@ -182,6 +184,7 @@ function(mmcu_apply_freestanding_options)
     mmcu_apply_cxx_constraints()
     target_compile_options(mmcu_app PRIVATE
         $<$<COMPILE_LANGUAGE:C,CXX>:-ffreestanding;-fdata-sections;-ffunction-sections>
+        $<$<COMPILE_LANG_AND_ID:ASM,Clang>:-Wno-unused-command-line-argument>
     )
     target_link_options(mmcu_app PRIVATE -nostdlib -Wl,--gc-sections)
 endfunction()
@@ -279,37 +282,6 @@ elseif(MMCU_TARGET STREQUAL "rp2350")
     )
     mmcu_pico_sdk_board_for_target(_mmcu_pico_board rp2350-arm-s)
     mmcu_require_pico_sdk_foundation(rp2350-arm-s "${_mmcu_pico_board}")
-elseif(MMCU_TARGET STREQUAL "rp2040-cmsis")
-    mmcu_require_cmsis()
-    list(APPEND MMCU_MODULES
-        targets/arm/rp2040/rp2040.cppm
-        ${MMCU_PICO_MODULES}
-    )
-    target_sources(mmcu_app PRIVATE
-        targets/arm/rp2040/startup_rp2040.s
-        targets/arm/rp2040/system_rp2040.c
-    )
-    target_link_options(mmcu_app PRIVATE
-        "-T${CMAKE_CURRENT_SOURCE_DIR}/targets/arm/rp2040/linker.ld"
-    )
-    mmcu_apply_freestanding_options()
-    mmcu_set_entry_symbol(Reset_Handler)
-elseif(MMCU_TARGET STREQUAL "rp2350-cmsis")
-    mmcu_require_cmsis()
-    list(APPEND MMCU_MODULES
-        targets/arm/rp2350/rp2350.cppm
-        ${MMCU_PICO_MODULES}
-        ${MMCU_RP2350_MODULES}
-    )
-    target_sources(mmcu_app PRIVATE
-        targets/arm/rp2350/startup_rp2350.s
-        targets/arm/rp2350/system_rp2350.c
-    )
-    target_link_options(mmcu_app PRIVATE
-        "-T${CMAKE_CURRENT_SOURCE_DIR}/targets/arm/rp2350/linker.ld"
-    )
-    mmcu_apply_freestanding_options()
-    mmcu_set_entry_symbol(Reset_Handler)
 else()
     message(FATAL_ERROR "Unsupported MMCU_TARGET: ${MMCU_TARGET}")
 endif()

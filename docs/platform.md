@@ -41,7 +41,7 @@ If `--platform` is omitted, `platform.sh install` reads the last configured
 absent. This makes the normal sequence work:
 
 ```bash
-./configure.sh --platform cmsis --target rp2040-cmsis
+./configure.sh --platform cmsis --target cortex-m0
 ./platform.sh install
 ```
 
@@ -80,8 +80,8 @@ Platform-local CMSIS development scripts mirror the pico-sdk script set:
 
 ```bash
 ./platforms/cmsis/cmsis-install.sh
-./platforms/cmsis/cmsis-configure.sh --target rp2040-cmsis --board pico
-./platforms/cmsis/cmsis-build.sh --target rp2040-cmsis --board pico --verbose
+./platforms/cmsis/cmsis-configure.sh --target cortex-m0plus --compiler clang
+./platforms/cmsis/cmsis-build.sh --target cortex-m0plus --compiler clang --verbose
 ./platforms/cmsis/cmsis-clean.sh --dry-run --all
 ```
 
@@ -104,7 +104,7 @@ does not parse or validate them itself:
 ```bash
 ./platform.sh configure --platform mcu --target cortex-m0plus --compiler clang
 ./platform.sh build --platform mcu --build-dir build-cortex-m0plus-clang --map-and-list --verbose
-./platform.sh configure --platform cmsis --target rp2350-cmsis --compiler clang
+./platform.sh configure --platform cmsis --target cortex-m0plus --compiler clang
 ./platform.sh install --platform cmsis --tag v6.3.0
 ./platform.sh configure --platform pico_sdk --target rp2350
 ./platform.sh install --platform pico_sdk --tag 2.3.0 --skip-picotool

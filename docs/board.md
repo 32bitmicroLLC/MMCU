@@ -39,9 +39,7 @@ set(MMCU_BOARD "" CACHE STRING "Board (default: derived from MMCU_TARGET)")
 | `MMCU_TARGET` | default `MMCU_BOARD` |
 |---|---|
 | `rp2040` | `pico` |
-| `rp2040-cmsis` | `pico` |
 | `rp2350` | `pico2` |
-| `rp2350-cmsis` | `pico2` |
 | `emu`, `cortex-m0`, `cortex-m0plus` | *(none — no physical board modeled)* |
 
 Root `CMakeLists.txt` also maps Pico-series `MMCU_BOARD` values to the
@@ -53,8 +51,8 @@ instead of the default `pico`, adding the CYW43439
 doc describes below — a board variant, not a new target. `native`/`mcu`
 platforms leave `MMCU_BOARD` empty by default: there's no physical carrier
 being modeled, just the bare chip target. `cmsis` does the same for generic
-Cortex-M targets, but uses the Pico defaults for `rp2040-cmsis` and
-`rp2350-cmsis`.
+Cortex-M targets. Raspberry Pi Pico boards are compatible with
+`MMCU_PLATFORM=pico_sdk`, not the generic `cmsis` platform.
 
 An `MMCU_BOARD` value can name either a real purchasable board or a
 **board variant**: a deliberately modeled subset/profile of multiple real
@@ -129,7 +127,7 @@ A board file then declares facts only; no build commands:
 # boards/raspberry/pico/mmcu-board.yaml
 name: pico
 target: rp2040
-platforms: [pico_sdk, cmsis]
+platforms: [pico_sdk]
 buses: []
 rails: [3.3]
 connectors: [USB-MICRO-B, HEADER-0.1IN-20PIN-DUAL-CASTELLATED, SWD-3PIN-CASTELLATED]
@@ -151,7 +149,7 @@ links:
 name: pico-all
 virtual: true
 compatible_targets: [rp2040, rp2350]
-platforms: [pico_sdk, cmsis]
+platforms: [pico_sdk]
 buses: []
 rails: [3.3]
 ```
@@ -161,7 +159,7 @@ rails: [3.3]
 name: pico-w-all
 virtual: true
 compatible_targets: [rp2040, rp2350]
-platforms: [pico_sdk, cmsis]
+platforms: [pico_sdk]
 buses: [WIFI, BLUETOOTH]
 rails: [3.3]
 default_providers:
@@ -173,7 +171,7 @@ default_providers:
 # boards/raspberry/pico-w/mmcu-board.yaml
 name: pico-w
 target: rp2040
-platforms: [pico_sdk, cmsis]
+platforms: [pico_sdk]
 buses: [WIFI, BLUETOOTH]
 rails: [3.3]
 connectors: [USB-MICRO-B, HEADER-0.1IN-20PIN-DUAL-CASTELLATED, SWD-3PIN-CASTELLATED-CENTRAL]
@@ -197,9 +195,10 @@ The required `platforms` field is the direct compatibility check between a
 board declaration and `MMCU_PLATFORM`. `target`/`compatible_targets` answer
 "which chip target can this board host?"; `platforms` answers "which
 build-platform integration knows how to use this board?" For the current
-Raspberry Pi Pico declarations, that is `pico_sdk` and `cmsis`: pico-sdk
-uses the metadata for real SDK board selection, while cmsis uses the same
-metadata for target/board compatibility and dependency resolution.
+Raspberry Pi Pico declarations, that is `pico_sdk`: pico-sdk uses the
+metadata for real SDK board selection and dependency resolution. The
+generic `cmsis` platform uses CMSIS-Core for abstract Cortex-M targets and
+does not consume Raspberry Pi Pico board metadata.
 
 ## Power Supply (LDO/DC-DC)
 

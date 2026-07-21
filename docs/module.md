@@ -593,7 +593,7 @@ requires:
     type: host-tool
 metadata:
   supports:
-    targets: [rp2040, rp2350, rp2040-cmsis, rp2350-cmsis]
+    targets: [rp2040, rp2350]
     boards:
       - pico
       - pico-w

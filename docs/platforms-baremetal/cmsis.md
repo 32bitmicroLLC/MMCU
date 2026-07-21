@@ -61,14 +61,12 @@ descriptions, generated resolver solutions, or YAML schema contracts.
 ```bash
 ./configure.sh --platform cmsis --target cortex-m0
 ./configure.sh --platform cmsis --target cortex-m0plus
-./configure.sh --platform cmsis --target rp2040-cmsis
-./configure.sh --platform cmsis --target rp2350-cmsis
 ```
 
-The default CMSIS target is `cortex-m0`. The `rp2040-cmsis` and
-`rp2350-cmsis` targets are compile/link targets with CMSIS-Core plus MMCU's
-own startup and linker files; they do not use pico-sdk boot2, clock-tree
-setup, UF2 generation, or hardware HAL code.
+The default CMSIS target is `cortex-m0`. These are generic Arm Cortex-M
+targets with MMCU-owned startup/linker files and CMSIS-Core headers.
+Raspberry Pi Pico boards (`rp2040`, `rp2350`, `pico`, `pico-w`, etc.) are
+modeled by `MMCU_PLATFORM=pico_sdk`, not by the generic `cmsis` platform.
 
 ## Platform-local scripts
 
@@ -156,9 +154,11 @@ cpackget --pack-root "$CMSIS_PACK_ROOT" add ARM::CMSIS@6.3.0
 cpackget --pack-root "$CMSIS_PACK_ROOT" add RPi::RP2xxx_DFP
 ```
 
-`RPi::RP2xxx_DFP` is the Raspberry Pi RP2xxx device family pack used for
-pack-aware RP2040/RP2350 work. Plain `cortex-m0`/`cortex-m0plus` targets
-only need CMSIS-Core in the current CMake workflow.
+`RPi::RP2xxx_DFP` is useful for future pack-aware RP2040/RP2350 work through
+CMSIS-Toolbox-generated projects. It is not used by the current
+`MMCU_PLATFORM=pico_sdk` build and does not make Pico boards compatible with
+the generic `cmsis` platform. Plain `cortex-m0`/`cortex-m0plus` targets only
+need CMSIS-Core in the current CMake workflow.
 
 ## Build: current MMCU CMake mode
 
@@ -168,16 +168,6 @@ This is the implemented path today:
 ./platforms/cmsis/cmsis-build.sh \
   --target cortex-m0 \
   --compiler gcc \
-  --verbose
-```
-
-Raspberry Pi CMSIS-only targets:
-
-```bash
-./platforms/cmsis/cmsis-build.sh \
-  --target rp2040-cmsis \
-  --board pico \
-  --compiler clang \
   --verbose
 ```
 
@@ -282,8 +272,10 @@ csolution list contexts -s applications/main/mmcu.csolution.yml
 
 ## Mapping MMCU boards to CMSIS packs
 
-MMCU board declarations should eventually carry CMSIS compatibility facts
-next to their platform compatibility. Keep that data in YAML:
+Future CMSIS-Toolbox-generated projects for real vendor boards may need
+CMSIS compatibility facts next to their platform compatibility. Keep that
+data in YAML and do not confuse it with `platforms: [cmsis]` unless the
+generic CMSIS platform actually knows how to build that board:
 
 ```yaml
 cmsis:
@@ -297,7 +289,7 @@ This gives the CMSIS generator enough information to translate:
 
 ```text
 MMCU_BOARD=pico
-MMCU_TARGET=rp2040-cmsis
+MMCU_TARGET=rp2040
 ```
 
 into the CMSIS `target-types:` entry selected by `cbuild`.
@@ -365,11 +357,10 @@ platforms/cmsis/packs/
 ## Relationship to `mcu` and `pico_sdk`
 
 `mcu` remains the generic bare-metal platform and keeps the `emu` target.
-`cmsis` is the explicit CMSIS-Core platform for real Arm Cortex-M startup
-and linker integrations.
+`cmsis` is the explicit generic CMSIS-Core platform for real Arm Cortex-M
+startup and linker integrations.
 
 `pico_sdk` remains the platform for real Raspberry Pi Pico SDK boot and
-image generation. Its `rp2040` and `rp2350` targets require pico-sdk. The
-`rp2040-cmsis` and `rp2350-cmsis` targets are also valid under `pico_sdk`
-for backward compatibility, but new CMSIS-only workflows should prefer
-`--platform cmsis`.
+image generation. Its `rp2040` and `rp2350` targets require pico-sdk. Pico
+SDK may use CMSIS-style headers internally, but that is not the same thing
+as selecting `MMCU_PLATFORM=cmsis`.
