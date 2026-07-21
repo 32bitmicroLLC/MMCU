@@ -14,6 +14,8 @@
 ├── targets/
 ├── platforms/
 ├── libraries/
+├── drivers/
+├── modules/
 ├── docs/
 └── mkdocs.yml
 ```
@@ -36,5 +38,11 @@
   (`pico-sdk`, `cmsis`) — see [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md).
 - `libraries/`: functional/topical libraries (display drivers, protocols,
   ...), organized by topic — see [Libraries](libraries.md).
+- `drivers/`: drivers for specific hardware peripherals/devices (sensors,
+  motors, storage, ...), organized by device category — see
+  [Drivers](drivers.md).
+- `modules/`: generic, hardware-independent C++20 modules (containers,
+  algorithms, utility types) that `libraries/` and `drivers/` build on,
+  organized by topic — see [Modules](modules.md).
 - `mkdocs.yml`: MkDocs site configuration.
 - `docs/`: Markdown sources for project documentation.
