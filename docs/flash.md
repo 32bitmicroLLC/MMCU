@@ -102,6 +102,30 @@ In that case, put the board in BOOTSEL mode manually first (hold the
 BOOTSEL button while plugging in the USB cable, or while pressing reset),
 then re-run `./flash.sh`.
 
+## Known limitation: USB permissions (Linux)
+
+Even with a device correctly detected in BOOTSEL mode, `picotool` may
+refuse to open it as a non-root user:
+
+```text
+RP2040 device at bus 1, address 5 appears to be in BOOTSEL mode, but
+    picotool was unable to connect. Maybe try 'sudo' or check your
+    permissions.
+```
+
+This means there's no udev rule granting your user access to that USB
+device. Fix it once with:
+
+```bash
+./platforms/pico-sdk/pico-sdk-install.sh --udev-rules
+```
+
+This installs `raspberrypi/picotool`'s own `udev/60-picotool.rules`
+verbatim to `/etc/udev/rules.d/60-picotool.rules` and reloads udev — via
+`sudo`, so it only runs when you explicitly pass `--udev-rules` (never
+implicitly, including by `./flash.sh`). If a device is already plugged in,
+unplug and replug it (or re-enter BOOTSEL mode) afterward.
+
 ## Not implemented
 
 - `rp2040-cmsis`/`rp2350-cmsis` have no flash path (no `.uf2`; would need

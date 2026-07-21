@@ -7,6 +7,8 @@ PICOTOOL_PREFIX="."
 PICOTOOL_GIT_TAG="2.3.0"
 CLEAN=0
 SKIP_PICOTOOL=0
+UDEV_RULES=0
+UDEV_RULES_FILE="/etc/udev/rules.d/60-picotool.rules"
 
 usage() {
     cat <<'EOF'
@@ -20,6 +22,8 @@ Options:
                                 platforms/pico-sdk/ (default: .)
       --picotool-tag <tag>      picotool git tag to build (default: 2.3.0)
       --skip-picotool           Do not build/install picotool
+      --udev-rules              Install picotool's udev rules to
+                                /etc/udev/rules.d/ (requires sudo; see below)
   -c, --clean                   Remove existing pico-sdk checkout and
                                  picotool install before (re)installing
   -h, --help                    Show this help
@@ -40,6 +44,15 @@ Building picotool with USB support (needed for `picotool load`/`reboot`
 over USB) requires libusb-1.0 development headers and pkg-config on the
 host. Without --skip-picotool, pico-sdk's own CMake would otherwise fall
 back to building picotool from source itself with USB support disabled.
+
+--udev-rules installs picotool's own udev rules (verbatim, from
+raspberrypi/picotool's udev/60-picotool.rules) to
+/etc/udev/rules.d/60-picotool.rules via sudo, then reloads udev. Without
+this, picotool typically cannot open an RP2040/RP2350 device in BOOTSEL
+mode as a non-root user ("Maybe try 'sudo' or check your permissions."),
+even once the device is correctly detected. This is Linux-only and is
+never run implicitly by anything else in this repo (e.g. ./flash.sh) — it
+requires sudo, so it only runs when you explicitly pass this flag.
 EOF
 }
 
@@ -65,6 +78,10 @@ while [[ $# -gt 0 ]]; do
             SKIP_PICOTOOL=1
             shift
             ;;
+        --udev-rules)
+            UDEV_RULES=1
+            shift
+            ;;
         -c|--clean)
             CLEAN=1
             shift
@@ -88,6 +105,79 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+
+if [[ $UDEV_RULES -eq 1 ]]; then
+    if [[ "$(uname -s)" != "Linux" ]]; then
+        echo "Error: --udev-rules only applies on Linux." >&2
+        exit 1
+    fi
+    if ! command -v sudo >/dev/null 2>&1; then
+        echo "Error: sudo not found in PATH; install $UDEV_RULES_FILE manually as root instead." >&2
+        exit 1
+    fi
+
+    UDEV_RULES_TMP="$(mktemp)"
+
+    # Verbatim from raspberrypi/picotool's udev/60-picotool.rules (tag
+    # $PICOTOOL_GIT_TAG). Grants non-root USB access to RP2040/RP2350 in
+    # BOOTSEL mode: MODE=660 + plugdev group for non-systemd systems, plus
+    # a uaccess TAG for systemd-logind seat-based access.
+    cat > "$UDEV_RULES_TMP" <<'EOF'
+# Copy this file to /etc/udev/rules.d/
+# You can reload the udev rules with "udevadm control --reload"
+
+# Rules for plugdev access
+SUBSYSTEM=="usb", \
+    ATTRS{idVendor}=="2e8a", \
+    ATTRS{idProduct}=="0003", \
+    MODE="660", \
+    GROUP="plugdev"
+SUBSYSTEM=="usb", \
+    ATTRS{idVendor}=="2e8a", \
+    ATTRS{idProduct}=="0009", \
+    MODE="660", \
+    GROUP="plugdev"
+SUBSYSTEM=="usb", \
+    ATTRS{idVendor}=="2e8a", \
+    ATTRS{idProduct}=="000a", \
+    MODE="660", \
+    GROUP="plugdev"
+SUBSYSTEM=="usb", \
+    ATTRS{idVendor}=="2e8a", \
+    ATTRS{idProduct}=="000f", \
+    MODE="660", \
+    GROUP="plugdev"
+
+# Rules for seat access
+SUBSYSTEM=="usb", \
+    ATTRS{idVendor}=="2e8a", \
+    ATTRS{idProduct}=="0003", \
+    TAG+="uaccess"
+SUBSYSTEM=="usb", \
+    ATTRS{idVendor}=="2e8a", \
+    ATTRS{idProduct}=="0009", \
+    TAG+="uaccess"
+SUBSYSTEM=="usb", \
+    ATTRS{idVendor}=="2e8a", \
+    ATTRS{idProduct}=="000a", \
+    TAG+="uaccess"
+SUBSYSTEM=="usb", \
+    ATTRS{idVendor}=="2e8a", \
+    ATTRS{idProduct}=="000f", \
+    TAG+="uaccess"
+EOF
+
+    echo "==> sudo install -m 0644 <picotool udev rules> $UDEV_RULES_FILE"
+    sudo install -m 0644 "$UDEV_RULES_TMP" "$UDEV_RULES_FILE"
+    rm -f "$UDEV_RULES_TMP"
+
+    echo "==> sudo udevadm control --reload-rules && sudo udevadm trigger"
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger
+
+    echo "Installed $UDEV_RULES_FILE. If a device is already plugged in and" \
+        "picotool still can't access it, unplug/replug it (or re-enter BOOTSEL mode)."
+fi
 
 if [[ $CLEAN -eq 1 ]]; then
     rm -rf "$SDK_DIR" \
