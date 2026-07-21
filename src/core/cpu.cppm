@@ -4,7 +4,21 @@
 module;
 
 #if defined(MMCU_USE_CMSIS_CPU)
+// CMSIS' GCC compiler header defines a default __cmsis_start() helper when
+// __PROGRAM_START is unset. That helper declares linker-table externs using
+// local typedefs inside an inline function, which GCC rejects while compiling
+// this C++20 module interface unit. The CPU module only needs CMSIS compiler
+// intrinsics (__enable_irq, __WFE, __DSB, ...), not CMSIS startup selection, so
+// suppress that fallback locally before including cmsis_compiler.h.
+#if !defined(__PROGRAM_START)
+#define MMCU_CPU_DEFINED_CMSIS_PROGRAM_START 1
+#define __PROGRAM_START _start
+#endif
 #include "cmsis_compiler.h"
+#if defined(MMCU_CPU_DEFINED_CMSIS_PROGRAM_START)
+#undef __PROGRAM_START
+#undef MMCU_CPU_DEFINED_CMSIS_PROGRAM_START
+#endif
 #endif
 
 export module cpu;
