@@ -89,6 +89,24 @@ second time with none of them set and fails before the real build starts.
 discovery is pico-sdk's job, done via its own `pico_sdk_init.cmake`, not
 MMCU's.
 
+## `./configure.sh`
+
+`./configure.sh` wraps the variables above into a single configure-only
+entry point (it never builds):
+
+```bash
+./configure.sh                                              # native
+./configure.sh --platform mcu --target cortex-m0             # mcu, gcc (default)
+./configure.sh --platform mcu --target cortex-m0plus --compiler clang
+./configure.sh --platform mcu --target cortex-m0 --toolchain-file cmake/toolchains/arm-none-eabi-clang.cmake
+```
+
+`--compiler`/`--toolchain-file` only apply to `--platform mcu` (`native` has
+no toolchain file, `pico_sdk` manages its own). Build directories default to
+`build` (native), `build-<target>-<compiler>` (mcu), or `build-<target>`
+(pico_sdk), overridable with `--build-dir`. Run `./configure.sh --help` for
+the full option list, or `cmake --build <dir>` afterward to build.
+
 ## Direct CMake invocation
 
 ```bash
