@@ -107,6 +107,13 @@ no toolchain file, `pico_sdk` manages its own). Build directories default to
 (pico_sdk), overridable with `--build-dir`. Run `./configure.sh --help` for
 the full option list, or `cmake --build <dir>` afterward to build.
 
+`./configure.sh --interactive` (or `-i`) walks through the same choices as
+numbered menus instead of flags: platform, target (skipped when the platform
+has only one valid target), compiler (mcu only), CPU/CMSIS overrides, linker
+map, build type, build directory, and clean. It prints a summary before
+running `cmake`. Selecting `pico_sdk` warns that the target isn't
+implemented yet and asks for confirmation before configuring anyway.
+
 ## Direct CMake invocation
 
 ```bash

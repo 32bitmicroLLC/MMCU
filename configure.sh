@@ -17,6 +17,7 @@ BUILD_DIR=""
 BUILD_TYPE="Release"
 GENERATOR=""
 CLEAN=0
+INTERACTIVE=0
 
 usage() {
     cat <<'EOF'
@@ -43,6 +44,7 @@ Options:
   -b, --type <type>         CMAKE_BUILD_TYPE (default: Release)
   -G, --generator <name>    CMake generator (default: Ninja if available)
   -c, --clean               Remove build directory before configure
+  -i, --interactive         Prompt with numbered choices instead of flags
   -h, --help                Show this help
 
 Examples:
@@ -50,7 +52,179 @@ Examples:
   ./configure.sh --platform mcu --target cortex-m0
   ./configure.sh --platform mcu --target cortex-m0plus --compiler clang
   ./configure.sh --platform mcu --target cortex-m0 --toolchain-file cmake/toolchains/arm-none-eabi-clang.cmake
+  ./configure.sh --interactive
 EOF
+}
+
+# Prompts with a numbered menu. Args: question, default_index (1-based),
+# option... Prints the menu to stderr, echoes the chosen 1-based index to
+# stdout so callers can do: choice=$(prompt_choice "..." 1 "a" "b")
+prompt_choice() {
+    local question="$1" default="$2"
+    shift 2
+    local options=("$@")
+    local i choice
+
+    echo "$question" >&2
+    for i in "${!options[@]}"; do
+        printf '  %d) %s\n' "$((i + 1))" "${options[$i]}" >&2
+    done
+
+    while true; do
+        read -r -p "Choice [$default]: " choice
+        choice="${choice:-$default}"
+        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#options[@]} )); then
+            echo "$choice"
+            return 0
+        fi
+        echo "Invalid choice, enter a number from 1 to ${#options[@]}." >&2
+    done
+}
+
+# Prompts for free text with a default. Args: question, default.
+prompt_default() {
+    local question="$1" default="$2" answer
+    read -r -p "$question [$default]: " answer
+    echo "${answer:-$default}"
+}
+
+# Prompts for yes/no. Args: question, default ("y" or "n"). Returns 0 for yes.
+prompt_yes_no() {
+    local question="$1" default="$2" answer suffix
+    if [[ "$default" == "y" ]]; then suffix="[Y/n]"; else suffix="[y/N]"; fi
+    read -r -p "$question $suffix: " answer
+    answer="${answer:-$default}"
+    [[ "$answer" =~ ^[Yy] ]]
+}
+
+run_interactive() {
+    if [[ ! -t 0 ]]; then
+        echo "Error: --interactive requires an interactive terminal (stdin is not a tty)." >&2
+        exit 1
+    fi
+
+    echo "MMCU interactive configuration (docs/configure.md)"
+    echo "===================================================="
+
+    local platform_values=(native mcu pico_sdk)
+    local platform_labels=(
+        "native   - host build, emu target"
+        "mcu      - bare-metal ARM (CMSIS-based): emu, cortex-m0, cortex-m0plus"
+        "pico_sdk - bare-metal RP2040/RP2350 (target module not implemented yet)"
+    )
+    local platform_default=1
+    case "$PLATFORM" in
+        mcu) platform_default=2 ;;
+        pico_sdk) platform_default=3 ;;
+    esac
+    local idx
+    idx="$(prompt_choice "Select MMCU_PLATFORM:" "$platform_default" "${platform_labels[@]}")"
+    PLATFORM="${platform_values[$((idx - 1))]}"
+
+    local target_values=() target_labels=()
+    case "$PLATFORM" in
+        native)
+            target_values=(emu)
+            target_labels=("emu - placeholder GPIO/UART target")
+            ;;
+        mcu)
+            target_values=(emu cortex-m0 cortex-m0plus)
+            target_labels=(
+                "emu           - placeholder GPIO/UART target, no CMSIS required"
+                "cortex-m0     - CMSIS-based Cortex-M0 target"
+                "cortex-m0plus - CMSIS-based Cortex-M0+ target"
+            )
+            ;;
+        pico_sdk)
+            target_values=(rp2040 rp2350)
+            target_labels=(
+                "rp2040 - not implemented yet, configure will fail with a clear error"
+                "rp2350 - not implemented yet, configure will fail with a clear error"
+            )
+            ;;
+    esac
+
+    if [[ ${#target_values[@]} -eq 1 ]]; then
+        TARGET="${target_values[0]}"
+        echo "MMCU_TARGET: $TARGET (only option for $PLATFORM)"
+    else
+        local target_default=1
+        for i in "${!target_values[@]}"; do
+            [[ "${target_values[$i]}" == "$TARGET" ]] && target_default=$((i + 1))
+        done
+        idx="$(prompt_choice "Select MMCU_TARGET:" "$target_default" "${target_labels[@]}")"
+        TARGET="${target_values[$((idx - 1))]}"
+    fi
+
+    if [[ "$PLATFORM" == "mcu" ]]; then
+        local compiler_values=(gcc clang)
+        local compiler_labels=(
+            "gcc   - arm-none-eabi-gcc/g++"
+            "clang - clang/clang++ targeting arm-none-eabi"
+        )
+        local compiler_default=1
+        [[ "$COMPILER" == "clang" ]] && compiler_default=2
+        idx="$(prompt_choice "Select compiler toolchain:" "$compiler_default" "${compiler_labels[@]}")"
+        COMPILER="${compiler_values[$((idx - 1))]}"
+        TOOLCHAIN_FILE=""
+
+        CPU="$(prompt_default "ARM CPU for -mcpu (blank = derive from target)" "$CPU")"
+
+        if [[ "$TARGET" == "cortex-m0" || "$TARGET" == "cortex-m0plus" ]]; then
+            CMSIS_DIR="$(prompt_default "CMSIS_6 checkout path (blank = auto-clone into third_party/CMSIS_6)" "$CMSIS_DIR")"
+        fi
+
+        if prompt_yes_no "Enable linker map + cross-reference (MMCU_LINKER_MAP)?" "n"; then
+            LINKER_MAP=1
+        else
+            LINKER_MAP=0
+        fi
+    elif [[ "$PLATFORM" == "pico_sdk" ]]; then
+        echo "Note: the ${TARGET} target module is not implemented yet;"
+        echo "configure will fail with a FATAL_ERROR pointing at docs/platforms-baremetal/pico-sdk.md."
+        if ! prompt_yes_no "Continue anyway?" "y"; then
+            echo "Aborted."
+            exit 0
+        fi
+    fi
+
+    local type_values=(Release Debug RelWithDebInfo MinSizeRel)
+    local type_labels=("Release" "Debug" "RelWithDebInfo" "MinSizeRel")
+    local type_default=1
+    for i in "${!type_values[@]}"; do
+        [[ "${type_values[$i]}" == "$BUILD_TYPE" ]] && type_default=$((i + 1))
+    done
+    idx="$(prompt_choice "Select CMAKE_BUILD_TYPE:" "$type_default" "${type_labels[@]}")"
+    BUILD_TYPE="${type_values[$((idx - 1))]}"
+
+    local default_build_dir
+    if [[ "$PLATFORM" == "native" ]]; then
+        default_build_dir="build"
+    elif [[ "$PLATFORM" == "mcu" ]]; then
+        default_build_dir="build-${TARGET}-${COMPILER}"
+    else
+        default_build_dir="build-${TARGET}"
+    fi
+    BUILD_DIR="$(prompt_default "Build directory" "${BUILD_DIR:-$default_build_dir}")"
+
+    if prompt_yes_no "Remove existing build directory first (--clean)?" "n"; then
+        CLEAN=1
+    else
+        CLEAN=0
+    fi
+
+    echo
+    echo "Summary:"
+    echo "  MMCU_PLATFORM = $PLATFORM"
+    echo "  MMCU_TARGET   = $TARGET"
+    [[ "$PLATFORM" == "mcu" ]] && echo "  compiler      = $COMPILER"
+    [[ -n "$CPU" ]] && echo "  MMCU_CPU      = $CPU"
+    [[ -n "$CMSIS_DIR" ]] && echo "  MMCU_CMSIS_DIR = $CMSIS_DIR"
+    [[ $LINKER_MAP -eq 1 ]] && echo "  MMCU_LINKER_MAP = ON"
+    echo "  build type    = $BUILD_TYPE"
+    echo "  build dir     = $BUILD_DIR"
+    [[ $CLEAN -eq 1 ]] && echo "  clean         = yes"
+    echo
 }
 
 while [[ $# -gt 0 ]]; do
@@ -119,6 +293,10 @@ while [[ $# -gt 0 ]]; do
             CLEAN=1
             shift
             ;;
+        -i|--interactive)
+            INTERACTIVE=1
+            shift
+            ;;
         -h|--help)
             usage
             exit 0
@@ -130,6 +308,10 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [[ $INTERACTIVE -eq 1 ]]; then
+    run_interactive
+fi
 
 case "$PLATFORM" in
     native|mcu|pico_sdk)
