@@ -1,0 +1,43 @@
+schema: mmcu.boards/v1
+name: raspberry
+title: Raspberry Pi boards
+vendor: Raspberry Pi Ltd
+description: >
+  Raspberry Pi microcontroller boards and virtual common-subset board
+  variants supported by MMCU.
+
+boards:
+  - name: pico
+    path: pico/mmcu-board.yaml
+  - name: pico-h
+    path: pico-h/mmcu-board.yaml
+  - name: pico-w
+    path: pico-w/mmcu-board.yaml
+  - name: pico-wh
+    path: pico-wh/mmcu-board.yaml
+  - name: pico-all
+    path: pico-all/mmcu-board.yaml
+  - name: pico-w-all
+    path: pico-w-all/mmcu-board.yaml
+  - name: pico2
+    path: pico2/mmcu-board.yaml
+  - name: pico2-with-headers
+    path: pico2-with-headers/mmcu-board.yaml
+  - name: pico2-w
+    path: pico2-w/mmcu-board.yaml
+  - name: pico2-w-with-headers
+    path: pico2-w-with-headers/mmcu-board.yaml
+
+links:
+  documentation:
+    - label: Raspberry Pi Pico-series documentation
+      url: https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html
+    - label: Raspberry Pi Pico product page
+      url: https://www.raspberrypi.com/products/raspberry-pi-pico/
+    - label: Raspberry Pi Pico 2 product page
+      url: https://www.raspberrypi.com/products/raspberry-pi-pico-2/
+  support_repositories:
+    - label: raspberrypi/pico-sdk
+      url: https://github.com/raspberrypi/pico-sdk
+    - label: raspberrypi/pico-examples
+      url: https://github.com/raspberrypi/pico-examples

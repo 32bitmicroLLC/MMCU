@@ -1,8 +1,11 @@
-# Raspberry Pi Pico 2 W: a board variant of MMCU_TARGET=rp2350, adding the
-# CYW43439 wireless chip. Same connector population style as Pico W.
+# Raspberry Pi Pico W: a board variant of MMCU_TARGET=rp2040 (same chip,
+# same MMCU_TARGET), adding the CYW43439 wireless chip -- the worked
+# example in docs/board.md for how MMCU_BOARD varies independently of
+# MMCU_TARGET rather than needing a new target.
 
-name: pico2-w
-target: rp2350
+name: pico-w
+target: rp2040
+platforms: [pico_sdk]
 
 power:
   regulation: DC-DC          # onboard buck-boost switching regulator (not LDO)
@@ -36,8 +39,8 @@ links:
   documentation:
     - label: Raspberry Pi Pico-series documentation
       url: https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html
-    - label: Raspberry Pi Pico 2 product page
-      url: https://www.raspberrypi.com/products/raspberry-pi-pico-2/
+    - label: Raspberry Pi Pico product page
+      url: https://www.raspberrypi.com/products/raspberry-pi-pico/
   support_repositories:
     - label: raspberrypi/pico-sdk
       url: https://github.com/raspberrypi/pico-sdk

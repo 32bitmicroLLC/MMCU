@@ -186,15 +186,135 @@ def check_min_version(package: Package, dep: Dependency) -> None:
         )
 
 
-def load_board_manifest(root: Path, board: str, target: str) -> dict[str, Any]:
+def require_string_field(data: dict[str, Any], field_name: str, context: str) -> str:
+    value = data.get(field_name)
+    if not isinstance(value, str) or not value:
+        raise ResolveError(f"{context}: missing string field '{field_name}'")
+    return value
+
+
+def board_manifest_index(root: Path) -> dict[str, Path]:
+    registry_path = root / "boards" / "mmcu-boards.yaml"
+    if not registry_path.exists():
+        return {}
+
+    registry = load_yaml(registry_path)
+    if not isinstance(registry, dict):
+        raise ResolveError(f"{rel(registry_path, root)}: board registry must be a mapping")
+    if registry.get("schema") != "mmcu.board-collections/v1":
+        raise ResolveError(f"{rel(registry_path, root)}: expected schema: mmcu.board-collections/v1")
+
+    raw_collections = registry.get("collections")
+    if not isinstance(raw_collections, list):
+        raise ResolveError(f"{rel(registry_path, root)}: collections must be a list")
+
+    index: dict[str, Path] = {}
+    for raw_collection in raw_collections:
+        if not isinstance(raw_collection, dict):
+            raise ResolveError(f"{rel(registry_path, root)}: collection entries must be mappings")
+        collection_name = require_string_field(raw_collection, "name", rel(registry_path, root))
+        collection_rel_path = require_string_field(raw_collection, "path", rel(registry_path, root))
+        collection_path = root / "boards" / collection_rel_path
+        if not collection_path.exists():
+            raise ResolveError(
+                f"{rel(registry_path, root)}: collection '{collection_name}' "
+                f"points to missing {rel(collection_path, root)}"
+            )
+
+        collection = load_yaml(collection_path)
+        if not isinstance(collection, dict):
+            raise ResolveError(f"{rel(collection_path, root)}: board collection must be a mapping")
+        if collection.get("schema") != "mmcu.boards/v1":
+            raise ResolveError(f"{rel(collection_path, root)}: expected schema: mmcu.boards/v1")
+        declared_name = require_string_field(collection, "name", rel(collection_path, root))
+        if declared_name != collection_name:
+            raise ResolveError(
+                f"{rel(collection_path, root)}: collection name '{declared_name}' "
+                f"does not match registry entry '{collection_name}'"
+            )
+
+        raw_boards = collection.get("boards")
+        if not isinstance(raw_boards, list):
+            raise ResolveError(f"{rel(collection_path, root)}: boards must be a list")
+        for raw_board in raw_boards:
+            if not isinstance(raw_board, dict):
+                raise ResolveError(f"{rel(collection_path, root)}: board entries must be mappings")
+            board_name = require_string_field(raw_board, "name", rel(collection_path, root))
+            board_rel_path = require_string_field(raw_board, "path", rel(collection_path, root))
+            manifest_path = collection_path.parent / board_rel_path
+            if not manifest_path.exists():
+                raise ResolveError(
+                    f"{rel(collection_path, root)}: board '{board_name}' "
+                    f"points to missing {rel(manifest_path, root)}"
+                )
+            if board_name in index:
+                raise ResolveError(f"duplicate board name '{board_name}' across board collections")
+            index[board_name] = manifest_path
+
+    return index
+
+
+def board_manifest_path(root: Path, board: str) -> Path:
+    index = board_manifest_index(root)
+    if board in index:
+        return index[board]
+    known = ", ".join(sorted(index)) if index else "(none)"
+    raise ResolveError(f"unknown board '{board}'; known boards: {known}")
+
+
+def board_resolution_inputs(root: Path, board: str) -> list[Path]:
+    if not board:
+        return []
+
+    registry_path = root / "boards" / "mmcu-boards.yaml"
+    if not registry_path.exists():
+        return []
+
+    inputs = [registry_path]
+    registry = load_yaml(registry_path)
+    if not isinstance(registry, dict):
+        return inputs
+    raw_collections = registry.get("collections")
+    if not isinstance(raw_collections, list):
+        return inputs
+
+    for raw_collection in raw_collections:
+        if not isinstance(raw_collection, dict):
+            continue
+        collection_rel_path = raw_collection.get("path")
+        if not isinstance(collection_rel_path, str):
+            continue
+        collection_path = root / "boards" / collection_rel_path
+        if not collection_path.exists():
+            continue
+        collection = load_yaml(collection_path)
+        if not isinstance(collection, dict):
+            continue
+        raw_boards = collection.get("boards")
+        if not isinstance(raw_boards, list):
+            continue
+        if any(isinstance(raw_board, dict) and raw_board.get("name") == board for raw_board in raw_boards):
+            inputs.append(collection_path)
+            break
+
+    return inputs
+
+
+def load_board_manifest(root: Path, board: str, platform: str, target: str) -> dict[str, Any]:
     if not board:
         return {}
-    path = root / "boards" / board / "mmcu-board.yaml"
-    if not path.exists():
-        raise ResolveError(f"unknown board '{board}': expected {rel(path, root)}")
+    path = board_manifest_path(root, board)
     data = load_yaml(path)
     if not isinstance(data, dict):
         raise ResolveError(f"{rel(path, root)}: board manifest must be a mapping")
+    platforms = data.get("platforms")
+    if not isinstance(platforms, list) or not all(isinstance(item, str) for item in platforms):
+        raise ResolveError(f"{rel(path, root)}: platforms must be a list of strings")
+    if platform not in platforms:
+        raise ResolveError(
+            f"{rel(path, root)}: board supports platforms "
+            f"{', '.join(platforms)}, but MMCU_PLATFORM={platform}"
+        )
     chip = TARGET_CHIPS.get(target, target)
     exact_target = data.get("target")
     compatible_targets = data.get("compatible_targets")
@@ -345,7 +465,8 @@ def write_solution(
 ) -> None:
     input_paths = [app, *(package.manifest for package in resolved_packages)]
     if board:
-        board_manifest = root / "boards" / board / "mmcu-board.yaml"
+        input_paths.extend(board_resolution_inputs(root, board))
+        board_manifest = board_manifest_path(root, board)
         if board_manifest.exists():
             input_paths.append(board_manifest)
 
@@ -416,8 +537,8 @@ def main() -> int:
         app_name = str(app_data.get("name") or "mmcu_app")
         app_depends = parse_depends(app_data.get("depends"), rel(app, root))
 
-        board_data = load_board_manifest(root, board, args.target)
-        board_path = rel(root / "boards" / board / "mmcu-board.yaml", root) if board else "<none>"
+        board_data = load_board_manifest(root, board, args.platform, args.target)
+        board_path = rel(board_manifest_path(root, board), root) if board else "<none>"
 
         packages, providers = collect_packages(root)
         requirements, resolved_packages = resolve_graph(

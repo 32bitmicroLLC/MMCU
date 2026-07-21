@@ -1,0 +1,133 @@
+# MMCU YAML schema description for board collection registries.
+#
+# Tooling loads these files with PyYAML and validates them with Pydantic.
+
+schema: mmcu.schema/v1
+name: mmcu-boards
+file_name: mmcu-boards.yaml
+applies_to:
+  - boards/mmcu-boards.yaml
+  - boards/*/mmcu-boards.yaml
+
+description: >
+  Board registry files. The global registry lists board collections; each
+  collection registry lists concrete and virtual board declarations owned
+  by that collection.
+
+rules:
+  unknown_fields: reject
+  variants:
+    - schema: mmcu.board-collections/v1
+      description: Global board collection registry.
+    - schema: mmcu.boards/v1
+      description: One board collection registry.
+
+global_registry:
+  required_schema: mmcu.board-collections/v1
+  fields:
+    schema:
+      type: enum
+      required: true
+      enum: [mmcu.board-collections/v1]
+    name:
+      type: str
+      required: true
+      pattern: "^[a-z0-9][a-z0-9-]*$"
+    description:
+      type: str
+      required: false
+    collections:
+      type: list[collection_ref]
+      required: true
+      min_items: 1
+      unique_by: [name, path]
+
+collection_registry:
+  required_schema: mmcu.boards/v1
+  fields:
+    schema:
+      type: enum
+      required: true
+      enum: [mmcu.boards/v1]
+    name:
+      type: str
+      required: true
+      pattern: "^[a-z0-9][a-z0-9-]*$"
+    title:
+      type: str
+      required: true
+      min_length: 1
+    vendor:
+      type: str
+      required: false
+    description:
+      type: str
+      required: false
+    boards:
+      type: list[board_ref]
+      required: true
+      min_items: 1
+      unique_by: [name, path]
+    links:
+      type: object
+      required: false
+      schema: links
+
+schemas:
+  collection_ref:
+    unknown_fields: reject
+    fields:
+      name:
+        type: str
+        required: true
+        pattern: "^[a-z0-9][a-z0-9-]*$"
+      title:
+        type: str
+        required: true
+        min_length: 1
+      path:
+        type: relative_path
+        required: true
+        description: Path relative to boards/.
+
+  board_ref:
+    unknown_fields: reject
+    fields:
+      name:
+        type: str
+        required: true
+        pattern: "^[a-z0-9][a-z0-9-]*$"
+      path:
+        type: relative_path
+        required: true
+        description: Path relative to this collection registry.
+
+  links:
+    unknown_fields: reject
+    fields:
+      documentation:
+        type: list[link]
+        required: true
+        min_items: 1
+      support_repositories:
+        type: list[link]
+        required: true
+        min_items: 1
+
+  link:
+    unknown_fields: reject
+    fields:
+      label:
+        type: str
+        required: true
+        min_length: 1
+      url:
+        type: url
+        required: true
+
+validators:
+  - every collection path listed by boards/mmcu-boards.yaml must exist
+  - every collection file's name must match its global registry entry
+  - every board path listed by a collection must exist
+  - every board file's name must match its collection entry
+  - board names must be globally unique across all collections

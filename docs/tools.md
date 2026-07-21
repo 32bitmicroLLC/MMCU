@@ -188,7 +188,7 @@ Common commands:
 ```sh
 . ./venv/bin/activate
 python tools/validate-yaml.py
-yamale -s yaml/mmcu-board.yamale.yaml boards
+yamale -s yaml/mmcu-board.yamale.yaml boards/raspberry/pico/mmcu-board.yaml
 ```
 
 The Pydantic validator is the authoritative YAML validation path. Yamale is

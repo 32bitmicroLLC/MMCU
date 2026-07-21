@@ -1,9 +1,10 @@
-# Raspberry Pi Pico H: Raspberry Pi Pico with presoldered headers and a
-# keyed debug connector. Same RP2040 target and electrical capabilities as
-# the plain Pico; only the physical connector population changes.
+# Raspberry Pi Pico 2: the default board for MMCU_TARGET=rp2350.
+# Facets described in docs/board.md; this is the default MMCU_BOARD
+# declaration for RP2350-family builds.
 
-name: pico-h
-target: rp2040
+name: pico2
+target: rp2350
+platforms: [pico_sdk]
 
 power:
   regulation: DC-DC          # onboard buck-boost switching regulator (not LDO)
@@ -21,15 +22,15 @@ buses: []                    # no onboard transceivers/radios
 
 connectors:
   - USB-MICRO-B
-  - HEADER-0.1IN-20PIN-DUAL-PRESOLDERED
-  - SWD-3PIN-JST-STYLE
+  - HEADER-0.1IN-20PIN-DUAL-CASTELLATED
+  - SWD-3PIN-CASTELLATED
 
 links:
   documentation:
     - label: Raspberry Pi Pico-series documentation
       url: https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html
-    - label: Raspberry Pi Pico product page
-      url: https://www.raspberrypi.com/products/raspberry-pi-pico/
+    - label: Raspberry Pi Pico 2 product page
+      url: https://www.raspberrypi.com/products/raspberry-pi-pico-2/
   support_repositories:
     - label: raspberrypi/pico-sdk
       url: https://github.com/raspberrypi/pico-sdk

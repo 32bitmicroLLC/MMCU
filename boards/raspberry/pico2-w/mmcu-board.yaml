@@ -1,9 +1,9 @@
-# Raspberry Pi Pico 2 with headers: Pico 2 with presoldered headers and a
-# keyed debug connector. Same RP2350 target and electrical capabilities as
-# the plain Pico 2; only the physical connector population changes.
+# Raspberry Pi Pico 2 W: a board variant of MMCU_TARGET=rp2350, adding the
+# CYW43439 wireless chip. Same connector population style as Pico W.
 
-name: pico2-with-headers
+name: pico2-w
 target: rp2350
+platforms: [pico_sdk]
 
 power:
   regulation: DC-DC          # onboard buck-boost switching regulator (not LDO)
@@ -12,17 +12,26 @@ power:
 rails: [3.3]                 # volts, what the board actually supplies
 
 analog_io:
-  adc_channels_broken_out: 3   # ADC0-ADC2 on GP26-GP28 (ADC3 is internal, VSYS/3)
+  adc_channels_broken_out: 3   # ADC0-ADC2 on GP26-GP28; VSYS monitor is shared
 
 digital_io:
   gpio_broken_out: 26          # GP0-GP22 and GP26-GP28 on the edge pins
+  internal_pins:
+    - GP23                     # CYW43439 power control
+    - GP24                     # CYW43439 data/IRQ sharing
+    - GP25                     # CYW43439 chip select; LED is on CYW43439 GPIO
+    - GP29                     # VSYS monitor, shared with wireless SPI clock
 
-buses: []                    # no onboard transceivers/radios
+buses: [WIFI, BLUETOOTH]
 
 connectors:
   - USB-MICRO-B
-  - HEADER-0.1IN-20PIN-DUAL-PRESOLDERED
-  - SWD-3PIN-JST-STYLE
+  - HEADER-0.1IN-20PIN-DUAL-CASTELLATED
+  - SWD-3PIN-CASTELLATED-CENTRAL
+
+default_providers:
+  wifi: cyw43439
+  bluetooth: cyw43439
 
 links:
   documentation:

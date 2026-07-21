@@ -334,9 +334,10 @@ candidate:
    concrete package directly (`depends: [{name: bmi270, version: 1.0.0}]`)
    instead of the capability.
 2. **Board default**: a board may declare a default provider per
-   capability, e.g. in a `boards/<name>/mmcu-board.yaml`:
+   capability, e.g. in a `boards/raspberry/<name>/mmcu-board.yaml`:
    ```yaml
-   # boards/pico-w/mmcu-board.yaml
+   # boards/raspberry/pico-w/mmcu-board.yaml
+   platforms: [pico_sdk]
    default_providers:
      wifi: cyw43439
    ```

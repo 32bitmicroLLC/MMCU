@@ -103,6 +103,128 @@ prompt_yes_no() {
     [[ "$answer" =~ ^[Yy] ]]
 }
 
+default_board_for_target() {
+    case "$1" in
+        rp2040|rp2040-cmsis)
+            echo "pico"
+            ;;
+        rp2350|rp2350-cmsis)
+            echo "pico2"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+list_compatible_boards() {
+    local platform="$1" target="$2" repo_root python_bin
+    repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    if [[ -x "$repo_root/venv/bin/python" ]]; then
+        python_bin="$repo_root/venv/bin/python"
+    elif command -v python3 >/dev/null 2>&1; then
+        python_bin="$(command -v python3)"
+    else
+        return 0
+    fi
+
+    "$python_bin" - "$repo_root" "$platform" "$target" <<'PY'
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+except ModuleNotFoundError:
+    raise SystemExit(0)
+
+root = Path(sys.argv[1])
+platform = sys.argv[2]
+target = sys.argv[3]
+target_chips = {
+    "rp2040": "rp2040",
+    "rp2040-cmsis": "rp2040",
+    "rp2350": "rp2350",
+    "rp2350-cmsis": "rp2350",
+}
+chip = target_chips.get(target, target)
+
+registry_path = root / "boards" / "mmcu-boards.yaml"
+if not registry_path.exists():
+    raise SystemExit(0)
+
+with registry_path.open("r", encoding="utf-8") as handle:
+    registry = yaml.safe_load(handle) or {}
+
+for collection_ref in registry.get("collections") or []:
+    collection_path = root / "boards" / str(collection_ref.get("path", ""))
+    if not collection_path.exists():
+        continue
+    with collection_path.open("r", encoding="utf-8") as handle:
+        collection = yaml.safe_load(handle) or {}
+    for board_ref in collection.get("boards") or []:
+        name = str(board_ref.get("name", ""))
+        board_path = collection_path.parent / str(board_ref.get("path", ""))
+        if not name or not board_path.exists():
+            continue
+        with board_path.open("r", encoding="utf-8") as handle:
+            board = yaml.safe_load(handle) or {}
+        if platform not in (board.get("platforms") or []):
+            continue
+        target_label = ""
+        if board.get("virtual"):
+            compatible_targets = board.get("compatible_targets") or []
+            if chip not in compatible_targets:
+                continue
+            target_label = "/".join(compatible_targets) + ", virtual"
+        else:
+            board_target = str(board.get("target", ""))
+            if board_target != chip:
+                continue
+            target_label = board_target
+        print(f"{name}\t{name} - {target_label}")
+PY
+}
+
+prompt_board_choice() {
+    local default_board blank_label default_index idx row name label
+    local board_values=() board_labels=() board_rows=()
+
+    default_board="$(default_board_for_target "$TARGET")"
+    if [[ -n "$default_board" ]]; then
+        blank_label="blank - derive target default ($default_board)"
+    else
+        blank_label="blank - no board"
+    fi
+
+    mapfile -t board_rows < <(list_compatible_boards "$PLATFORM" "$TARGET")
+    if [[ ${#board_rows[@]} -eq 0 ]]; then
+        BOARD="$(prompt_default "MMCU_BOARD override (blank = derive from target)" "$BOARD")"
+        return
+    fi
+
+    board_values=("")
+    board_labels=("$blank_label")
+    for row in "${board_rows[@]}"; do
+        IFS=$'\t' read -r name label <<< "$row"
+        [[ -z "$name" || -z "$label" ]] && continue
+        board_values+=("$name")
+        board_labels+=("$label")
+    done
+
+    default_index=1
+    if [[ -n "$BOARD" ]]; then
+        for i in "${!board_values[@]}"; do
+            [[ "${board_values[$i]}" == "$BOARD" ]] && default_index=$((i + 1))
+        done
+    fi
+
+    idx="$(prompt_choice "Select MMCU_BOARD:" "$default_index" "${board_labels[@]}")"
+    BOARD="${board_values[$((idx - 1))]}"
+}
+
 run_interactive() {
     if [[ ! -t 0 ]]; then
         echo "Error: --interactive requires an interactive terminal (stdin is not a tty)." >&2
@@ -170,7 +292,7 @@ run_interactive() {
     fi
 
     if [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "pico_sdk" ]]; then
-        BOARD="$(prompt_default "MMCU_BOARD override (blank = derive from target)" "$BOARD")"
+        prompt_board_choice
 
         local compiler_values=(gcc clang)
         local compiler_labels=(

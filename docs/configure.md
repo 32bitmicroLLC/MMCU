@@ -71,8 +71,9 @@ few minutes.
   it's filled in before `project()` runs.
 - If `MMCU_BOARD` is not set, Pico-series targets fill it from the default
   board table in [Modular Board](board.md). If it is set, the YAML
-  resolver validates it against `boards/<name>/mmcu-board.yaml` during
-  configure.
+  resolver finds it through `boards/mmcu-boards.yaml` and the relevant
+  collection registry, then validates during configure that the board
+  declaration supports both `MMCU_PLATFORM` and `MMCU_TARGET`.
 
 ## Why platform is resolved before `project()`
 
@@ -156,8 +157,11 @@ selected target. Run `cmake --build <dir>` afterward to build.
 numbered menus instead of flags: platform, target (skipped when the platform
 has only one valid target), board override, compiler (mcu/pico_sdk, forced
 to gcc for `rp2040`/`rp2350`), CPU/CMSIS overrides, linker map, build
-type, build directory, and clean. It prints a summary before running
-`cmake`.
+type, build directory, and clean. The board prompt reads the board
+registry and shows only boards compatible with the selected
+`MMCU_PLATFORM`/`MMCU_TARGET`; if no compatible boards are discoverable, it
+falls back to the free-text blank-by-default prompt. It prints a summary
+before running `cmake`.
 
 After configuring, `./configure.sh` writes `.config` (repo root,
 git-ignored) recording

@@ -4,6 +4,7 @@
 
 name: pico
 target: rp2040
+platforms: [pico_sdk]
 
 power:
   regulation: DC-DC          # onboard buck-boost switching regulator (not LDO)

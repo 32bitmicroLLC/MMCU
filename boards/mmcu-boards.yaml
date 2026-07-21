@@ -1,0 +1,10 @@
+schema: mmcu.board-collections/v1
+name: boards
+description: >
+  Global MMCU board collection registry. Each collection groups board
+  declarations owned by one vendor, project, or board family namespace.
+
+collections:
+  - name: raspberry
+    title: Raspberry Pi boards
+    path: raspberry/mmcu-boards.yaml

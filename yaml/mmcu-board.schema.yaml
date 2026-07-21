@@ -1,4 +1,4 @@
-# MMCU YAML schema description for boards/*/mmcu-board.yaml.
+# MMCU YAML schema description for boards/**/mmcu-board.yaml.
 #
 # Tooling loads this file with PyYAML and uses it as the source of truth
 # for Pydantic validation models.
@@ -7,7 +7,7 @@ schema: mmcu.schema/v1
 name: mmcu-board
 file_name: mmcu-board.yaml
 applies_to:
-  - boards/*/mmcu-board.yaml
+  - boards/**/mmcu-board.yaml
 
 description: >
   Board declaration used by MMCU's proposed board resolver. A board may be a
@@ -19,10 +19,10 @@ rules:
   identity:
     one_of:
       - description: Real board
-        required: [name, target]
+        required: [name, target, platforms]
         forbidden: [compatible_targets]
       - description: Virtual board variant
-        required: [name, virtual, compatible_targets]
+        required: [name, virtual, compatible_targets, platforms]
         required_values:
           virtual: true
         forbidden: [target]
@@ -52,6 +52,14 @@ fields:
     unique_items: true
     item_pattern: "^[a-z0-9][a-z0-9-]*$"
     description: Concrete targets this virtual board profile can represent.
+
+  platforms:
+    type: list[enum]
+    required: true
+    min_items: 1
+    unique_items: true
+    enum: [native, mcu, pico_sdk]
+    description: MMCU_PLATFORM values that may use this board declaration.
 
   power:
     type: object

@@ -19,10 +19,13 @@ board
 
 **Status**: `MMCU_BOARD` is a real CMake cache variable and
 `configure.sh --board <name>` passes it through. The YAML resolver reads
-`boards/<name>/mmcu-board.yaml`, validates that the board is compatible
-with `MMCU_TARGET`, and uses `default_providers` during capability
-resolution. The deeper electrical facets below remain metadata for later
-checks, same status as [Modular Target](target.md)'s non-CPU-core facets.
+the global board registry (`boards/mmcu-boards.yaml`), follows collection
+registries such as `boards/raspberry/mmcu-boards.yaml`, then loads the
+selected board declaration, validates that the board is compatible with
+both `MMCU_PLATFORM` and `MMCU_TARGET`, and uses `default_providers`
+during capability resolution. The deeper electrical facets below remain
+metadata for later checks, same status as
+[Modular Target](target.md)'s non-CPU-core facets.
 
 ## Board selection: `MMCU_BOARD`, defaulted from `MMCU_TARGET`
 
@@ -77,15 +80,52 @@ schema are:
 | `pico2-w` | `rp2350` | Pico 2 W with CYW43439 Wi-Fi/Bluetooth |
 | `pico2-w-with-headers` | `rp2350` | Pico 2 W with presoldered headers and keyed SWD connector |
 
-A board's facets are declared the same way a target's are — a per-board
-block in `CMakeLists.txt`, or (in the [Dependency DSL](dependency-dsl.md)
-evolution) a `boards/<name>/mmcu-board.yaml`. The YAML schema contract is
-documented in [YAML Schemas](yaml.md) and stored in
+Board declarations are discovered through the two-level registry:
+
+```text
+boards/mmcu-boards.yaml
+boards/raspberry/mmcu-boards.yaml
+boards/raspberry/<name>/mmcu-board.yaml
+```
+
+The YAML schema contracts are documented in [YAML Schemas](yaml.md) and
+stored in `yaml/mmcu-boards.schema.yaml` and
 `yaml/mmcu-board.schema.yaml`.
 
+The global registry lists board collections:
+
 ```yaml
-# boards/pico/mmcu-board.yaml
+# boards/mmcu-boards.yaml
+schema: mmcu.board-collections/v1
+name: boards
+collections:
+  - name: raspberry
+    title: Raspberry Pi boards
+    path: raspberry/mmcu-boards.yaml
+```
+
+The Raspberry collection lists the board declarations it owns:
+
+```yaml
+# boards/raspberry/mmcu-boards.yaml
+schema: mmcu.boards/v1
+name: raspberry
+title: Raspberry Pi boards
+vendor: Raspberry Pi Ltd
+boards:
+  - name: pico
+    path: pico/mmcu-board.yaml
+  - name: pico-w
+    path: pico-w/mmcu-board.yaml
+```
+
+A board file then declares facts only; no build commands:
+
+```yaml
+# boards/raspberry/pico/mmcu-board.yaml
 name: pico
+target: rp2040
+platforms: [pico_sdk]
 buses: []
 rails: [3.3]
 connectors: [USB-MICRO-B, HEADER-0.1IN-20PIN-DUAL-CASTELLATED, SWD-3PIN-CASTELLATED]
@@ -103,19 +143,21 @@ links:
 ```
 
 ```yaml
-# boards/pico-all/mmcu-board.yaml
+# boards/raspberry/pico-all/mmcu-board.yaml
 name: pico-all
 virtual: true
 compatible_targets: [rp2040, rp2350]
+platforms: [pico_sdk]
 buses: []
 rails: [3.3]
 ```
 
 ```yaml
-# boards/pico-w-all/mmcu-board.yaml
+# boards/raspberry/pico-w-all/mmcu-board.yaml
 name: pico-w-all
 virtual: true
 compatible_targets: [rp2040, rp2350]
+platforms: [pico_sdk]
 buses: [WIFI, BLUETOOTH]
 rails: [3.3]
 default_providers:
@@ -124,8 +166,10 @@ default_providers:
 ```
 
 ```yaml
-# boards/pico-w/mmcu-board.yaml
+# boards/raspberry/pico-w/mmcu-board.yaml
 name: pico-w
+target: rp2040
+platforms: [pico_sdk]
 buses: [WIFI, BLUETOOTH]
 rails: [3.3]
 connectors: [USB-MICRO-B, HEADER-0.1IN-20PIN-DUAL-CASTELLATED, SWD-3PIN-CASTELLATED-CENTRAL]
@@ -144,6 +188,12 @@ The optional `links` block records provenance for board declarations:
 Each entry is a `{label, url}` pair. These links are documentation
 metadata only; resolving doesn't use them to decide whether a dependency
 is satisfiable.
+
+The required `platforms` field is the direct compatibility check between a
+board declaration and `MMCU_PLATFORM`. `target`/`compatible_targets` answer
+"which chip target can this board host?"; `platforms` answers "which
+build-platform integration knows how to use this board?" For the current
+Raspberry Pi Pico declarations, that is `pico_sdk`.
 
 ## Power Supply (LDO/DC-DC)
 

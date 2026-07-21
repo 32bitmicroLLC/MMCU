@@ -21,15 +21,16 @@ Current schemas:
 
 | Schema | Applies to |
 |---|---|
-| `yaml/mmcu-board.schema.yaml` | `boards/*/mmcu-board.yaml` |
-| `yaml/mmcu-board.yamale.yaml` | Optional Yamale structural check for `boards/*/mmcu-board.yaml` |
+| `yaml/mmcu-boards.schema.yaml` | `boards/mmcu-boards.yaml`, `boards/*/mmcu-boards.yaml` |
+| `yaml/mmcu-board.schema.yaml` | `boards/**/mmcu-board.yaml` |
+| `yaml/mmcu-board.yamale.yaml` | Optional Yamale structural check for `boards/**/mmcu-board.yaml` |
 
 Validation tooling:
 
 ```sh
 python3 -m pip install -r requirements-yaml.txt
 python3 tools/validate-yaml.py
-yamale -s yaml/mmcu-board.yamale.yaml boards
+yamale -s yaml/mmcu-board.yamale.yaml boards/raspberry/pico/mmcu-board.yaml
 ```
 
 ## Yamale
@@ -43,13 +44,14 @@ Use Yamale for simple shape checks:
 
 ```sh
 python3 -m pip install yamale
-yamale -s yaml/mmcu-board.yamale.yaml boards/pico/mmcu-board.yaml
-yamale -s yaml/mmcu-board.yamale.yaml boards
+yamale -s yaml/mmcu-board.yamale.yaml boards/raspberry/pico/mmcu-board.yaml
 ```
 
-The `-s` option selects the schema file. When given a directory, Yamale
-walks YAML files under that directory. By default Yamale runs in strict
-mode, so unexpected fields fail validation; use that default for MMCU.
+The `-s` option selects the schema file. The current Yamale schema is for
+individual `mmcu-board.yaml` board declarations, not the registry files
+named `mmcu-boards.yaml`; use the Pydantic validator for whole-tree board
+validation. By default Yamale runs in strict mode, so unexpected fields
+fail validation; use that default for MMCU.
 
 A Yamale schema for the current board shape would look like this:
 
@@ -58,6 +60,7 @@ name: str()
 target: str(required=False)
 virtual: bool(required=False)
 compatible_targets: list(str(), required=False)
+platforms: list(enum('native', 'mcu', 'pico_sdk'))
 power: include('power')
 rails: list(num())
 analog_io: include('analog_io', required=False)
@@ -87,8 +90,9 @@ link:
 Yamale is not the final authority for MMCU because some rules are
 cross-field rules: a real board must have `target` and must not have
 `compatible_targets`; a virtual board must have `virtual: true` and
-`compatible_targets` and must not have `target`; voltage minimum must be
-less than or equal to voltage maximum. Keep those checks in Pydantic.
+`compatible_targets` and must not have `target`; `platforms` must not
+contain duplicates; voltage minimum must be less than or equal to voltage
+maximum. Keep those checks in Pydantic.
 
 The practical split is:
 
@@ -148,7 +152,7 @@ schema: mmcu.schema/v1
 name: mmcu-board
 file_name: mmcu-board.yaml
 applies_to:
-  - boards/*/mmcu-board.yaml
+  - boards/**/mmcu-board.yaml
 
 rules:
   unknown_fields: reject
@@ -213,6 +217,7 @@ class BoardDecl(BaseModel):
     target: str | None = None
     virtual: bool = False
     compatible_targets: list[str] | None = None
+    platforms: list[str]
     power: Power
     rails: list[float] = Field(min_length=1)
     buses: list[str]
@@ -240,18 +245,58 @@ def load_board(path: Path) -> BoardDecl:
     return BoardDecl.model_validate(data)
 ```
 
-The schema in `./yaml/mmcu-board.schema.yaml` exists so reviewers can see
-the intended contract without reading Python code first. The Pydantic
-model in `tools/validate-yaml.py` is the enforcement point.
+The schemas in `./yaml/*.schema.yaml` exist so reviewers can see the
+intended contract without reading Python code first. The Pydantic model in
+`tools/validate-yaml.py` is the enforcement point.
+
+## Board Collection Schema
+
+Board discovery is two-level:
+
+```text
+boards/mmcu-boards.yaml
+boards/<collection>/mmcu-boards.yaml
+boards/<collection>/<board>/mmcu-board.yaml
+```
+
+The global registry lists collections:
+
+```yaml
+schema: mmcu.board-collections/v1
+name: boards
+collections:
+  - name: raspberry
+    title: Raspberry Pi boards
+    path: raspberry/mmcu-boards.yaml
+```
+
+Each collection registry lists board declarations relative to that
+collection:
+
+```yaml
+schema: mmcu.boards/v1
+name: raspberry
+title: Raspberry Pi boards
+vendor: Raspberry Pi Ltd
+boards:
+  - name: pico
+    path: pico/mmcu-board.yaml
+  - name: pico-w
+    path: pico-w/mmcu-board.yaml
+```
+
+Validation checks that every listed collection exists, every listed board
+exists, names match across registry entries and files, and board names are
+globally unique across all collections.
 
 ## Board Schema
 
-`boards/*/mmcu-board.yaml` supports two identities:
+`boards/**/mmcu-board.yaml` supports two identities:
 
 | Kind | Required | Forbidden |
 |---|---|---|
-| Real board | `name`, `target` | `compatible_targets` |
-| Virtual board variant | `name`, `virtual: true`, `compatible_targets` | `target` |
+| Real board | `name`, `target`, `platforms` | `compatible_targets` |
+| Virtual board variant | `name`, `virtual: true`, `compatible_targets`, `platforms` | `target` |
 
 Common fields:
 
@@ -261,6 +306,7 @@ Common fields:
 | `rails` | Board-supplied voltage rails |
 | `analog_io` | Analog pins/channels actually broken out by the board |
 | `digital_io` | GPIO and internal board-only pins |
+| `platforms` | `MMCU_PLATFORM` values that can use this board declaration |
 | `buses` | Board-level buses/transceivers/radios exposed to dependency resolving |
 | `connectors` | Physical or abstract connector profile |
 | `default_providers` | Preferred provider package per board capability |

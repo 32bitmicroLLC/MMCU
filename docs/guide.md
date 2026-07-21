@@ -115,6 +115,17 @@ Use `./configure.sh` when you want to choose the build configuration:
 ./configure.sh --platform pico_sdk --target rp2040 --board pico-w
 ```
 
+Interactive configure shows the same choices as numbered menus:
+
+```bash
+./configure.sh --interactive
+```
+
+After platform and target selection, the board menu is generated from the
+YAML board registry and filtered to boards compatible with that selected
+platform/target pair. The first board option is blank, which preserves the
+normal target-derived default.
+
 After configure, use `./build.sh`:
 
 ```bash
@@ -156,8 +167,9 @@ For Pico-family targets, the board is separate from the chip target:
 
 This distinction matters: Pico and Pico W both use `MMCU_TARGET=rp2040`,
 but they are different boards. The resolver validates that the chosen
-board manifest under `boards/<name>/mmcu-board.yaml` is compatible with
-the selected target.
+board, discovered through `boards/mmcu-boards.yaml` and the Raspberry
+collection registry, is compatible with both the selected platform and the
+selected target.
 
 Virtual board profiles are also valid when you want a common subset rather
 than a specific purchasable board:
@@ -374,7 +386,7 @@ Common commands:
 ```bash
 . ./venv/bin/activate
 python tools/validate-yaml.py
-yamale -s yaml/mmcu-board.yamale.yaml boards
+yamale -s yaml/mmcu-board.yamale.yaml boards/raspberry/pico/mmcu-board.yaml
 ```
 
 The Pydantic validator is the authoritative YAML validation path. Yamale
@@ -438,6 +450,21 @@ Use a compatible pair:
 ```bash
 ./configure.sh --platform pico_sdk --target rp2040 --board pico-w
 ./configure.sh --platform pico_sdk --target rp2350 --board pico2-w
+```
+
+### Board does not support platform
+
+The board declaration's `platforms` list does not include the configured
+`MMCU_PLATFORM`. For current Raspberry Pi Pico declarations that list is:
+
+```yaml
+platforms: [pico_sdk]
+```
+
+Use a platform/target pair that owns the board integration:
+
+```bash
+./configure.sh --platform pico_sdk --target rp2040 --board pico-w
 ```
 
 ### `build.sh` builds a directory you did not expect

@@ -1,9 +1,10 @@
-# Raspberry Pi Pico 2: the default board for MMCU_TARGET=rp2350.
-# Facets described in docs/board.md; this is the default MMCU_BOARD
-# declaration for RP2350-family builds.
+# Raspberry Pi Pico 2 with headers: Pico 2 with presoldered headers and a
+# keyed debug connector. Same RP2350 target and electrical capabilities as
+# the plain Pico 2; only the physical connector population changes.
 
-name: pico2
+name: pico2-with-headers
 target: rp2350
+platforms: [pico_sdk]
 
 power:
   regulation: DC-DC          # onboard buck-boost switching regulator (not LDO)
@@ -21,8 +22,8 @@ buses: []                    # no onboard transceivers/radios
 
 connectors:
   - USB-MICRO-B
-  - HEADER-0.1IN-20PIN-DUAL-CASTELLATED
-  - SWD-3PIN-CASTELLATED
+  - HEADER-0.1IN-20PIN-DUAL-PRESOLDERED
+  - SWD-3PIN-JST-STYLE
 
 links:
   documentation:
