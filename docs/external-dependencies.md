@@ -17,12 +17,16 @@ does implicitly.
 
 Two external dependencies already exist, both hand-rolled, both kept as-is:
 
-- **CMSIS_6** (`platforms/cmsis/cmsis-install.sh` and
-  `mmcu_require_cmsis()` in root `CMakeLists.txt`): the preferred explicit
-  install is `platforms/cmsis/CMSIS_6`; CMake also has a fallback
+- **CMSIS_6 and optional CMSIS-Toolbox state**
+  (`platforms/cmsis/cmsis-install.sh` and `mmcu_require_cmsis()` in root
+  `CMakeLists.txt`): the preferred explicit CMSIS-Core install is
+  `platforms/cmsis/CMSIS_6`; CMake also has a fallback
   `execute_process(COMMAND git clone --branch ... --depth 1 ...)` into
-  `third_party/CMSIS_6` the first time it's needed. It's header-only —
-  nothing to build, just an include path.
+  `third_party/CMSIS_6` the first time it's needed. The current CMake path
+  is header-only — nothing to build, just an include path. Full
+  CMSIS-Pack work is platform-owned state under `platforms/cmsis/toolbox/`
+  and `platforms/cmsis/packs/`, documented in
+  [Bare-Metal CMSIS Platform](platforms-baremetal/cmsis.md).
 - **pico-sdk** (`platforms/pico-sdk/pico-sdk-install.sh`): a full install
   script — clone, then build and install `picotool` (with libusb support,
   udev rules, GNUInstallDirs layout) into `platforms/pico-sdk/`. Far more

@@ -97,6 +97,12 @@ CMSIS-backed ARM targets can use a local CMSIS checkout via
 If no CMSIS directory is supplied and `platforms/cmsis/CMSIS_6` is missing,
 CMake clones CMSIS_6 into `third_party/CMSIS_6`.
 
+Full CMSIS-Toolbox/CMSIS-Pack work adds platform-specific tools:
+`cbuild`, `csolution`, and `cpackget`. Those are not global MMCU
+requirements; install them only for the CMSIS pack workflow. See
+[Platform Tools](platform-tools.md) and
+[Bare-Metal CMSIS Platform](platforms-baremetal/cmsis.md).
+
 Real pico-sdk-backed targets require:
 
 ```sh
@@ -234,6 +240,16 @@ arm-none-eabi-g++
 arm-none-eabi-objdump (for listings)
 git (if CMSIS is installed or cloned automatically)
 ninja (optional)
+```
+
+CMSIS-Toolbox pack build adds:
+
+```text
+cbuild
+csolution
+cpackget
+CMSIS_PACK_ROOT
+toolbox-registered compiler environment
 ```
 
 Pico SDK build:

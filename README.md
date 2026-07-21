@@ -133,7 +133,15 @@ build-*/                        # platform/target build directories
 site/                           # generated documentation site
 venv/                           # project-local Python virtual environment
 third_party/                    # fetched third-party source trees
+*.cbuild.yml                    # CMSIS-Toolbox generated build info
+*.cbuild-idx.yml                # CMSIS-Toolbox generated build index
+*.cbuild-run.yml                # CMSIS-Toolbox generated run/debug info
 platforms/cmsis/CMSIS_6/        # vendored CMSIS_6 checkout
+platforms/cmsis/toolbox/        # optional CMSIS-Toolbox install
+platforms/cmsis/packs/          # project-local CMSIS_PACK_ROOT
+platforms/cmsis/build/          # CMSIS platform-local generated build state
+platforms/cmsis/out/            # CMSIS-Toolbox output
+platforms/cmsis/tmp/            # CMSIS-Toolbox temporary files
 platforms/pico-sdk/pico-sdk/    # vendored pico-sdk checkout
 platforms/pico-sdk/bin/         # platform-local tools such as picotool
 ```

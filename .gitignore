@@ -64,11 +64,22 @@ compile_commands.json
 # vcpkg
 vcpkg_installed/
 
+# CMSIS-Toolbox generated build information. Keep *.cbuild-pack.yml
+# trackable because it records exact resolved pack versions.
+*.cbuild.yml
+*.cbuild-idx.yml
+*.cbuild-run.yml
+
 # third-party dependencies fetched by CMake
 third_party/
 
 # vendored CMSIS checkout
 platforms/cmsis/CMSIS_6/
+platforms/cmsis/toolbox/
+platforms/cmsis/packs/
+platforms/cmsis/build/
+platforms/cmsis/out/
+platforms/cmsis/tmp/
 
 # vendored pico-sdk checkout and its installed picotool
 platforms/pico-sdk/pico-sdk/

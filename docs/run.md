@@ -54,6 +54,7 @@ QEMU on real Cortex-M machines until startup code provides one.
 ```bash
 ./run.sh --clean                     # remove --build-dir first
 ./run.sh --no-build                  # run the existing executable/ELF as-is
+./run.sh --verbose                   # show verbose output from the build phase
 ./run.sh --timeout 0                 # disable the default 5s timeout
 ./run.sh -- --some-app-arg           # extra args: to the app (native) or QEMU (mcu)
 ```
@@ -91,7 +92,7 @@ full list.
 
 # Configure + run a Cortex-M0 build under QEMU
 ./configure.sh --platform mcu --target cortex-m0
-./run.sh --build-dir build-cortex-m0-gcc
+./run.sh --build-dir build-cortex-m0-gcc --verbose
 
 # Configure + run the first-class CMSIS Cortex-M0 build under QEMU
 ./configure.sh --platform cmsis --target cortex-m0

@@ -8,6 +8,7 @@ that need to vendor a toolchain/SDK first.
 ./platform.sh configure --platform mcu --target cortex-m0
 ./platform.sh build --platform mcu
 ./platform.sh install --platform cmsis
+./platform.sh install                         # install platform from .config
 ./platform.sh configure --platform cmsis --target cortex-m0
 ./platform.sh build --platform cmsis --build-dir build-cmsis-cortex-m0-gcc
 ./platform.sh configure --platform pico_sdk --target rp2040
@@ -35,7 +36,16 @@ passes every other argument straight through.
 
 `install` is different: vendoring a toolchain/SDK is genuinely
 platform-specific, and `mmcu_app` has no generic "install" step of its own.
-`platform.sh` looks for a dedicated script at
+If `--platform` is omitted, `platform.sh install` reads the last configured
+`MMCU_PLATFORM` from `.config`, then falls back to `native` if `.config` is
+absent. This makes the normal sequence work:
+
+```bash
+./configure.sh --platform cmsis --target rp2040-cmsis
+./platform.sh install
+```
+
+`platform.sh` then looks for a dedicated script at
 `platforms/<dir>/<prefix>-install.sh`:
 
 | `--platform` | install script |
@@ -59,6 +69,22 @@ preferred project-local checkout for `MMCU_PLATFORM=cmsis`; explicit
 `third_party/CMSIS_6` during configure. See
 [Bare-Metal CMSIS Platform](platforms-baremetal/cmsis.md).
 
+The same installer can also prepare optional CMSIS-Toolbox pack state when
+`cbuild`, `csolution`, and `cpackget` are available:
+
+```bash
+./platform.sh install --platform cmsis --require-toolbox --init-pack-root --default-packs
+```
+
+Platform-local CMSIS development scripts mirror the pico-sdk script set:
+
+```bash
+./platforms/cmsis/cmsis-install.sh
+./platforms/cmsis/cmsis-configure.sh --target rp2040-cmsis --board pico
+./platforms/cmsis/cmsis-build.sh --target rp2040-cmsis --board pico --verbose
+./platforms/cmsis/cmsis-clean.sh --dry-run --all
+```
+
 ## pico-sdk install
 
 `./platform.sh install --platform pico_sdk` vendors pico-sdk and picotool
@@ -77,7 +103,7 @@ does not parse or validate them itself:
 
 ```bash
 ./platform.sh configure --platform mcu --target cortex-m0plus --compiler clang
-./platform.sh build --platform mcu --build-dir build-cortex-m0plus-clang --map-and-list
+./platform.sh build --platform mcu --build-dir build-cortex-m0plus-clang --map-and-list --verbose
 ./platform.sh configure --platform cmsis --target rp2350-cmsis --compiler clang
 ./platform.sh install --platform cmsis --tag v6.3.0
 ./platform.sh configure --platform pico_sdk --target rp2350
@@ -87,8 +113,9 @@ does not parse or validate them itself:
 
 ## Options
 
-- `-p`, `--platform <name>` — `native`, `mcu`, `cmsis`, or `pico_sdk` (default:
-  `native`).
+- `-p`, `--platform <name>` — `native`, `mcu`, `cmsis`, or `pico_sdk`.
+  For `install`, omitted means "use `.config`'s `MMCU_PLATFORM`, then
+  `native`." For `configure`, omitted means `native`.
 - `-h`, `--help` — show help. Passed through instead if it appears after
   the command (so `./platform.sh install --platform pico_sdk --help` shows
   `pico-sdk-install.sh`'s own help, not `platform.sh`'s).

@@ -124,6 +124,12 @@ projects (used for compiler ABI detection) via
 `CMAKE_TRY_COMPILE_PLATFORM_VARIABLES` — otherwise the toolchain file runs a
 second time with none of them set and fails before the real build starts.
 
+CMake locks the compiler/toolchain into a build directory when `project()`
+first runs. Reconfiguring an existing gcc build directory with
+`--compiler clang` does not reliably switch it to clang. `configure.sh`
+therefore rejects that mismatch and tells you to use a fresh `--build-dir`
+or `--clean`.
+
 Only `-mcpu`/`-mthumb` are set globally in these files
 (`CMAKE_C_FLAGS_INIT`/etc., which seed `CMAKE_C_FLAGS`/`CMAKE_EXE_LINKER_FLAGS`
 for **every** `add_executable()` in the whole build). Everything else
@@ -175,8 +181,10 @@ falls back to the free-text blank-by-default prompt. It prints a summary
 before running `cmake`.
 
 After configuring, `./configure.sh` writes `.config` (repo root,
-git-ignored) recording
-`MMCU_BUILD_DIR`/`MMCU_PLATFORM`/`MMCU_TARGET`/`MMCU_BOARD`, and prints
+git-ignored) recording the last build directory plus the relevant
+configure-time choices: `MMCU_PLATFORM`, `MMCU_TARGET`, `MMCU_BOARD`,
+compiler/toolchain, build type, CMSIS path/tag, CPU override, linker-map
+flag, and compiler path overrides. It then prints
 `Run: ./build.sh`. `./build.sh`/`./run.sh` read `.config` as their default
 `--build-dir` — see [Build And Run](build.md) — so you don't have to
 repeat `--build-dir <dir>` on every subsequent command.
@@ -216,10 +224,13 @@ cmake -S . -B build-rp2040-pico-w-gcc \
   `--compiler <gcc|clang>` picks the matching toolchain file
   (`cmake/toolchains/arm-none-eabi-<compiler>.cmake`) unless
   `--toolchain-file` overrides it; `--cpu` sets `MMCU_CPU`; `--linker-map`
-  sets `MMCU_LINKER_MAP=ON`.
+  sets `MMCU_LINKER_MAP=ON`; `--verbose` enables CMake verbose configure
+  logging for that invocation only.
 - `./build.sh` never sets these variables — it just builds whatever a build
   directory was already configured with, auto-configuring `native`/`emu`
-  defaults if the directory doesn't exist yet. See
+  defaults if the directory doesn't exist yet. `--verbose` passes
+  `--verbose` to `cmake --build`, which shows compiler/linker command lines
+  for generators that support it. See
   [Build And Run](build.md).
 - pico-sdk's own `./platforms/pico-sdk/pico-sdk-install.sh`/
   `pico-sdk-configure.sh`/`pico-sdk-build.sh`/`pico-sdk-clean.sh` (see

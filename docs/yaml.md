@@ -4,6 +4,17 @@ MMCU uses YAML for project metadata and keeps schema descriptions in
 `./yaml`. Schema enforcement is implemented with Python, PyYAML, and
 Pydantic.
 
+The project rule is intentionally YAML-first: hand-authored MMCU metadata
+uses YAML, not JSON. That covers `mmcu.yaml`, `mmcu-board.yaml`,
+`mmcu-boards.yaml`, `mmcu.solution.yaml`, and the schemas in `./yaml`.
+
+The only exception is platform-owned metadata required by an external
+ecosystem. Today that means CMSIS-Toolbox/vcpkg files under the CMSIS
+platform integration, such as `platforms/cmsis/vcpkg-configuration.json`,
+because Arm's documented vcpkg artifact workflow is JSON-based. This
+exception does not apply to MMCU dependency, board, module, target, or
+solution files.
+
 The intended validation stack is:
 
 1. Load YAML with PyYAML or `pydantic-yaml`.

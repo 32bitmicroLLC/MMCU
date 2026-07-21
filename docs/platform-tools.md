@@ -6,7 +6,7 @@ install them only when working with the platform that needs them.
 
 For common build, documentation, and YAML tools, see [Tools](tools.md).
 
-## cmsis: CMSIS_6 checkout
+## cmsis: CMSIS_6, CMSIS-Toolbox, and packs
 
 CMSIS_6 belongs to the `cmsis` platform when installed explicitly. It is
 used by `MMCU_PLATFORM=cmsis` targets and by CMSIS-only target variants
@@ -26,6 +26,42 @@ platforms/cmsis/CMSIS_6/
 
 Use `./configure.sh --cmsis-dir <path>` when a system-wide or externally
 managed CMSIS_6 checkout should be used instead.
+
+Full CMSIS-Pack workflows additionally use CMSIS-Toolbox:
+
+| Tool | Used for |
+|---|---|
+| `cbuild` | Build a CMSIS `*.csolution.yml` project context |
+| `csolution` | Convert/list/check CMSIS solution metadata |
+| `cpackget` | Initialize `CMSIS_PACK_ROOT` and install packs |
+
+MMCU keeps platform-local CMSIS state under:
+
+```text
+platforms/cmsis/toolbox/     # optional CMSIS-Toolbox install
+platforms/cmsis/packs/       # project-local CMSIS_PACK_ROOT
+platforms/cmsis/build/       # optional platform-local generated build state
+platforms/cmsis/out/         # CMSIS-Toolbox output
+platforms/cmsis/tmp/         # CMSIS-Toolbox temporary files
+```
+
+If CMSIS-Toolbox is already installed elsewhere, expose its `bin/`
+directory in `PATH` instead of copying it into `platforms/cmsis/toolbox/`.
+
+Initialize the project-local pack root when the toolbox is available:
+
+```sh
+./platforms/cmsis/cmsis-install.sh --require-toolbox --init-pack-root --default-packs
+```
+
+CMSIS-Toolbox project metadata is YAML (`*.csolution.yml`,
+`*.cproject.yml`, `*.clayer.yml`). The only accepted JSON exception is
+CMSIS/vcpkg artifact metadata such as `platforms/cmsis/vcpkg-configuration.json`,
+because that format is defined by the external CMSIS/vcpkg tooling rather
+than by MMCU.
+
+See [Bare-Metal CMSIS Platform](platforms-baremetal/cmsis.md) for the full
+process and repository policy.
 
 ## pico-sdk: picotool
 

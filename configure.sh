@@ -20,6 +20,7 @@ BUILD_TYPE="Release"
 GENERATOR=""
 CLEAN=0
 INTERACTIVE=0
+VERBOSE=0
 
 usage() {
     cat <<'EOF'
@@ -49,6 +50,7 @@ Options:
   -G, --generator <name>    CMake generator (default: Ninja if available)
   -c, --clean               Remove build directory before configure
   -i, --interactive         Prompt with numbered choices instead of flags
+  -v, --verbose             Show verbose CMake configure output
   -h, --help                Show this help
 
 Examples:
@@ -450,6 +452,10 @@ while [[ $# -gt 0 ]]; do
             INTERACTIVE=1
             shift
             ;;
+        -v|--verbose)
+            VERBOSE=1
+            shift
+            ;;
         -h|--help)
             usage
             exit 0
@@ -559,12 +565,45 @@ if [[ -z "$GENERATOR" ]] && command -v ninja >/dev/null 2>&1; then
     GENERATOR="Ninja"
 fi
 
+compiler_kind_from_build_dir() {
+    local file line compiler_path
+    for file in "$BUILD_DIR"/CMakeFiles/*/CMakeCXXCompiler.cmake; do
+        [[ -f "$file" ]] || continue
+        line="$(grep '^set(CMAKE_CXX_COMPILER ' "$file" 2>/dev/null | head -1 || true)"
+        compiler_path="${line#*\"}"
+        compiler_path="${compiler_path%%\"*}"
+        case "$compiler_path" in
+            *clang++*|*clang*) echo "clang"; return 0 ;;
+            *g++*|*gcc*|*c++*) echo "gcc"; return 0 ;;
+        esac
+    done
+    return 0
+}
+
+desired_compiler_kind="$COMPILER"
+case "$TOOLCHAIN_FILE" in
+    *clang*) desired_compiler_kind="clang" ;;
+    *gcc*) desired_compiler_kind="gcc" ;;
+esac
+if [[ -f "$BUILD_DIR/CMakeCache.txt" && "$PLATFORM" != "native" ]]; then
+    existing_compiler_kind="$(compiler_kind_from_build_dir)"
+    if [[ -n "$existing_compiler_kind" && -n "$desired_compiler_kind" && "$existing_compiler_kind" != "$desired_compiler_kind" ]]; then
+        echo "Error: $BUILD_DIR is already configured with compiler=$existing_compiler_kind, but this configure requests compiler=$desired_compiler_kind." >&2
+        echo "       CMake cannot switch toolchains in an existing build directory." >&2
+        echo "       Use a fresh --build-dir, or rerun configure with --clean if you want this directory recreated." >&2
+        exit 1
+    fi
+fi
+
 CMAKE_ARGS=(
     -S .
     -B "$BUILD_DIR"
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
     -DMMCU_PLATFORM="$PLATFORM"
 )
+if [[ $VERBOSE -eq 1 ]]; then
+    CMAKE_ARGS=(--log-level=VERBOSE "${CMAKE_ARGS[@]}")
+fi
 if [[ -n "$TARGET" ]]; then
     CMAKE_ARGS+=(-DMMCU_TARGET="$TARGET")
 fi
@@ -605,13 +644,26 @@ cmake "${CMAKE_ARGS[@]}"
 
 cat > .config <<CONFIG
 # Written by ./configure.sh. Read by build.sh/run.sh as the default
-# --build-dir when none is given, so they act on what was last configured
-# instead of always defaulting to plain "build". Not consulted by clean.sh,
-# which discovers every configured build dir on its own. Safe to delete.
+# --build-dir when none is given, and by platform.sh install as the default
+# --platform when none is given, so scripts act on what was last configured
+# instead of always defaulting to plain native/build. Not consulted by
+# clean.sh, which discovers every configured build dir on its own. Safe to
+# delete.
 MMCU_BUILD_DIR=$BUILD_DIR
 MMCU_PLATFORM=$PLATFORM
 MMCU_TARGET=$TARGET
 MMCU_BOARD=$BOARD
+CMAKE_BUILD_TYPE=$BUILD_TYPE
+MMCU_COMPILER=$COMPILER
+CMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE
+MMCU_CPU=$CPU
+MMCU_CMSIS_DIR=$CMSIS_DIR
+MMCU_CMSIS_GIT_TAG=$CMSIS_GIT_TAG
+MMCU_LINKER_MAP=$LINKER_MAP
+MMCU_ARM_GCC=$ARM_GCC
+MMCU_ARM_GXX=$ARM_GXX
+MMCU_CLANG_CC=$CLANG_CC
+MMCU_CLANG_CXX=$CLANG_CXX
 CONFIG
 
 echo "Run: ./build.sh"

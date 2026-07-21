@@ -277,6 +277,12 @@ Generate a linker map and disassembly listings:
 ./build.sh --build-dir build-cortex-m0-gcc --map-and-list
 ```
 
+Show the underlying compiler and linker commands:
+
+```bash
+./build.sh --verbose
+```
+
 Outputs:
 
 ```text
@@ -486,7 +492,10 @@ cat .config
 ```
 
 `build.sh`, `run.sh`, and `flash.sh` use `.config` when no `--build-dir`
-is provided. Pass `--build-dir` explicitly or delete `.config`.
+is provided. If `build.sh` has to recreate the recorded build directory, it
+also replays the recorded compiler/toolchain settings. `platform.sh install`
+uses `.config`'s `MMCU_PLATFORM` when no `--platform` is provided. Pass
+`--build-dir`/`--platform` explicitly or delete `.config`.
 
 ### pico-sdk checkout is missing
 

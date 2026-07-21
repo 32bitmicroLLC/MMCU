@@ -8,6 +8,7 @@ RUN_APP=0
 CLEAN=0
 MAP_AND_LIST=0
 OBJDUMP=""
+VERBOSE=0
 
 usage() {
     cat <<'EOF'
@@ -22,13 +23,15 @@ run) if present, otherwise plain "build" — so "./build.sh" with no prior
 setup, and "./build.sh" right after "./configure.sh --platform ...", both
 just work without having to repeat --build-dir. If the resolved directory
 isn't configured yet, it's configured first: using .config's recorded
-platform/target if that's where the directory name came from, otherwise
-MMCU_PLATFORM=native defaults.
+platform/target/compiler/toolchain settings if that's where the directory
+name came from, otherwise MMCU_PLATFORM=native defaults.
 
 Options:
   -d, --build-dir <dir>   Build directory to build (default: .config, else build)
   -j, --jobs <n>          Parallel build jobs
   -r, --run               Run mmcu_app after a successful build
+  -v, --verbose           Show verbose CMake/build-tool output, including
+                          compiler and linker command lines when supported
       --map-and-list      Generate a linker map and full disassembly listings
       --objdump <path>    objdump for --map-and-list (default: arm-none-eabi-objdump
                           for configured mcu/cmsis builds, objdump otherwise)
@@ -56,6 +59,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -r|--run)
             RUN_APP=1
+            shift
+            ;;
+        -v|--verbose)
+            VERBOSE=1
             shift
             ;;
         --map-and-list)
@@ -111,26 +118,98 @@ read_cache_var() {
     grep "^${var}:" "$BUILD_DIR/CMakeCache.txt" 2>/dev/null | head -1 | cut -d= -f2-
 }
 
+compiler_kind_from_build_dir() {
+    local file line compiler_path
+    for file in "$BUILD_DIR"/CMakeFiles/*/CMakeCXXCompiler.cmake; do
+        [[ -f "$file" ]] || continue
+        line="$(grep '^set(CMAKE_CXX_COMPILER ' "$file" 2>/dev/null | head -1 || true)"
+        compiler_path="${line#*\"}"
+        compiler_path="${compiler_path%%\"*}"
+        case "$compiler_path" in
+            *clang++*|*clang*) echo "clang"; return 0 ;;
+            *g++*|*gcc*|*c++*) echo "gcc"; return 0 ;;
+        esac
+    done
+    return 0
+}
+
 if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
     if [[ -n "$CONFIG_BUILD_DIR" && "$CONFIG_BUILD_DIR" == "$BUILD_DIR" ]]; then
         CONFIG_PLATFORM="$(read_config_var MMCU_PLATFORM)"
         CONFIG_TARGET="$(read_config_var MMCU_TARGET)"
         CONFIG_BOARD="$(read_config_var MMCU_BOARD)"
+        CONFIG_BUILD_TYPE="$(read_config_var CMAKE_BUILD_TYPE)"
+        CONFIG_COMPILER="$(read_config_var MMCU_COMPILER)"
+        CONFIG_TOOLCHAIN_FILE="$(read_config_var CMAKE_TOOLCHAIN_FILE)"
+        CONFIG_CPU="$(read_config_var MMCU_CPU)"
+        CONFIG_CMSIS_DIR="$(read_config_var MMCU_CMSIS_DIR)"
+        CONFIG_CMSIS_GIT_TAG="$(read_config_var MMCU_CMSIS_GIT_TAG)"
+        CONFIG_LINKER_MAP="$(read_config_var MMCU_LINKER_MAP)"
+        CONFIG_ARM_GCC="$(read_config_var MMCU_ARM_GCC)"
+        CONFIG_ARM_GXX="$(read_config_var MMCU_ARM_GXX)"
+        CONFIG_CLANG_CC="$(read_config_var MMCU_CLANG_CC)"
+        CONFIG_CLANG_CXX="$(read_config_var MMCU_CLANG_CXX)"
+        if [[ -z "$CONFIG_COMPILER" && "${CONFIG_PLATFORM:-native}" != "native" ]]; then
+            case "$BUILD_DIR" in
+                *-clang) CONFIG_COMPILER="clang" ;;
+                *-gcc) CONFIG_COMPILER="gcc" ;;
+            esac
+        fi
         CONFIGURE_ARGS=(--build-dir "$BUILD_DIR")
         [[ -n "$CONFIG_PLATFORM" ]] && CONFIGURE_ARGS+=(--platform "$CONFIG_PLATFORM")
         [[ -n "$CONFIG_TARGET" ]] && CONFIGURE_ARGS+=(--target "$CONFIG_TARGET")
         [[ -n "$CONFIG_BOARD" ]] && CONFIGURE_ARGS+=(--board "$CONFIG_BOARD")
-        echo "==> $BUILD_DIR is not configured yet; reconfiguring using .config (MMCU_PLATFORM=${CONFIG_PLATFORM:-native}${CONFIG_TARGET:+ MMCU_TARGET=$CONFIG_TARGET}${CONFIG_BOARD:+ MMCU_BOARD=$CONFIG_BOARD})"
+        [[ -n "$CONFIG_BUILD_TYPE" ]] && CONFIGURE_ARGS+=(--type "$CONFIG_BUILD_TYPE")
+        [[ -n "$CONFIG_COMPILER" ]] && CONFIGURE_ARGS+=(--compiler "$CONFIG_COMPILER")
+        [[ -n "$CONFIG_TOOLCHAIN_FILE" ]] && CONFIGURE_ARGS+=(--toolchain-file "$CONFIG_TOOLCHAIN_FILE")
+        [[ -n "$CONFIG_CPU" ]] && CONFIGURE_ARGS+=(--cpu "$CONFIG_CPU")
+        [[ -n "$CONFIG_CMSIS_DIR" ]] && CONFIGURE_ARGS+=(--cmsis-dir "$CONFIG_CMSIS_DIR")
+        [[ -n "$CONFIG_CMSIS_GIT_TAG" ]] && CONFIGURE_ARGS+=(--cmsis-git-tag "$CONFIG_CMSIS_GIT_TAG")
+        [[ "$CONFIG_LINKER_MAP" == "1" || "$CONFIG_LINKER_MAP" == "ON" ]] && CONFIGURE_ARGS+=(--linker-map)
+        [[ -n "$CONFIG_ARM_GCC" ]] && CONFIGURE_ARGS+=(--arm-gcc "$CONFIG_ARM_GCC")
+        [[ -n "$CONFIG_ARM_GXX" ]] && CONFIGURE_ARGS+=(--arm-gxx "$CONFIG_ARM_GXX")
+        [[ -n "$CONFIG_CLANG_CC" ]] && CONFIGURE_ARGS+=(--clang-cc "$CONFIG_CLANG_CC")
+        [[ -n "$CONFIG_CLANG_CXX" ]] && CONFIGURE_ARGS+=(--clang-cxx "$CONFIG_CLANG_CXX")
+        echo "==> $BUILD_DIR is not configured yet; reconfiguring using .config (MMCU_PLATFORM=${CONFIG_PLATFORM:-native}${CONFIG_TARGET:+ MMCU_TARGET=$CONFIG_TARGET}${CONFIG_BOARD:+ MMCU_BOARD=$CONFIG_BOARD}${CONFIG_COMPILER:+ compiler=$CONFIG_COMPILER})"
+        [[ $VERBOSE -eq 1 ]] && CONFIGURE_ARGS+=(--verbose)
         "$SCRIPT_DIR/configure.sh" "${CONFIGURE_ARGS[@]}"
     else
         echo "==> $BUILD_DIR is not configured yet; configuring with MMCU_PLATFORM=native defaults"
-        "$SCRIPT_DIR/configure.sh" --build-dir "$BUILD_DIR"
+        CONFIGURE_ARGS=(--build-dir "$BUILD_DIR")
+        [[ $VERBOSE -eq 1 ]] && CONFIGURE_ARGS+=(--verbose)
+        "$SCRIPT_DIR/configure.sh" "${CONFIGURE_ARGS[@]}"
+    fi
+fi
+
+if [[ -n "$CONFIG_BUILD_DIR" && "$CONFIG_BUILD_DIR" == "$BUILD_DIR" && -f "$BUILD_DIR/CMakeCache.txt" ]]; then
+    CONFIG_PLATFORM="$(read_config_var MMCU_PLATFORM)"
+    CONFIG_COMPILER="$(read_config_var MMCU_COMPILER)"
+    if [[ -z "$CONFIG_COMPILER" && "${CONFIG_PLATFORM:-native}" != "native" ]]; then
+        case "$BUILD_DIR" in
+            *-clang) CONFIG_COMPILER="clang" ;;
+            *-gcc) CONFIG_COMPILER="gcc" ;;
+        esac
+    fi
+    CONFIG_TOOLCHAIN_FILE="$(read_config_var CMAKE_TOOLCHAIN_FILE)"
+    case "$CONFIG_TOOLCHAIN_FILE" in
+        *clang*) CONFIG_COMPILER="clang" ;;
+        *gcc*) CONFIG_COMPILER="gcc" ;;
+    esac
+    ACTUAL_COMPILER="$(compiler_kind_from_build_dir)"
+    if [[ -n "$CONFIG_COMPILER" && -n "$ACTUAL_COMPILER" && "$CONFIG_COMPILER" != "$ACTUAL_COMPILER" ]]; then
+        echo "Error: $BUILD_DIR is configured with compiler=$ACTUAL_COMPILER, but .config requests compiler=$CONFIG_COMPILER." >&2
+        echo "       CMake cannot switch toolchains in an existing build directory." >&2
+        echo "       Use a fresh --build-dir, or rerun ./configure.sh --clean with the recorded platform/target/compiler if you want this directory recreated." >&2
+        exit 1
     fi
 fi
 
 BUILD_ARGS=(--build "$BUILD_DIR")
 if [[ -n "$JOBS" ]]; then
     BUILD_ARGS+=(--parallel "$JOBS")
+fi
+if [[ $VERBOSE -eq 1 ]]; then
+    BUILD_ARGS+=(--verbose)
 fi
 cmake "${BUILD_ARGS[@]}"
 

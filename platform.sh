@@ -2,6 +2,7 @@
 set -euo pipefail
 
 PLATFORM="native"
+PLATFORM_EXPLICIT=0
 COMMAND=""
 ARGS=()
 
@@ -22,7 +23,9 @@ Commands:
   clean       ./clean.sh (discovers every configured mmcu_app build dir)
 
 Options:
-  -p, --platform <name>   MMCU_PLATFORM: native, mcu, cmsis, or pico_sdk (default: native)
+  -p, --platform <name>   MMCU_PLATFORM: native, mcu, cmsis, or pico_sdk.
+                          For install, default is .config's MMCU_PLATFORM,
+                          then native. For configure, default is native.
   -h, --help              Show this help
 
 All other arguments are passed through unchanged to whichever script
@@ -34,6 +37,7 @@ This only vendors platform support code: cmsis installs CMSIS_6, and pico_sdk
 installs pico-sdk and its platform tools.
 
 Examples:
+  ./platform.sh install                         # platform from .config, if present
   ./platform.sh install --platform cmsis
   ./platform.sh configure --platform cmsis --target cortex-m0
   ./platform.sh build --platform cmsis --build-dir build-cmsis-cortex-m0-gcc
@@ -51,6 +55,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         -p|--platform)
             PLATFORM="${2:-}"
+            PLATFORM_EXPLICIT=1
             shift 2
             ;;
         -h|--help)
@@ -83,6 +88,20 @@ if [[ -z "$COMMAND" ]]; then
     exit 1
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+read_config_var() {
+    local var="$1"
+    [[ -f .config ]] || return 0
+    grep "^${var}=" .config 2>/dev/null | tail -1 | cut -d= -f2-
+}
+
+if [[ "$COMMAND" == "install" && $PLATFORM_EXPLICIT -eq 0 ]]; then
+    PLATFORM="$(read_config_var MMCU_PLATFORM)"
+    PLATFORM="${PLATFORM:-native}"
+fi
+
 case "$PLATFORM" in
     native|mcu|cmsis|pico_sdk)
         ;;
@@ -91,9 +110,6 @@ case "$PLATFORM" in
         exit 1
         ;;
 esac
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
 
 # Maps MMCU_PLATFORM to the directory/prefix of its dedicated "install"
 # script, if it has one. native/mcu have nothing to vendor for mmcu_app.

@@ -15,6 +15,7 @@ MACHINE=""
 CPU=""
 START_PAUSED=0
 EXTRA_ARGS=()
+VERBOSE=0
 
 usage() {
     cat <<'EOF'
@@ -29,6 +30,7 @@ Options:
   -d, --build-dir <dir>   Build directory (default: .config, else build)
   -c, --clean             Remove the build directory before building
       --no-build          Run the existing executable/ELF without building first
+  -v, --verbose           Show verbose build output before running
       --debug             Run under a debugger instead of directly
                           (native: gdb; mcu/cmsis: QEMU started paused with a gdbstub)
       --gdb-bin <path>    GDB executable (default: gdb)
@@ -65,6 +67,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-build)
             BUILD=0
+            shift
+            ;;
+        -v|--verbose)
+            VERBOSE=1
             shift
             ;;
         --debug)
@@ -144,7 +150,9 @@ if [[ $CLEAN -eq 1 ]]; then
 fi
 
 if [[ $BUILD -eq 1 ]]; then
-    ./build.sh --build-dir "$BUILD_DIR"
+    BUILD_ARGS=(--build-dir "$BUILD_DIR")
+    [[ $VERBOSE -eq 1 ]] && BUILD_ARGS+=(--verbose)
+    ./build.sh "${BUILD_ARGS[@]}"
 fi
 
 if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
