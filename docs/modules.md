@@ -116,6 +116,7 @@ modules/
     cmsis/
       6/
     pico-sdk/
+      2/
   Containers/
     RingBuffer/
     FixedVector/

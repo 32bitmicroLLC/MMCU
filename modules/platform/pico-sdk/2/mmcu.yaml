@@ -1,0 +1,22 @@
+schema: mmcu.module/v1
+name: platform-pico-sdk-2
+kind: platform
+version: 2.0.0
+description: Raspberry Pi pico-sdk major version 2 aggregate platform module.
+metadata:
+  links:
+    documentation:
+      - label: Raspberry Pi Pico SDK documentation
+        url: https://www.raspberrypi.com/documentation/pico-sdk/
+      - label: Raspberry Pi Pico-series documentation
+        url: https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html
+    support_repositories:
+      - label: raspberrypi pico-sdk
+        url: https://github.com/raspberrypi/pico-sdk
+      - label: raspberrypi pico-examples
+        url: https://github.com/raspberrypi/pico-examples
+provides:
+  - pico-sdk
+  - pico-sdk-2
+  - pico_sdk
+depends: []

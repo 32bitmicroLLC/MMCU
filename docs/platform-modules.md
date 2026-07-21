@@ -125,6 +125,23 @@ Package names intentionally use `platform-cmsis-*` instead of plain
 `cmsis-*`, so capability names such as `cmsis` and `cmsis-core` remain
 resolver-selected capabilities without colliding with exact package names.
 
+Current pico-sdk declarations:
+
+```text
+modules/platform/pico-sdk/mmcu.yaml    # platform family: platform-pico-sdk
+modules/platform/pico-sdk/2/mmcu.yaml  # concrete aggregate: platform-pico-sdk-2
+```
+
+The family module depends on the concrete pico-sdk 2 module. The versioned
+aggregate module provides `pico-sdk`, `pico-sdk-2`, and `pico_sdk`
+capabilities. The hyphenated names follow the upstream project name, while
+`pico_sdk` mirrors the configured `MMCU_PLATFORM` spelling used by scripts and
+CMake cache variables.
+
+Package names intentionally use `platform-pico-sdk-*` instead of plain
+`pico-sdk-*`, so platform capabilities stay resolver-selected and do not
+collide with exact package names.
+
 ## Rule
 
 - public application import: `platform`

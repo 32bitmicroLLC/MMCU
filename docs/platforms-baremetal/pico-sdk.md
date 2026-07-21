@@ -23,6 +23,13 @@ bare-metal execution on boards whose vendor foundation is
 [pico-sdk](https://github.com/raspberrypi/pico-sdk), Raspberry Pi's SDK for
 RP2040 and RP2350.
 
+Official references:
+
+- Pico SDK documentation: <https://www.raspberrypi.com/documentation/pico-sdk/>
+- Pico-series board documentation: <https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html>
+- pico-sdk repository: <https://github.com/raspberrypi/pico-sdk>
+- pico-examples repository: <https://github.com/raspberrypi/pico-examples>
+
 This is a `baremetal`-family platform, alongside the generic implementation in
 [Bare-Metal MCU Platform](mcu.md). Both satisfy the same `mmcu::platform`
 contract; they differ in which vendor foundation supplies boot, linking, and
@@ -59,6 +66,44 @@ generic `platform` module and calls `mmcu::platform::halt()` /
 Nothing else. Multicore (core1) bring-up, USB stdio, and pico-sdk's own
 runtime init (clocks, watchdog, etc.) are `target` concerns for `rp2040`/
 `rp2350`, not `platform` concerns, and are out of scope here.
+
+## MMCU module declarations
+
+The pico-sdk platform is represented in the MMCU module graph under
+`modules/platform/pico-sdk/`:
+
+```text
+modules/platform/pico-sdk/mmcu.yaml
+modules/platform/pico-sdk/2/mmcu.yaml
+```
+
+`modules/platform/pico-sdk/mmcu.yaml` declares the pico-sdk platform family:
+
+```yaml
+schema: mmcu.module/v1
+name: platform-pico-sdk
+kind: platform
+provides: [pico-sdk-platform, platform-pico-sdk]
+depends:
+  - name: platform-pico-sdk-2
+    version: 2.0.0
+```
+
+`modules/platform/pico-sdk/2/mmcu.yaml` declares the concrete pico-sdk major
+version 2 platform module:
+
+```yaml
+schema: mmcu.module/v1
+name: platform-pico-sdk-2
+kind: platform
+version: 2.0.0
+provides: [pico-sdk, pico-sdk-2, pico_sdk]
+depends: []
+```
+
+These module declarations are resolver metadata. The platform-local scripts,
+vendored pico-sdk checkout, picotool build, and smoke-test project still live
+under `platforms/pico-sdk/`.
 
 ## Required Dependency
 
