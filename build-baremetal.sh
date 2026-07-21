@@ -41,6 +41,11 @@ Options:
       --cmsis-git-tag <tag>    CMSIS_6 tag for the CMake-managed clone (default: v6.3.0)
   -h, --help                   Show this help
 
+This builds the MMCU_PLATFORM=mcu bare-metal platform (see docs/configure.md).
+CPU flags, freestanding compile flags, and the linker entry symbol are
+computed by cmake/toolchains/arm-none-eabi-{gcc,clang}.cmake from
+MMCU_TARGET, not by this script.
+
 Outputs:
   clang builds into <build-dir>-clang when --compiler=both, otherwise <build-dir>
   gcc builds into <build-dir>-gcc when --compiler=both, otherwise <build-dir>
@@ -145,80 +150,21 @@ if [[ -z "$GENERATOR" ]] && command -v ninja >/dev/null 2>&1; then
 fi
 
 case "$TARGET" in
-    emu)
-        DEFAULT_CPU="cortex-m3"
-        ENTRY_SYMBOL_CLANG="main"
-        ENTRY_SYMBOL_GCC="main"
-        ;;
-    cortex-m0)
-        DEFAULT_CPU="cortex-m0"
-        ENTRY_SYMBOL_CLANG="Reset_Handler"
-        ENTRY_SYMBOL_GCC="Reset_Handler"
-        ;;
-    cortex-m0plus)
-        DEFAULT_CPU="cortex-m0plus"
-        ENTRY_SYMBOL_CLANG="Reset_Handler"
-        ENTRY_SYMBOL_GCC="Reset_Handler"
+    emu|cortex-m0|cortex-m0plus)
         ;;
     *)
         echo "Error: --target must be one of: emu, cortex-m0, cortex-m0plus" >&2
         exit 1
         ;;
 esac
-if [[ -z "$CPU" ]]; then
-    CPU="$DEFAULT_CPU"
-fi
-
-COMMON_CXX_FLAGS=(
-    -mcpu="$CPU"
-    -mthumb
-    -ffreestanding
-    -fdata-sections
-    -ffunction-sections
-    -fno-exceptions
-    -fno-rtti
-    -fno-use-cxa-atexit
-)
-COMMON_C_FLAGS=(
-    -mcpu="$CPU"
-    -mthumb
-    -ffreestanding
-    -fdata-sections
-    -ffunction-sections
-)
-COMMON_ASM_FLAGS=(
-    -mcpu="$CPU"
-    -mthumb
-)
-COMMON_LINK_FLAGS=(
-    -mcpu="$CPU"
-    -mthumb
-    -nostdlib
-    -Wl,--gc-sections
-)
-
-join_flags() {
-    local flags=("$@")
-    printf '%s ' "${flags[@]}"
-}
 
 configure_and_build() {
     local name="$1"
-    local cxx_compiler="$2"
-    local c_compiler="$3"
-    local out_dir="$4"
-    local entry_symbol="$5"
-    shift 5
+    local toolchain_file="$2"
+    local out_dir="$3"
+    shift 3
     local extra_cmake_args=("$@")
 
-    if [[ ! -x "$cxx_compiler" ]]; then
-        echo "Error: C++ compiler not found or not executable: $cxx_compiler" >&2
-        exit 1
-    fi
-    if [[ ! -x "$c_compiler" ]]; then
-        echo "Error: C compiler not found or not executable: $c_compiler" >&2
-        exit 1
-    fi
     if [[ $MAP_AND_LIST -eq 1 ]] && [[ ! -x "$OBJDUMP" ]]; then
         echo "Error: objdump not found or not executable: $OBJDUMP" >&2
         exit 1
@@ -228,35 +174,24 @@ configure_and_build() {
         rm -rf "$out_dir"
     fi
 
-    local cxx_flags c_flags asm_flags link_flags
-    cxx_flags="$(join_flags "${COMMON_CXX_FLAGS[@]}")"
-    c_flags="$(join_flags "${COMMON_C_FLAGS[@]}")"
-    asm_flags="$(join_flags "${COMMON_ASM_FLAGS[@]}")"
-    link_flags="$(join_flags "${COMMON_LINK_FLAGS[@]}" -Wl,-e,"$entry_symbol")"
-    if [[ $MAP_AND_LIST -eq 1 ]]; then
-        link_flags+="$(join_flags -Wl,-Map,mmcu_app.map -Wl,--cref)"
-    fi
-
     local cmake_args=(
         -S .
         -B "$out_dir"
         -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
-        -DCMAKE_SYSTEM_NAME=Generic
-        -DCMAKE_SYSTEM_PROCESSOR=arm
-        -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
-        -DCMAKE_C_COMPILER="$c_compiler"
-        -DCMAKE_CXX_COMPILER="$cxx_compiler"
-        -DCMAKE_ASM_COMPILER="$c_compiler"
-        -DCMAKE_C_FLAGS="$c_flags"
-        -DCMAKE_CXX_FLAGS="$cxx_flags"
-        -DCMAKE_ASM_FLAGS="$asm_flags"
-        -DCMAKE_EXE_LINKER_FLAGS="$link_flags"
+        -DMMCU_PLATFORM=mcu
         -DMMCU_TARGET="$TARGET"
+        -DCMAKE_TOOLCHAIN_FILE="$SCRIPT_DIR/cmake/toolchains/$toolchain_file"
         -DMMCU_CMSIS_GIT_TAG="$CMSIS_GIT_TAG"
         "${extra_cmake_args[@]}"
     )
+    if [[ -n "$CPU" ]]; then
+        cmake_args+=(-DMMCU_CPU="$CPU")
+    fi
     if [[ -n "$CMSIS_DIR" ]]; then
         cmake_args+=(-DMMCU_CMSIS_DIR="$CMSIS_DIR")
+    fi
+    if [[ $MAP_AND_LIST -eq 1 ]]; then
+        cmake_args+=(-DMMCU_LINKER_MAP=ON)
     fi
     if [[ -n "$GENERATOR" ]]; then
         cmake_args+=(-G "$GENERATOR")
@@ -311,20 +246,54 @@ generate_listings() {
 
 case "$COMPILER" in
     clang)
-        configure_and_build "clang" "$CLANG_CXX" "$CLANG_CC" "$BUILD_DIR" "$ENTRY_SYMBOL_CLANG" \
-            -DCMAKE_C_COMPILER_TARGET=arm-none-eabi \
-            -DCMAKE_CXX_COMPILER_TARGET=arm-none-eabi \
-            -DCMAKE_ASM_COMPILER_TARGET=arm-none-eabi
+        if [[ ! -x "$CLANG_CXX" ]]; then
+            echo "Error: C++ compiler not found or not executable: $CLANG_CXX" >&2
+            exit 1
+        fi
+        if [[ ! -x "$CLANG_CC" ]]; then
+            echo "Error: C compiler not found or not executable: $CLANG_CC" >&2
+            exit 1
+        fi
+        configure_and_build "clang" "arm-none-eabi-clang.cmake" "$BUILD_DIR" \
+            -DMMCU_CLANG_CXX="$CLANG_CXX" \
+            -DMMCU_CLANG_CC="$CLANG_CC"
         ;;
     gcc)
-        configure_and_build "gcc" "$ARM_GXX" "$ARM_GCC" "$BUILD_DIR" "$ENTRY_SYMBOL_GCC"
+        if [[ ! -x "$ARM_GXX" ]]; then
+            echo "Error: C++ compiler not found or not executable: $ARM_GXX" >&2
+            exit 1
+        fi
+        if [[ ! -x "$ARM_GCC" ]]; then
+            echo "Error: C compiler not found or not executable: $ARM_GCC" >&2
+            exit 1
+        fi
+        configure_and_build "gcc" "arm-none-eabi-gcc.cmake" "$BUILD_DIR" \
+            -DMMCU_ARM_GXX="$ARM_GXX" \
+            -DMMCU_ARM_GCC="$ARM_GCC"
         ;;
     both)
-        configure_and_build "clang" "$CLANG_CXX" "$CLANG_CC" "$BUILD_DIR-clang" "$ENTRY_SYMBOL_CLANG" \
-            -DCMAKE_C_COMPILER_TARGET=arm-none-eabi \
-            -DCMAKE_CXX_COMPILER_TARGET=arm-none-eabi \
-            -DCMAKE_ASM_COMPILER_TARGET=arm-none-eabi
-        configure_and_build "gcc" "$ARM_GXX" "$ARM_GCC" "$BUILD_DIR-gcc" "$ENTRY_SYMBOL_GCC"
+        if [[ ! -x "$CLANG_CXX" ]]; then
+            echo "Error: C++ compiler not found or not executable: $CLANG_CXX" >&2
+            exit 1
+        fi
+        if [[ ! -x "$CLANG_CC" ]]; then
+            echo "Error: C compiler not found or not executable: $CLANG_CC" >&2
+            exit 1
+        fi
+        if [[ ! -x "$ARM_GXX" ]]; then
+            echo "Error: C++ compiler not found or not executable: $ARM_GXX" >&2
+            exit 1
+        fi
+        if [[ ! -x "$ARM_GCC" ]]; then
+            echo "Error: C compiler not found or not executable: $ARM_GCC" >&2
+            exit 1
+        fi
+        configure_and_build "clang" "arm-none-eabi-clang.cmake" "$BUILD_DIR-clang" \
+            -DMMCU_CLANG_CXX="$CLANG_CXX" \
+            -DMMCU_CLANG_CC="$CLANG_CC"
+        configure_and_build "gcc" "arm-none-eabi-gcc.cmake" "$BUILD_DIR-gcc" \
+            -DMMCU_ARM_GXX="$ARM_GXX" \
+            -DMMCU_ARM_GCC="$ARM_GCC"
         ;;
     *)
         echo "Error: --compiler must be one of: clang, gcc, both" >&2
