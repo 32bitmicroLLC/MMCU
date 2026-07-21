@@ -28,7 +28,7 @@ plain `build`).
 - C++20-capable compiler with module support
 - Python 3 with PyYAML for the configure-time manifest resolver
   (`tools/mmcu-deps.py`); install `requirements-yaml.txt` into `./venv/`
-  for the project-local setup
+  with `./setup.sh` for the project-local setup
 - Ninja (optional, auto-detected by `configure.sh`)
 - `/usr/bin/clang++-20` / `/usr/bin/clang-20` for `--platform mcu --compiler clang`
 - `/usr/bin/arm-none-eabi-g++` / `/usr/bin/arm-none-eabi-gcc` for

@@ -8,6 +8,8 @@ theme:
 
 nav:
   - Home: index.md
+  - Setup: setup.md
+  - User Guide: guide.md
   - Tools: tools.md
   - Platform Tools: platform-tools.md
   - Build And Run: build.md

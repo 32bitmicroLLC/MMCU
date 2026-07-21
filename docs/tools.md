@@ -1,8 +1,9 @@
 # Tools
 
 This page lists the common tools needed to configure, build, document,
-validate, and run MMCU. Platform-installable tools are documented by their
-own platform pages.
+validate, and run MMCU. For the first-run command sequence, see
+[Setup](setup.md). Platform-installable tools are documented by their own
+platform pages.
 
 ## CMake
 
@@ -15,6 +16,7 @@ Required:
 MMCU's scripts are wrappers around CMake:
 
 ```sh
+./setup.sh
 ./configure.sh
 ./build.sh
 ```
@@ -116,6 +118,12 @@ use `./flash.sh` for real hardware.
 Python tools should be installed into a project-local virtual environment
 at `./venv/`. `CMakeLists.txt` prefers `./venv/bin/python` when it exists,
 then falls back to `find_package(Python3)`.
+
+The standard bootstrap path is:
+
+```sh
+./setup.sh
+```
 
 Create it:
 

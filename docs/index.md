@@ -10,21 +10,32 @@ MMCU is a modular C++20 project scaffold built around CMake module support.
 
 ## Quick Start
 
-1. Build the project:
+1. Set up project-local Python/YAML tooling:
+
+   ```bash
+   ./setup.sh
+   ```
+
+2. Build the project:
 
    ```bash
    ./build.sh
    ```
 
-2. Serve documentation:
+3. Serve documentation:
 
    ```bash
+   ./setup.sh --docs
    ./docs.sh serve
    ```
 
 ## Documentation
 
 - [Build And Run](build.md)
+- [Setup](setup.md)
+- [User Guide](guide.md)
+- [Tools](tools.md)
+- [Platform Tools](platform-tools.md)
 - [Configure: Platform, Target, Toolchain](configure.md)
 - [Run](run.md)
 - [Flash](flash.md)
