@@ -1,23 +1,61 @@
-# Module Definition
+# Module Specification
 
-An MMCU **module** is the unit that turns a reusable block of code into a
-resolvable build artifact.
+An MMCU **module** is a typed, versioned, YAML-declared unit in the MMCU
+system graph. It can represent source code, a hardware fact, a board, a
+target, a platform integration, an application, or an abstract functional
+interface. C++20 modules are the primary compilation backend, but they are
+not the only thing the word "module" means in MMCU.
 
-More precisely, an MMCU module is a manifest-described, versioned block of
-code that contributes one or more C++20 module interface units and/or
-ordinary source files, provides one or more named capabilities through a
-declared public interface, and declares the packages, capabilities, target
-peripherals, board buses, and platform/target/board facts it requires.
+This specification separates three layers:
 
-This page defines the singular abstraction. [Modules](modules.md) defines
-the `modules/` directory tree specifically: generic, hardware-independent
-building blocks such as ring buffers, CRC routines, fixed-point types, and
-small containers. The same MMCU module abstraction is also used by entries
-under [Libraries](libraries.md) and [Drivers](drivers.md).
+1. **MMCU module declaration** — the YAML DSL that describes identity,
+   kind, provided capabilities, dependencies, compatibility, files, and
+   generated outputs.
+2. **MMCU module graph** — the mapped and resolved graph of applications,
+   libraries, drivers, generic modules, peripherals, targets, boards, and
+   platforms.
+3. **C++20 module backend** — one concrete realization of selected graph
+   nodes as `export module ...;`, `import ...;`, CMake `CXX_MODULES`, and
+   ordinary source files.
 
-## Grounding in C++20 modules
+The important rule is that the MMCU DSL is the source of truth for
+resolution. C++20 imports are generated or validated from the resolved
+MMCU graph; they are not the graph definition.
 
-C++20 modules provide the language boundary:
+## Definition
+
+An MMCU module is:
+
+- named;
+- typed by `kind`;
+- optionally versioned;
+- able to provide one or more capabilities or facts;
+- able to require other modules, capabilities, target features, board
+  features, platform features, or toolchain features;
+- optionally backed by C++20 module interface units and source files;
+- optionally declarative only, with no source files at all;
+- resolvable into a static solution for one application and one selected
+  platform/target/board context.
+
+The same abstraction covers all of these module kinds:
+
+| `kind` | Represents | Usually emits C++20? |
+|---|---|---|
+| `application` | A top-level program and dependency root | Yes |
+| `library` | A reusable protocol, format, algorithm, or service | Yes |
+| `driver` | A concrete implementation for a device, bus, chip, or peripheral | Yes |
+| `module` | A generic reusable software building block | Yes |
+| `peripheral` | A hardware capability contract such as `GPIO`, `I2C`, `SPI`, `CAN`, `WIFI` | Sometimes |
+| `target` | A chip/MCU target: CPU, memory, peripherals, ABI facts | Sometimes |
+| `board` | A carrier board or virtual board subset: buses, rails, connectors, defaults | Sometimes |
+| `platform` | A build/runtime integration such as `native`, `mcu`, or `pico_sdk` | Sometimes |
+
+[Modules](modules.md) describes only the `modules/` source tree. This page
+defines the broader module concept used across the whole system.
+
+## Relationship to C++20 modules
+
+C++20 modules give MMCU a strong language-level interface boundary:
 
 ```cpp
 export module ring_buffer;
@@ -31,294 +69,754 @@ public:
 }
 ```
 
-Application or library code consumes that interface with `import`:
+Consumers use the interface with `import`:
 
 ```cpp
 import ring_buffer;
 ```
 
-That import is a compiler-visible dependency between translation units.
-CMake uses the listed `.cppm` files to scan module imports, order
-compilation, and pass the right binary module interface artifacts to the
-compiler.
+That is a compiler edge. It controls translation-unit visibility,
+compilation ordering, and binary module interface generation.
 
-MMCU adds the build-system and resolver boundary around that C++20
-boundary. A C++20 module says what code can import. An MMCU module says
-when that code is a valid provider for a requested capability, which
-version of the public interface it provides, what it depends on, and what
-hardware context is required for it to be selectable.
+An MMCU module declaration is a resolver edge. It answers questions C++20
+imports cannot answer:
 
-## One manifest is one resolver unit
+- Is `ring-buffer` an exact package or a provided capability?
+- Which provider satisfies `imu` on this board?
+- Does this driver require target `SPI`, board `WIFI`, or platform
+  `pico_sdk`?
+- Which public interface version is required?
+- Which files should be added to CMake after resolving closes the graph?
+- Which target, board, and platform facts make the selected provider
+  valid?
 
-Every resolvable unit has one `mmcu.yaml` manifest:
+The resolver selects MMCU modules first. The selected modules are then
+transpiled or projected into C++20 module interface files, source files,
+CMake `target_sources(... FILE_SET ... TYPE CXX_MODULES ...)`, generated
+headers, generated metadata modules, or no build artifact at all.
+
+## Canonical YAML DSL
+
+The canonical MMCU module declaration uses YAML:
 
 ```yaml
+schema: mmcu.module/v1
 name: ring-buffer
 kind: module
 version: 1.2.0
-provides: [ring-buffer]
-modules: [ring_buffer.cppm]
-depends: []
+
+provides:
+  - name: ring-buffer
+    type: capability
+    interface: ring_buffer
+    version: 1.2.0
+
+requires: []
+
+implementation:
+  language: c++20
+  exports:
+    - module: ring_buffer
+      file: ring_buffer.cppm
+  sources: []
 ```
 
-The resolver treats that manifest as the unit of collection, mapping,
-version checking, and selection. The C++20 module interface file is the
-compiler-facing part of the same unit.
+This is the normalized form. Existing `mmcu.yaml` manifests with
+`provides: [ring-buffer]`, `modules: [ring_buffer.cppm]`, and
+`depends: [...]` are shorthand for the same model. The current resolver
+does not yet implement every normalized field in this document.
 
-The current manifest shape is defined in
-[Dependency DSL](dependency-dsl.md). In today’s shorthand,
-`provides: [ring-buffer]` means the package provides that capability at
-the package version, here `1.2.0`.
+## Top-level fields
 
-## Package name, capability, and C++ import name
+| Field | Required | Meaning |
+|---|---:|---|
+| `schema` | recommended | DSL version, currently `mmcu.module/v1` |
+| `name` | yes | Unique module identity inside its namespace |
+| `kind` | yes | `application`, `library`, `driver`, `module`, `peripheral`, `target`, `board`, or `platform` |
+| `title` | no | Human-readable display name |
+| `version` | depends | Semantic version for versioned interfaces or packages |
+| `description` | no | Short explanation of the module |
+| `provides` | no | Capabilities, facts, interfaces, or defaults this module contributes |
+| `requires` | no | Dependencies and compatibility requirements |
+| `select` | no | Provider preference, default-provider, or tie-break metadata |
+| `implementation` | no | Source files, generated files, and backend metadata |
+| `metadata` | no | Documentation links, provenance, electrical facts, memory facts, notes |
 
-These names are related, but they are not the same concept.
+`version` is required for modules that expose a public functional
+interface. Declarative fact modules such as a board profile may omit it
+when their identity is already the stable versioned contract.
 
-| Concept | Example | Purpose |
+## Namespaces
+
+MMCU uses separate namespaces and rejects ambiguous collisions during
+collection:
+
+| Namespace | Example | Meaning |
 |---|---|---|
-| Package name | `bmi270` | Exact resolver identity for one manifest. |
-| Capability name | `imu` | Stable requirement that can have multiple providers. |
-| C++ module import name | `imu` or `ring_buffer` | Language-level interface imported by source code. |
+| Module/package name | `bmi270` | Exact selected unit |
+| Capability name | `imu` | Stable requirement with one or more providers |
+| C++20 import name | `imu`, `ring_buffer` | Compiler-visible module name |
+| Target name | `rp2040` | Selected chip target |
+| Board name | `pico-w` | Selected board or board variant |
+| Platform name | `pico_sdk` | Selected build/runtime platform |
 
-For an exact package dependency, application code may import the package's
-own stable C++ module name:
+An application depending on an exact package may import that package's
+public C++ module:
 
 ```cpp
 import canopen;
 ```
 
-For an open capability dependency, application code must import the
-capability's stable interface name, not the concrete provider:
+An application depending on an open capability imports the capability
+interface, never the concrete provider:
 
 ```cpp
 import imu;
 ```
 
-If resolving selects `bmi270` on one board and another IMU provider on
-another board, application code remains unchanged. The selected provider
-is responsible for exposing the stable capability interface.
+The selected provider must implement or re-export the stable capability
+interface.
 
-## Capabilities are functional interfaces
+## `provides`
 
-A capability is not just a tag. It is the functional interface a consumer
-can rely on.
-
-For a capability to be meaningful, its documentation should define:
-
-- the capability name used in `depends` and `provides`;
-- the C++ import name consumers use;
-- the exported namespace, types, functions, constants, and concepts;
-- behavioral guarantees visible to consumers;
-- versioning rules for incompatible, compatible, and patch-level changes;
-- configuration or hardware assumptions that affect observable behavior.
-
-For example, `imu` should mean a stable IMU interface, not merely “some
-driver somewhere talks to an accelerometer.” A consumer that writes
-`depends: [{name: imu, version: 1.0.0}]` and `import imu;` must know what
-API and behavior version `1.0.0` promises.
-
-## Versioned public interface
-
-MMCU uses plain semantic versions as minimum requirements, as described in
-[Resolving](resolving.md#version-resolution-minimal-version-selection-not-sat).
-The version that matters to consumers is the public functional interface
-they depend on:
-
-- exported declarations from the C++20 module interface;
-- documented semantics of those declarations;
-- capability-level configuration contract;
-- observable behavior promised by that capability.
-
-Breaking changes to that interface require a major version increment.
-Backward-compatible additions require a minor version increment. Internal
-implementation fixes that do not change the public contract require a
-patch version increment.
-
-Today, the package version also stands in for the version of every
-capability listed by the shorthand `provides` field:
+`provides` declares what this module contributes to the graph. The
+normalized form is a list of objects:
 
 ```yaml
-name: bmi270
-kind: driver
-version: 1.2.0
-provides: [imu]
-modules: [driver.cppm]
-peripherals:
-  any_of: [I2C, SPI]
+provides:
+  - name: imu
+    type: capability
+    interface: imu
+    version: 1.0.0
 ```
 
-That means `bmi270` provides `imu` version `1.2.0`.
+Fields:
 
-If MMCU needs independent package and capability-interface versions later,
-the compatible richer YAML shape is:
+| Field | Meaning |
+|---|---|
+| `name` | Provided capability, fact, interface, or module name |
+| `type` | `capability`, `interface`, `package`, `target`, `board`, `platform`, `peripheral`, `target-peripheral`, `board-bus`, `fact`, or `default` |
+| `interface` | Stable C++20 import name or abstract interface name |
+| `version` | Version of this provided public interface |
+| `aliases` | Alternate names accepted for compatibility |
+| `facts` | Structured facts contributed by declarative modules |
+
+Shorthand:
 
 ```yaml
+provides: [imu]
+```
+
+means:
+
+```yaml
+provides:
+  - name: imu
+    type: capability
+    interface: imu
+    version: <module version>
+```
+
+## `requires`
+
+`requires` declares what this module needs. The normalized form is a list
+of typed requirement objects:
+
+```yaml
+requires:
+  - name: ring-buffer
+    type: capability
+    version: 1.0.0
+  - name: SPI
+    type: target-peripheral
+  - name: pico_sdk
+    type: platform
+```
+
+Fields:
+
+| Field | Meaning |
+|---|---|
+| `name` | Required package, capability, fact, platform, target, board, or tool |
+| `type` | Requirement type |
+| `version` | Minimum semantic version, when versioned |
+| `any_of` | Alternative names where at least one must match |
+| `all_of` | Required names where all must match |
+| `optional` | If true, absence does not make the module unsatisfiable |
+| `reason` | Human-readable explanation used in diagnostics |
+
+Requirement types:
+
+| `type` | Checked against |
+|---|---|
+| `package` | Exact collected module name |
+| `capability` | Collected `provides` names |
+| `target` | Selected `MMCU_TARGET` or compatible target facts |
+| `board` | Selected `MMCU_BOARD` or compatible board facts |
+| `platform` | Selected `MMCU_PLATFORM` |
+| `target-peripheral` | Target's on-die peripheral set |
+| `board-bus` | Board's bus/transceiver/radio set |
+| `memory` | Target memory facts |
+| `toolchain` | Compiler/generator/toolchain facts |
+| `host-tool` | Required host executable |
+
+Current DSL compatibility:
+
+```yaml
+depends:
+  - name: ring-buffer
+    version: 1.0.0
+peripherals:
+  requires: [SPI]
+  board_requires: [WIFI]
+```
+
+is equivalent to:
+
+```yaml
+requires:
+  - name: ring-buffer
+    type: capability
+    version: 1.0.0
+  - name: SPI
+    type: target-peripheral
+  - name: WIFI
+    type: board-bus
+```
+
+## `implementation`
+
+`implementation` describes how a selected module becomes build input.
+
+```yaml
+implementation:
+  language: c++20
+  exports:
+    - module: imu
+      file: imu.cppm
+  imports:
+    - ring_buffer
+    - i2c
+  sources:
+    - bmi270.cpp
+  generated:
+    - module: mmcu.generated.board
+      from: facts
+```
+
+Fields:
+
+| Field | Meaning |
+|---|---|
+| `language` | `c++20`, `c`, `asm`, `yaml`, `cmake`, `generated`, or `none` |
+| `exports` | C++20 module interfaces this unit exports |
+| `imports` | Expected C++20 imports, used for validation or generation |
+| `sources` | Ordinary implementation sources |
+| `headers` | Header files used by implementation sources |
+| `generated` | Generated files or generated C++20 modules |
+| `cmake` | Extra CMake integration hooks, when unavoidable |
+
+Existing shorthand:
+
+```yaml
+modules: [driver.cppm]
+sources: [registers.cpp]
+```
+
+is equivalent to:
+
+```yaml
+implementation:
+  language: c++20
+  exports:
+    - module: <derived-from-file-or-provider>
+      file: driver.cppm
+  sources:
+    - registers.cpp
+```
+
+The normalized form should be preferred when the exported module name is
+not obvious from the file name or when one package exports multiple C++20
+modules.
+
+## Module kinds
+
+### `kind: application`
+
+An application is the dependency root. It selects required capabilities
+and exact packages, then resolves to an executable for one
+platform/target/board context.
+
+```yaml
+schema: mmcu.module/v1
+name: mmcu_app
+kind: application
+version: 0.1.0
+requires:
+  - name: imu
+    type: capability
+    version: 1.0.0
+  - name: gpio
+    type: capability
+implementation:
+  language: c++20
+  exports:
+    - module: mmcu_app
+      file: app.cppm
+  sources:
+    - main.cpp
+```
+
+Transpilation output:
+
+- CMake executable target;
+- selected dependency graph in `mmcu.solution.yaml`;
+- C++20 module interface files and ordinary sources added to the target.
+
+### `kind: library`
+
+A library provides a reusable functional interface or protocol. It may
+depend on drivers, modules, peripherals, or other libraries.
+
+```yaml
+schema: mmcu.module/v1
+name: canopen
+kind: library
+version: 2.1.0
+provides:
+  - name: canopen-stack
+    type: capability
+    interface: canopen
+    version: 2.1.0
+requires:
+  - name: can
+    type: capability
+    version: 1.0.0
+implementation:
+  language: c++20
+  exports:
+    - module: canopen
+      file: canopen.cppm
+```
+
+### `kind: driver`
+
+A driver is a concrete provider for a device, chip, bus controller, or
+hardware-facing capability.
+
+```yaml
+schema: mmcu.module/v1
 name: bmi270
 kind: driver
 version: 1.2.0
 provides:
   - name: imu
+    type: capability
     interface: imu
     version: 1.0.0
-modules: [driver.cppm]
-peripherals:
-  any_of: [I2C, SPI]
+requires:
+  - any_of: [I2C, SPI]
+    type: target-peripheral
+implementation:
+  language: c++20
+  exports:
+    - module: imu
+      file: imu.cppm
+    - module: bmi270
+      file: bmi270.cppm
 ```
 
-In that shape, the package can evolve as `bmi270` version `1.2.0` while
-still implementing the stable `imu` interface version `1.0.0`. This is a
-specification direction, not a claim that the current resolver already
-accepts the richer form.
+The provider may export both a stable capability interface (`imu`) and a
+provider-specific implementation interface (`bmi270`). Application code
+that asked for `imu` imports `imu`.
 
-## Dependencies are resolver edges, imports are compiler edges
+### `kind: module`
 
-Do not use C++ imports as the dependency manifest.
-
-`import ring_buffer;` tells the compiler that one translation unit needs a
-C++20 module interface. It does not tell MMCU whether `ring-buffer` is a
-generic module, a driver helper, a selected board provider, a package
-requiring SPI, or a capability with multiple candidate providers.
-
-The manifest carries those resolver edges:
+A generic module is a hardware-independent reusable software component.
 
 ```yaml
-name: canopen
-kind: library
-version: 2.1.0
-provides: [canopen-stack]
-modules: [canopen.cppm]
-depends:
-  - name: ring-buffer
+schema: mmcu.module/v1
+name: fixed-vector
+kind: module
+version: 1.0.0
+provides:
+  - name: fixed-vector
+    type: capability
+    interface: fixed_vector
     version: 1.0.0
-  - name: can
-    version: 1.0.0
+implementation:
+  language: c++20
+  exports:
+    - module: fixed_vector
+      file: fixed_vector.cppm
 ```
 
-The source carries the language imports:
+Generic modules should not require target peripherals or board buses. If
+they do, review whether the hardware-specific part belongs in a target,
+platform, or driver module instead.
+
+### `kind: peripheral`
+
+A peripheral module defines a hardware capability contract. It may be
+purely declarative, or it may also provide a C++20 interface that drivers
+and applications import.
+
+```yaml
+schema: mmcu.module/v1
+name: i2c
+kind: peripheral
+version: 1.0.0
+provides:
+  - name: I2C
+    type: peripheral
+    interface: i2c
+    version: 1.0.0
+implementation:
+  language: c++20
+  exports:
+    - module: i2c
+      file: i2c.cppm
+```
+
+A target can provide the `I2C` fact without providing the `i2c` C++20
+interface directly. The resolver distinguishes the hardware fact from the
+software interface.
+
+### `kind: target`
+
+A target module declares chip/MCU facts: CPU, memory, ABI, debug, and
+on-die peripherals.
+
+```yaml
+schema: mmcu.module/v1
+name: rp2040
+kind: target
+provides:
+  - name: rp2040
+    type: target
+  - name: GPIO
+    type: peripheral
+  - name: I2C
+    type: peripheral
+  - name: SPI
+    type: peripheral
+  - name: UART
+    type: peripheral
+metadata:
+  cpu: cortex-m0plus
+  memory:
+    ram: 264K
+    flash: external
+  debug: [SWD]
+implementation:
+  language: c++20
+  generated:
+    - module: mmcu.target
+      from: metadata
+```
+
+Transpilation may emit a generated C++20 metadata module:
 
 ```cpp
-export module canopen;
+export module mmcu.target;
 
-import ring_buffer;
-import can;
+export namespace mmcu::target {
+inline constexpr char name[] = "rp2040";
+inline constexpr char cpu[] = "cortex-m0plus";
+inline constexpr bool has_i2c = true;
+inline constexpr bool has_spi = true;
+}
 ```
 
-Both layers should agree, but they serve different purposes. Mapping and
-resolving operate on `mmcu.yaml`; CMake and the compiler operate on
-`.cppm` import graphs after resolving has selected the concrete packages.
+The generated metadata module is optional. The resolver can also use the
+YAML facts directly and emit only CMake variables or solution metadata.
 
-## Hardware requirements are explicit
+### `kind: board`
 
-A module that needs hardware facts must declare them in YAML. Do not hide
-hardware requirements behind a C++ import.
+A board module declares board-level facts: hosted target, compatible
+targets, compatible platforms, rails, connectors, board buses,
+transceivers, radios, and default providers.
 
 ```yaml
-name: onboard-can
-kind: driver
-version: 1.0.0
-provides: [can]
-modules: [driver.cppm]
-peripherals:
-  requires: [CAN]
-  board_requires: [CAN]
+schema: mmcu.module/v1
+name: pico-w
+kind: board
+provides:
+  - name: pico-w
+    type: board
+  - name: WIFI
+    type: board-bus
+  - name: BLUETOOTH
+    type: board-bus
+requires:
+  - name: rp2040
+    type: target
+  - name: pico_sdk
+    type: platform
+select:
+  defaults:
+    wifi: cyw43439
+    bluetooth: cyw43439
+metadata:
+  rails: [3.3]
+  connectors:
+    - USB-MICRO-B
+    - HEADER-0.1IN-20PIN-DUAL-CASTELLATED
+implementation:
+  language: generated
+  generated:
+    - module: mmcu.board
+      from: metadata
 ```
 
-`peripherals.requires` and `peripherals.any_of` are checked against the
-selected target's on-die peripherals. `peripherals.board_requires` and
-`peripherals.board_any_of` are checked independently against the selected
-board's buses. A provider that needs both must declare both.
+Virtual board variants such as `pico-all` and `pico-w-all` use the same
+kind. They simply set facts to the common subset they intentionally
+represent.
 
-## C++20 file layout
+### `kind: platform`
 
-A simple module usually has one primary module interface:
-
-```text
-modules/Containers/RingBuffer/
-  mmcu.yaml
-  ring_buffer.cppm
-```
-
-Larger modules may split public interface, implementation, and ordinary
-support code:
-
-```text
-drivers/Sensors/IMU/bmi270/
-  mmcu.yaml
-  imu.cppm
-  bmi270.cppm
-  bmi270_registers.cpp
-  bmi270_registers.hpp
-```
-
-The manifest lists the C++20 module interface units in `modules` and
-ordinary implementation files in `sources`:
+A platform module declares build/runtime integration facts: native host,
+bare-metal, vendor SDK, required tools, CMake integration, startup model,
+and supported targets or boards.
 
 ```yaml
+schema: mmcu.module/v1
+name: pico_sdk
+kind: platform
+provides:
+  - name: pico_sdk
+    type: platform
+requires:
+  - name: cmake
+    type: host-tool
+  - name: ninja
+    type: host-tool
+metadata:
+  supports:
+    targets: [rp2040, rp2350, rp2040-cmsis, rp2350-cmsis]
+    boards:
+      - pico
+      - pico-w
+      - pico2
+      - pico2-w
+implementation:
+  language: cmake
+  cmake:
+    package: pico-sdk
+    target_link_libraries:
+      - pico_stdlib
+```
+
+Platform modules are often only partially transpilable to C++20 because
+they also affect toolchain files, startup files, linker scripts, SDK
+packages, and CMake configuration.
+
+## Transpiling MMCU modules to C++20 modules
+
+The transpiler operates after mapping and resolving. It does not choose
+providers; it consumes the already resolved `mmcu.solution.yaml`.
+
+Pipeline:
+
+```text
+YAML module declarations
+        │
+        ▼
+collection
+        │
+        ▼
+mapping + resolving
+        │
+        ▼
+mmcu.solution.yaml
+        │
+        ▼
+C++20/CMake projection
+        │
+        ├── existing .cppm files
+        ├── generated .cppm interface shims
+        ├── generated metadata modules
+        ├── ordinary .cpp/.c/.S sources
+        └── CMake target_sources / link options / definitions
+```
+
+The projection rules are:
+
+1. For each selected module with `implementation.exports`, add each
+   declared `file` to the target's C++20 module file set.
+2. For each selected module with `implementation.sources`, add ordinary
+   sources to the target.
+3. For selected declarative modules with `implementation.generated`, emit
+   generated `.cppm` metadata modules when requested.
+4. For an open capability provider, ensure the stable capability interface
+   exists under the declared `provides.interface` name.
+5. Validate that declared C++20 imports match resolved dependency edges
+   where the module asks for validation.
+6. Emit CMake definitions, include paths, link libraries, startup files,
+   and linker scripts from selected platform/target modules.
+
+Example generated capability shim:
+
+```yaml
+schema: mmcu.module/v1
 name: bmi270
 kind: driver
 version: 1.2.0
-provides: [imu]
-modules:
-  - imu.cppm
-  - bmi270.cppm
-sources:
-  - bmi270_registers.cpp
-peripherals:
-  any_of: [I2C, SPI]
+provides:
+  - name: imu
+    type: capability
+    interface: imu
+    version: 1.0.0
+implementation:
+  language: c++20
+  exports:
+    - module: bmi270
+      file: bmi270.cppm
+  generated:
+    - module: imu
+      kind: reexport
+      from: bmi270
 ```
 
-Use this split:
+Possible generated C++20 output:
 
-- exported declarations live in primary module interface units or exported
-  partitions;
-- provider-private implementation lives in non-exported module units or
-  ordinary `.cpp` files;
-- target, board, and peripheral compatibility lives in YAML, not in
-  preprocessor-only selection hidden inside source files.
+```cpp
+export module imu;
 
-## Resolver invariants
+export import bmi270;
+```
 
-These invariants keep the dependency graph deterministic:
+This lets application code depend on and import `imu` while the resolver
+selects `bmi270` as the concrete provider.
 
-- one manifest is one resolver unit;
-- every package `name` is unique at collection time;
-- package names and capability names are disjoint at collection time;
-- `provides` names stable functional interfaces, not incidental files;
-- `depends` names either an exact package or a capability;
-- `depends.version` is a minimum semantic version;
-- open capabilities resolve to one concrete selected package;
-- the full transitive closure must be satisfiable for the selected
-  platform, target, and board;
-- the generated solution records the concrete selected packages, module
-  interface files, and source files for that configure context.
+## Static solution output
 
-## Directory roles
+The dynamic mapping/resolving process produces a concrete static solution.
+The solution is the input to C++20/CMake projection:
 
-The resolver abstraction is shared across multiple top-level trees:
+```yaml
+schema: mmcu.solution/v1
+app:
+  name: mmcu_app
+context:
+  platform: pico_sdk
+  target: rp2040
+  board: pico-w
+selected:
+  modules:
+    - name: mmcu_app
+      kind: application
+    - name: bmi270
+      kind: driver
+    - name: ring-buffer
+      kind: module
+    - name: rp2040
+      kind: target
+    - name: pico-w
+      kind: board
+    - name: pico_sdk
+      kind: platform
+outputs:
+  cxx20_modules:
+    - applications/main/app.cppm
+    - drivers/Sensors/IMU/bmi270/bmi270.cppm
+    - generated/imu.cppm
+    - modules/Containers/RingBuffer/ring_buffer.cppm
+    - generated/mmcu.target.cppm
+    - generated/mmcu.board.cppm
+  sources:
+    - applications/main/main.cpp
+```
 
-- `modules/` holds generic, hardware-independent modules.
-- `libraries/` holds protocol, format, and higher-level functional
-  libraries.
-- `drivers/` holds concrete providers for devices, buses, and hardware
-  capabilities.
-- `applications/` holds top-level application manifests.
+Generated CMake is a mechanical projection of `outputs`.
 
-Those directory names are project organization. The shared technical
-unit is still the same: one `mmcu.yaml` plus the C++20 module/source files
-it declares.
+## Versioning
+
+Version the public functional interface, not just the source directory.
+For C++20-backed modules, that means:
+
+- exported declarations;
+- exported concepts and templates;
+- documented semantics;
+- generated stable capability shims;
+- metadata facts consumed by other modules.
+
+Breaking changes require a major version increment. Backward-compatible
+additions require a minor increment. Internal fixes require a patch
+increment.
+
+When a package version and capability version are both present, dependency
+resolution checks the capability version for capability dependencies and
+the package version for exact package dependencies.
+
+## Validation rules
+
+Collection rejects:
+
+- duplicate module names in the same namespace;
+- package/capability collisions that make `requires.name` ambiguous;
+- invalid `kind`;
+- invalid semantic versions;
+- missing required fields for the selected `kind`;
+- unknown requirement `type`;
+- cyclic dependencies in the resolved closure;
+- source files declared in `implementation` that do not exist, unless
+  marked as generated;
+- generated C++20 module names that collide with existing exported module
+  names.
+
+Resolving rejects:
+
+- an unsatisfied exact package;
+- an unsatisfied capability;
+- a selected provider below the requested minimum interface version;
+- target-peripheral requirements missing from the selected target;
+- board-bus requirements missing from the selected board;
+- platform requirements not supported by the selected platform;
+- board/target/platform incompatibility.
+
+Projection rejects:
+
+- a selected C++20 module export without a file or generation rule;
+- an imported stable interface that no selected provider exports or
+  generates;
+- a generated shim that would hide a different concrete module with the
+  same import name;
+- CMake backend facts that cannot be represented for the selected
+  platform.
+
+## Compatibility with current documents
+
+This specification is the normalized target model. The current documents
+map into it as follows:
+
+| Current document | Current file shape | Normalized module kind |
+|---|---|---|
+| [Application](application.md) | `applications/<name>/mmcu.yaml` | `application` |
+| [Libraries](libraries.md) | `libraries/<topic>/<name>/mmcu.yaml` | `library` |
+| [Drivers](drivers.md) | `drivers/<topic>/<name>/mmcu.yaml` | `driver` |
+| [Modules](modules.md) | `modules/<topic>/<name>/mmcu.yaml` | `module` |
+| [Modular Peripherals](peripherals.md) | target/driver capability facts | `peripheral` |
+| [Modular Target](target.md) | target CMake/YAML facts | `target` |
+| [Modular Board](board.md) | `boards/.../mmcu-board.yaml` | `board` |
+| [Platform](platform.md) | platform scripts/CMake facts | `platform` |
+
+The existing specialized files do not need to disappear immediately.
+They can be treated as kind-specific projections of `mmcu.module/v1` until
+the resolver and YAML schemas are migrated.
 
 ## External models this follows
 
-The model deliberately combines several established ideas:
+The MMCU module model deliberately combines several established ideas:
 
-- C++20 modules define the language-level import/export boundary.
-- Semantic Versioning defines how public interfaces evolve.
-- Capability/requirement systems such as OSGi separate what a unit
-  provides from what it requires.
-- Module systems such as OpenJDK's treat a module as a unit of
-  compilation, packaging, release, and reuse.
-- Minimal-version systems such as Go modules keep dependency constraints
-  simple by treating a requested version as a minimum.
+- C++20 modules provide the language import/export boundary.
+- Semantic Versioning defines public interface evolution.
+- Capability/requirement systems separate what a unit provides from what
+  it requires.
+- Platform and board descriptions are declarative fact modules, not
+  source-code imports.
+- Minimal-version dependency systems keep resolution simple by treating a
+  requested version as a minimum.
 
 References:
 
