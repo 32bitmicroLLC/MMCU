@@ -119,13 +119,13 @@ pico-sdk's `rp2040`/`rp2350`, use that foundation's own platform module (see
 
 ## Build Script Direction
 
-No new flags are required for `./build-baremetal.sh` itself. Selecting any
-bare-metal target already implies the bare-metal platform:
+Use `./configure.sh --platform mcu`, which selects this platform
+implementation regardless of target:
 
 ```bash
-./build-baremetal.sh --target emu
-./build-baremetal.sh --target cortex-m0
-./build-baremetal.sh --target cortex-m0plus
+./configure.sh --platform mcu --target emu
+./configure.sh --platform mcu --target cortex-m0
+./configure.sh --platform mcu --target cortex-m0plus
 ```
 
 ## CMake Direction
@@ -138,7 +138,10 @@ set(MMCU_PLATFORM "native" CACHE STRING "MMCU platform to build")
 set_property(CACHE MMCU_PLATFORM PROPERTY STRINGS native baremetal)
 ```
 
-`./build-baremetal.sh` configures with `MMCU_PLATFORM=baremetal`.
+`./configure.sh --platform mcu` configures with `MMCU_PLATFORM=mcu` (the
+actual implemented value; this proposal predates the `native`/`mcu`/
+`pico_sdk` naming settled on in
+[Configure: Platform, Target, Toolchain](../configure.md)).
 
 When `MMCU_PLATFORM` is `baremetal`, add:
 

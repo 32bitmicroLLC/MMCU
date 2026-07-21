@@ -52,13 +52,15 @@ if (!mmcu::uart::uart0.can_write()) {
 
 ## Build-Time Selection
 
-The build script selects the platform:
+`./configure.sh` selects the platform (see
+[Configure: Platform, Target, Toolchain](configure.md)); `./build.sh` then
+builds whatever was configured:
 
 ```bash
-./build.sh                            # native
-./build-baremetal.sh --target emu     # bare-metal
-./build-baremetal.sh --target cortex-m0
-./build-baremetal.sh --target cortex-m0plus
+./build.sh                                          # native (default, no configure.sh call needed)
+./configure.sh --platform mcu --target emu          # bare-metal
+./configure.sh --platform mcu --target cortex-m0
+./configure.sh --platform mcu --target cortex-m0plus
 ```
 
 Concrete platform modules may exist internally:
@@ -86,9 +88,9 @@ separate platform flag.
 - public application import: `platform`
 - public API: `mmcu::platform::halt()`, `mmcu::platform::panic(message)`,
   `mmcu::platform::is_native`, `mmcu::platform::is_baremetal`
-- concrete platform is selected by the build script and target (`build.sh` is
-  always `native`; `build-baremetal.sh --target <name>` selects `mcu` or
-  `pico_sdk` depending on `<name>`'s vendor foundation)
+- concrete platform is selected by `./configure.sh --platform <name>` and its
+  target (`native` is the default; `--platform mcu`/`--platform pico_sdk`
+  select `mcu` or `pico_sdk` depending on `<name>`'s vendor foundation)
 - concrete platform modules (`native`, `mcu`, `pico_sdk`) are internal
   implementation details, and more may be added for other vendor foundations
 - `platform` does not own target/board selection; that stays with `target`

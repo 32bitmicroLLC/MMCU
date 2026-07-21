@@ -77,8 +77,8 @@ a default `-mcpu` value and linker entry symbol:
 
 The CPU can be overridden with `-DMMCU_CPU=<cpu>`. Compiler paths are
 overridable cache variables (`MMCU_ARM_GCC`, `MMCU_ARM_GXX`, `MMCU_CLANG_CC`,
-`MMCU_CLANG_CXX`), matching `build-baremetal.sh`'s existing
-`--arm-gcc`/`--clang-cxx`-style flags.
+`MMCU_CLANG_CXX`), matching `configure.sh`'s `--arm-gcc`/`--clang-cxx`-style
+flags.
 
 These variables are forwarded into CMake's internal `try_compile` scratch
 projects (used for compiler ABI detection) via
@@ -132,14 +132,16 @@ cmake -S . -B build-cortex-m0plus-clang \
 
 ## How the build scripts use this
 
-- `./build.sh` never sets these variables; it relies on the `native`/`emu`
-  defaults. See [Build And Run](build.md).
-- `./build-baremetal.sh --target <name> --compiler <clang|gcc|both>` sets
-  `-DMMCU_PLATFORM=mcu -DMMCU_TARGET=<name> -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/arm-none-eabi-<compiler>.cmake`,
-  plus `-DMMCU_CPU=...` only when `--cpu` is explicitly passed, and
-  `-DMMCU_LINKER_MAP=ON` when `--map-and-list` is passed. It no longer
-  computes `-mcpu`/freestanding/linker flags itself — that all lives in the
-  toolchain files now.
+- `./configure.sh` (see above) is the only script that sets
+  `MMCU_PLATFORM`/`MMCU_TARGET`/`CMAKE_TOOLCHAIN_FILE`. `--compiler
+  <gcc|clang>` picks the matching toolchain file
+  (`cmake/toolchains/arm-none-eabi-<compiler>.cmake`) unless
+  `--toolchain-file` overrides it; `--cpu` sets `MMCU_CPU`; `--linker-map`
+  sets `MMCU_LINKER_MAP=ON`.
+- `./build.sh` never sets these variables — it just builds whatever a build
+  directory was already configured with, auto-configuring `native`/`emu`
+  defaults if the directory doesn't exist yet. See
+  [Build And Run](build.md).
 - pico-sdk's own `./pico-sdk-install.sh`/`-configure.sh`/`-build.sh`/`-clean.sh`
   (see [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)) are
   unrelated to `MMCU_PLATFORM=pico_sdk` above — they build the standalone

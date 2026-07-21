@@ -122,8 +122,11 @@ set(MMCU_PLATFORM "native" CACHE STRING "MMCU platform to build")
 set_property(CACHE MMCU_PLATFORM PROPERTY STRINGS native baremetal)
 ```
 
-`./build.sh` configures with `MMCU_PLATFORM=native` (the default).
-`./build-baremetal.sh` configures with `MMCU_PLATFORM=baremetal`.
+`./build.sh` builds `MMCU_PLATFORM=native` (the default, auto-configured if
+not already configured). `./configure.sh --platform mcu` configures the
+bare-metal side (see
+[Configure: Platform, Target, Toolchain](../configure.md) for the actual
+implemented `native`/`mcu`/`pico_sdk` naming, which this proposal predates).
 
 When `MMCU_PLATFORM` is `native`, add:
 

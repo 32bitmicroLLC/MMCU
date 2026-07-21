@@ -14,9 +14,10 @@ and debugged with normal host tools, without any target hardware attached.
 
 The bare-metal platform, also called **freestanding embedded**, builds MMCU
 directly for a microcontroller core with no host operating system underneath
-it. It is built with `./build-baremetal.sh`, which selects a concrete target
-such as `cortex-m0` or `cortex-m0plus` and produces an ARM Thumb-2 binary using
-either Clang or the GNU Arm toolchain. The application still imports only the
+it. It is built by configuring `MMCU_PLATFORM=mcu` with `./configure.sh`,
+which selects a concrete target such as `cortex-m0` or `cortex-m0plus` and
+produces an ARM Thumb-2 binary using either Clang or the GNU Arm toolchain,
+then building it with `./build.sh`. The application still imports only the
 generic `cpu`, `gpio`, and `uart` modules; the concrete target module supplies
 the real register layout, startup code, and linker script underneath them.
 

@@ -84,11 +84,12 @@ if [[ $DEBUG -eq 1 ]] && ! command -v "$GDB" >/dev/null 2>&1; then
 fi
 
 if [[ $BUILD -eq 1 ]]; then
-    BUILD_ARGS=(--build-dir "$BUILD_DIR" --type "$BUILD_TYPE")
+    CONFIGURE_ARGS=(--build-dir "$BUILD_DIR" --type "$BUILD_TYPE")
     if [[ $CLEAN -eq 1 ]]; then
-        BUILD_ARGS+=(--clean)
+        CONFIGURE_ARGS+=(--clean)
     fi
-    ./build.sh "${BUILD_ARGS[@]}"
+    ./configure.sh "${CONFIGURE_ARGS[@]}"
+    ./build.sh --build-dir "$BUILD_DIR"
 fi
 
 APP_PATH="$BUILD_DIR/mmcu_app"

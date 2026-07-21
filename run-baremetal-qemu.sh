@@ -167,11 +167,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 if [[ $BUILD -eq 1 ]]; then
-    BUILD_ARGS=(--build-dir "$BUILD_DIR" --type "$BUILD_TYPE" --compiler "$COMPILER" --target "$TARGET")
+    CONFIGURE_ARGS=(
+        --platform mcu
+        --target "$TARGET"
+        --compiler "$COMPILER"
+        --build-dir "$BUILD_DIR"
+        --type "$BUILD_TYPE"
+    )
     if [[ $CLEAN -eq 1 ]]; then
-        BUILD_ARGS+=(--clean)
+        CONFIGURE_ARGS+=(--clean)
     fi
-    ./build-baremetal.sh "${BUILD_ARGS[@]}"
+    ./configure.sh "${CONFIGURE_ARGS[@]}"
+    ./build.sh --build-dir "$BUILD_DIR"
 fi
 
 OUT_DIR="$BUILD_DIR"

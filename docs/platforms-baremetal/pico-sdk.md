@@ -142,12 +142,12 @@ the underlying vendor foundation actually differs (the idle/wait primitive in
 
 ## Build Script Direction
 
-Target selection implies this platform; no new flag is required beyond
-`--target`:
+Target selection implies this platform, matching the `--platform pico_sdk`
+default target in [Configure: Platform, Target, Toolchain](../configure.md):
 
 ```bash
-./build-baremetal.sh --target rp2040
-./build-baremetal.sh --target rp2350
+./configure.sh --platform pico_sdk --target rp2040
+./configure.sh --platform pico_sdk --target rp2350
 ```
 
 ## CMake Direction

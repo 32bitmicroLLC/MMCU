@@ -32,7 +32,7 @@ All build directories reuse that checkout. An externally supplied path can be
 selected instead:
 
 ```bash
-./build-baremetal.sh --target cortex-m0 --cmsis-dir /path/to/CMSIS_6
+./configure.sh --platform mcu --target cortex-m0 --cmsis-dir /path/to/CMSIS_6
 ```
 
 ## Scope
@@ -149,11 +149,11 @@ Common flags:
 
 ## Build Script Direction
 
-Extend `build-baremetal.sh`:
+Use `./configure.sh --platform mcu`:
 
 ```bash
-./build-baremetal.sh --target cortex-m0
-./build-baremetal.sh --target cortex-m0plus
+./configure.sh --platform mcu --target cortex-m0
+./configure.sh --platform mcu --target cortex-m0plus
 ```
 
 If `--cmsis-dir` is omitted, CMake clones CMSIS_6 into `third_party/CMSIS_6`

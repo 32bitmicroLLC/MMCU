@@ -43,9 +43,9 @@ for (;;) {
 The build still selects a concrete target:
 
 ```bash
-./build-baremetal.sh --target emu
-./build-baremetal.sh --target cortex-m0
-./build-baremetal.sh --target cortex-m0plus
+./configure.sh --platform mcu --target emu
+./configure.sh --platform mcu --target cortex-m0
+./configure.sh --platform mcu --target cortex-m0plus
 ```
 
 Concrete target modules may exist internally:
