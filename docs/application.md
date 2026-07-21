@@ -1,5 +1,8 @@
 # Application
 
+**Status: proposed, not yet implemented** — see
+[Dependencies](dependencies.md)'s status note.
+
 An MMCU **application** is a `kind: application` module (see
 [Dependency DSL](dependency-dsl.md)) that states a set of requirements and
 gets built by having those requirements mapped, all the way down, to
@@ -14,8 +17,8 @@ target and turned into a build.
 
 ## The application manifest
 
-The application carries its own `mmcu.yaml` (repo root, `mmcu_app`'s
-manifest today):
+The application would carry its own `mmcu.yaml` (repo root, as `mmcu_app`'s
+manifest):
 
 ```yaml
 # mmcu.yaml
@@ -92,14 +95,17 @@ import bmi270;
 
 ## One application today, more later
 
-Right now there is exactly one application (`mmcu_app`, manifest at the
-repo root) and exactly one `mmcu_app` executable target. Nothing in this
-model requires that: a second application would be a second manifest
+Right now there is exactly one application: one `mmcu_app` executable
+target, built from one flat `MMCU_MODULES` list in `CMakeLists.txt` — no
+manifest, since this whole mechanism is still a proposal (see the status
+note above). Nothing in this model requires staying single-application
+once it's built, though: a second application would be a second manifest
 (e.g. `apps/<name>/mmcu.yaml`) with its own `depends`, resolved
 independently against the same shared `libraries/`, `drivers/`, and
 `modules/` trees, producing its own executable target. That's a
 straightforward extension of this model, not a redesign of it — not
-implemented today because there's only one application to build.
+proposed in more detail here because there's only one application to
+build today.
 
 ## What this doesn't cover
 

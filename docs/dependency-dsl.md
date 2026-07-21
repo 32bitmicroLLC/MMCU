@@ -1,5 +1,9 @@
 # Dependency DSL: YAML Manifests
 
+**Status: proposed, not yet implemented** — see
+[Dependencies](dependencies.md)'s status note; `mmcu.yaml` doesn't exist
+anywhere in the repo today, including at the repo root.
+
 [Dependencies](dependencies.md) defines the dependency chain (application →
 library → driver → peripheral) and a hand-written `mmcu-module.cmake`
 declaration format. This spec replaces `mmcu-module.cmake` with a

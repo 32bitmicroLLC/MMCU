@@ -68,3 +68,7 @@ them.
 
 This avoids a separate `target` import and avoids `mmcu::target::` in
 application code.
+
+See [Modular Peripherals](peripherals.md) for how `cpu`/`gpio`/`uart` and
+their default objects (`core`/`gpio0`/`uart0`) are actually implemented in
+`src/`, and what makes them portable across targets in the first place.

@@ -1,11 +1,21 @@
 # Libraries
 
-`libraries/` holds functional/topical embedded libraries — display drivers,
-bus/protocol implementations, sensor drivers, and similar — organized by
-topic. This is separate from `platforms/` (see [Project Layout](layout.md)):
-`platforms/<name>/` holds vendor SDK *foundations* that a target builds
-against (pico-sdk, CMSIS), left exactly as they are; `libraries/<topic>/`
-holds everything else a project might link in on top of a platform.
+`libraries/` holds functional/topical embedded libraries — bus/protocol
+implementations and display *technologies* (TFT, ePaper, ...), and
+similar — organized by topic. This is separate from `platforms/` (see
+[Project Layout](layout.md)): `platforms/<name>/` holds vendor SDK
+*foundations* that a target builds against (pico-sdk, CMSIS), left exactly
+as they are; `libraries/<topic>/` holds everything else a project might
+link in on top of a platform.
+
+It's also separate from two sibling trees that came later and narrowed
+this one's scope: drivers for *specific physical parts* (an IMU, a sensor
+chip) live in [`drivers/`](drivers.md), not here; generic,
+hardware-independent building blocks (a ring buffer, a CRC routine) live
+in [`modules/`](modules.md), not here. `libraries/<topic>/` is for
+protocol/format *implementations* — a bus protocol, a data format, a
+display technology — not the device drivers or generic utility code built
+on top of or alongside them.
 
 ```
 libraries/
@@ -30,7 +40,7 @@ libraries/<topic>/<library-name>/
 
 — or, only where a topic genuinely splits into distinct, non-interchangeable
 technologies (the way `Display` splits into `TFT`/`LCD`/`ePaper`/`eInk`/
-`OLED`, each with its own driver family):
+`OLED`, each with its own protocol/format implementation family):
 
 ```
 libraries/<topic>/<sub-technology>/<library-name>/
@@ -52,10 +62,12 @@ of `libraries/`.
 
 - **It's a genuinely new topic** (nothing existing fits): add a new
   `libraries/<topic>/` at the top level.
-- **It's a variant of an existing topic's technology** (a new OLED driver,
-  a new TFT controller): add it under that topic's existing sub-technology
-  folder, or a new sub-technology folder as needed (`Display/MicroLED/`,
-  say).
+- **It's a variant of an existing topic's technology** (a new OLED
+  protocol implementation, a new TFT controller protocol): add it under
+  that topic's existing sub-technology folder, or a new sub-technology
+  folder as needed (`Display/MicroLED/`, say). The chip-specific *driver*
+  for a particular OLED/TFT part belongs in [`drivers/`](drivers.md)
+  instead, built on top of the protocol library here.
 - **It's JSON-flavored, or CAN-flavored, etc.**: goes under that existing
   topic (`JSON/`, `CANbus/`), not a new topic of its own — `JSON-RPC` lives
   at `libraries/JSON/JSON-RPC/`, not `libraries/JSON-RPC/`.
@@ -79,3 +91,10 @@ directory there, and symlink from the rest.
 
 `libraries/` itself doesn't need to exist until the first library lands in
 it — it's created on demand, not scaffolded empty ahead of time.
+
+## Expressing dependencies
+
+How an application depends on a library, a library on a driver or module,
+and a driver on a peripheral capability (and how the build system checks
+that chain) is covered separately in
+[Dependencies: Applications, Libraries, Drivers, Peripherals](dependencies.md).

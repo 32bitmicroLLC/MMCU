@@ -1,5 +1,8 @@
 # Mapping: Application → Modules, Libraries, Drivers
 
+**Status: proposed, not yet implemented** — see
+[Dependencies](dependencies.md)'s status note.
+
 Turning an [Application](application.md)'s stated requirements into a
 built binary is **two separate processes**, not one:
 

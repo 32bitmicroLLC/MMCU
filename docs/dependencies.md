@@ -1,5 +1,17 @@
 # Dependencies: Applications, Libraries, Drivers, Peripherals
 
+**Status: proposed, not yet implemented.** `MMCU_TARGET_PERIPHERALS`,
+`mmcu_module()`, `mmcu-module.cmake`, and `mmcu_use()` don't exist in
+`CMakeLists.txt` today — there is exactly one target block per
+`MMCU_TARGET` and one flat `MMCU_MODULES` list, no per-package
+declaration, no peripheral-capability check. This doc (and
+[Dependency DSL](dependency-dsl.md), [Mapping](mapping.md),
+[Resolving](resolving.md), [Application](application.md)) specify the
+mechanism to build once `libraries/`/`drivers/`/`modules/` need it, the
+same way [Target Module Objects](target-modules.md) and
+[Platform Modules](platform-modules.md) specify a naming convention —
+except those two are already reflected in `src/`, and this one isn't yet.
+
 See [Application](application.md) for the top-of-the-chain view: what a
 whole application's manifest and resulting dependency graph look like,
 built out of the mechanics this doc defines. See [Modular
@@ -8,8 +20,21 @@ actually implements a "peripheral" capability in `src/`. See
 [Mapping](mapping.md) and [Resolving](resolving.md) for how a declared
 graph actually gets walked and built.
 
-A **module** is a composable code block that exposes a capability — what
-it *is* or *does* — and declares the capabilities it in turn needs.
+**A note on terminology**: "module" is used two different ways across
+these docs, and context disambiguates them. A **C++20 module**
+(`export module foo;`, `import foo;`) is a compiler-level translation
+unit — the mechanism [Target Module Objects](target-modules.md),
+[Platform Modules](platform-modules.md), and `src/` use. The **module**
+defined below is this dependency system's package abstraction — an
+`mmcu-module.cmake`/`mmcu.yaml` entry in `libraries/`, `drivers/`, or
+`modules/`. A single package is normally both at once (one `mmcu.yaml`
+entry wrapping one or more `.cppm` files), but the two concepts operate at
+different layers: one is checked by the C++ compiler, the other by the
+build system before compiling anything.
+
+A **module** (this system's sense, from here on) is a composable code
+block that exposes a capability — what it *is* or *does* — and declares
+the capabilities it in turn needs.
 Building an application is the process of **mapping requirements to
 dependencies**: the application states what it needs, and resolution walks
 each requirement down through whichever concrete module supplies it until

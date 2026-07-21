@@ -1,5 +1,9 @@
 # Resolving
 
+**Status: proposed, not yet implemented** — see
+[Dependencies](dependencies.md)'s status note; `tools/mmcu-deps.py` does
+not exist yet either.
+
 **Resolving** is the process — Phase 2 of [Mapping](mapping.md) — that
 takes a [mapped](mapping.md#phase-1-mapping) application plus one concrete
 `MMCU_PLATFORM`/`MMCU_TARGET` (see
