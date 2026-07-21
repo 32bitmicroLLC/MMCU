@@ -96,8 +96,12 @@ checked up front, at configure time — before compiling anything.
 
 `MMCU_TARGET_PERIPHERALS` is one facet of a target's full composition —
 see [Modular Target](target.md) for the others (CPU core, memories, MMU,
-floating-point, debug). Each target block in the root `CMakeLists.txt`
-sets the list of peripheral capabilities that target actually has:
+floating-point, debug). Some capabilities (CAN, Ethernet, ...) need board
+hardware too, not just the chip's own peripheral — see [Modular
+Board](board.md#resolving-a-bus-capability-target-peripheral-or-board-bus-or-both)
+for how that union gets checked. Each target block in the root
+`CMakeLists.txt` sets the list of peripheral capabilities that target
+actually has:
 
 ```cmake
 elseif(MMCU_TARGET STREQUAL "rp2040")

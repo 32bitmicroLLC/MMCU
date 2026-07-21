@@ -146,6 +146,10 @@ Most Cortex-M targets expose SWD (2-wire) rather than full JTAG; this
 facet is the natural place to eventually hang a `debug.sh`/OpenOCD
 integration, once one exists — nothing today reads or sets this variable.
 
+See [Modular Board](board.md) for what sits *around* the chip — power
+supply, pin breakout, and the bus transceivers/connectors/radios a target
+needs a board's help to actually reach the outside world through.
+
 ## Peripherals
 
 **Proposed** — already fully specified in
