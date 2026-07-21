@@ -11,7 +11,7 @@ Usage: ./platform.sh <command> [-p|--platform <name>] [args...]
 
 Manages MMCU_PLATFORM's mmcu_app lifecycle: configure, build, clean, always
 through the top-level ./configure.sh/./build.sh/./clean.sh (which already
-handle native/mcu/pico_sdk uniformly). "install" is the one command with
+handle native/mcu/cmsis/pico_sdk uniformly). "install" is the one command with
 per-platform scripts, since vendoring a toolchain/SDK is platform-specific
 and mmcu_app has no generic install step. See docs/platform.md.
 
@@ -22,21 +22,21 @@ Commands:
   clean       ./clean.sh (discovers every configured mmcu_app build dir)
 
 Options:
-  -p, --platform <name>   MMCU_PLATFORM: native, mcu, or pico_sdk (default: native)
+  -p, --platform <name>   MMCU_PLATFORM: native, mcu, cmsis, or pico_sdk (default: native)
   -h, --help              Show this help
 
 All other arguments are passed through unchanged to whichever script
 handles <command>.
 
-"install" has no generic fallback: if the platform has a dedicated script at
-platforms/<dir>/<prefix>-install.sh (currently only pico_sdk ->
-platforms/pico-sdk/pico-sdk-install.sh), that runs; otherwise platform.sh
-reports nothing to vendor and exits 0. This only vendors the platform's
-toolchain/SDK (e.g. pico-sdk's own checkout for its standalone smoke-test
-project, see docs/platforms-baremetal/pico-sdk.md) — mmcu_app's rp2040/
-rp2350 targets only need CMSIS_6, fetched automatically by "configure".
+"install" has no generic fallback: if the platform has a dedicated script,
+that runs; otherwise platform.sh reports nothing to vendor and exits 0.
+This only vendors platform support code: cmsis installs CMSIS_6, and pico_sdk
+installs pico-sdk and its platform tools.
 
 Examples:
+  ./platform.sh install --platform cmsis
+  ./platform.sh configure --platform cmsis --target cortex-m0
+  ./platform.sh build --platform cmsis --build-dir build-cmsis-cortex-m0-gcc
   ./platform.sh install --platform pico_sdk
   ./platform.sh configure --platform pico_sdk --target rp2040
   ./platform.sh build --platform pico_sdk --build-dir build-rp2040-gcc
@@ -84,10 +84,10 @@ if [[ -z "$COMMAND" ]]; then
 fi
 
 case "$PLATFORM" in
-    native|mcu|pico_sdk)
+    native|mcu|cmsis|pico_sdk)
         ;;
     *)
-        echo "Error: --platform must be one of: native, mcu, pico_sdk" >&2
+        echo "Error: --platform must be one of: native, mcu, cmsis, pico_sdk" >&2
         exit 1
         ;;
 esac
@@ -96,13 +96,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Maps MMCU_PLATFORM to the directory/prefix of its dedicated "install"
-# script, if it has one. native/mcu have nothing to vendor for mmcu_app
-# (CMSIS_6 is fetched automatically by configure.sh, not a separate install
-# step). Only "install" uses this: configure/build/clean always go through
+# script, if it has one. native/mcu have nothing to vendor for mmcu_app.
+# Only "install" uses this: configure/build/clean always go through
 # the top-level configure.sh/build.sh/clean.sh, which already handle every
 # MMCU_PLATFORM uniformly via mmcu_app's own CMakeLists.txt.
 platform_install_script() {
     case "$1" in
+        cmsis) echo "platforms/cmsis/cmsis-install.sh" ;;
         pico_sdk) echo "platforms/pico-sdk/pico-sdk-install.sh" ;;
         *) echo "" ;;
     esac

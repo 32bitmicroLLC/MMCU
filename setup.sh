@@ -2,6 +2,7 @@
 set -euo pipefail
 
 INSTALL_DOCS=0
+INSTALL_CMSIS=0
 INSTALL_PICO_SDK=0
 CHECK_ONLY=0
 NATIVE_BUILD=0
@@ -20,6 +21,7 @@ Default action:
 
 Options:
       --docs          Also install documentation tooling from requirements-docs.txt
+      --cmsis         Also run platforms/cmsis/cmsis-install.sh
       --pico-sdk      Also run platforms/pico-sdk/pico-sdk-install.sh
       --native-build  Configure and build the default native target as a smoke test
       --check         Report tool status only; make no changes
@@ -28,6 +30,7 @@ Options:
 Examples:
   ./setup.sh
   ./setup.sh --docs
+  ./setup.sh --cmsis
   ./setup.sh --pico-sdk
   ./setup.sh --check
   ./setup.sh --native-build
@@ -103,8 +106,8 @@ check_host_tools() {
         warn "ninja not found; C++20 modules require Ninja, Ninja Multi-Config, or a supported IDE generator"
     fi
 
-    if [[ $INSTALL_PICO_SDK -eq 1 ]]; then
-        require_command git "vendored pico-sdk checkout" || required_missing=1
+    if [[ $INSTALL_CMSIS -eq 1 || $INSTALL_PICO_SDK -eq 1 ]]; then
+        require_command git "vendored CMSIS or pico-sdk checkout" || required_missing=1
     elif have_command git; then
         echo "ok: git (needed when CMSIS or pico-sdk are fetched)"
     else
@@ -181,6 +184,21 @@ setup_pico_sdk() {
     ./platforms/pico-sdk/pico-sdk-install.sh
 }
 
+setup_cmsis() {
+    if [[ $CHECK_ONLY -eq 1 ]]; then
+        info "Checking CMSIS_6 checkout"
+        if [[ -e platforms/cmsis/CMSIS_6/CMSIS/Core/Include ]]; then
+            echo "ok: platforms/cmsis/CMSIS_6"
+        else
+            echo "missing: platforms/cmsis/CMSIS_6"
+        fi
+        return 0
+    fi
+
+    info "Installing vendored CMSIS_6"
+    ./platforms/cmsis/cmsis-install.sh
+}
+
 run_native_build() {
     if [[ $CHECK_ONLY -eq 1 ]]; then
         return 0
@@ -196,6 +214,10 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --docs)
             INSTALL_DOCS=1
+            shift
+            ;;
+        --cmsis)
+            INSTALL_CMSIS=1
             shift
             ;;
         --pico-sdk)
@@ -224,6 +246,10 @@ done
 
 check_host_tools
 setup_venv
+
+if [[ $INSTALL_CMSIS -eq 1 ]]; then
+    setup_cmsis
+fi
 
 if [[ $INSTALL_PICO_SDK -eq 1 ]]; then
     setup_pico_sdk

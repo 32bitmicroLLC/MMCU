@@ -144,7 +144,8 @@ The top-level choice is `MMCU_PLATFORM`:
 | Platform | Meaning | Default target |
 |---|---|---|
 | `native` | host executable | `emu` |
-| `mcu` | generic bare-metal ARM/CMSIS-style build | `emu` |
+| `mcu` | generic bare-metal build, including `emu` | `emu` |
+| `cmsis` | Arm CMSIS-Core bare-metal build | `cortex-m0` |
 | `pico_sdk` | Raspberry Pi Pico SDK-backed build | `rp2040` |
 
 The target chooses the MCU integration:
@@ -152,6 +153,8 @@ The target chooses the MCU integration:
 ```bash
 ./configure.sh --platform mcu --target cortex-m0
 ./configure.sh --platform mcu --target cortex-m0plus
+./configure.sh --platform cmsis --target cortex-m0
+./configure.sh --platform cmsis --target rp2040-cmsis
 ./configure.sh --platform pico_sdk --target rp2040
 ./configure.sh --platform pico_sdk --target rp2350
 ```
@@ -322,7 +325,11 @@ Build RP2350/Pico 2:
 
 The pico-sdk-backed `rp2040` and `rp2350` targets are GCC-only for now.
 Use `rp2040-cmsis` or `rp2350-cmsis` for the CMSIS-only Clang-capable
-path.
+path; prefer `--platform cmsis` for new CMSIS-only builds:
+
+```bash
+./configure.sh --platform cmsis --target rp2350-cmsis --compiler clang
+```
 
 ## Flash supported hardware
 
@@ -460,13 +467,14 @@ The board declaration's `platforms` list does not include the configured
 `MMCU_PLATFORM`. For current Raspberry Pi Pico declarations that list is:
 
 ```yaml
-platforms: [pico_sdk]
+platforms: [pico_sdk, cmsis]
 ```
 
 Use a platform/target pair that owns the board integration:
 
 ```bash
 ./configure.sh --platform pico_sdk --target rp2040 --board pico-w
+./configure.sh --platform cmsis --target rp2040-cmsis --board pico-w
 ```
 
 ### `build.sh` builds a directory you did not expect

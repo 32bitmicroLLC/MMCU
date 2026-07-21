@@ -88,8 +88,23 @@ Then configure a bare-metal target:
 ```
 
 CMSIS-backed targets can use an existing CMSIS checkout via
-`./configure.sh --cmsis-dir <path>`. If no checkout is supplied, CMake
-fetches CMSIS into `third_party/CMSIS_6` during configure.
+`./configure.sh --cmsis-dir <path>`. The preferred project-local install
+is:
+
+```bash
+./setup.sh --cmsis
+./configure.sh --platform cmsis --target cortex-m0
+./build.sh --build-dir build-cmsis-cortex-m0-gcc
+```
+
+`--cmsis` explicitly runs:
+
+```bash
+./platforms/cmsis/cmsis-install.sh
+```
+
+If no checkout is supplied and `platforms/cmsis/CMSIS_6` is missing, CMake
+can still fetch CMSIS into `third_party/CMSIS_6` during configure.
 
 ## pico-sdk setup
 
@@ -123,6 +138,7 @@ Board variants are configured separately from the target:
 ```text
 ./setup.sh                 # venv + YAML tooling + host tool checks
 ./setup.sh --docs          # also install docs tooling
+./setup.sh --cmsis         # also install vendored CMSIS_6
 ./setup.sh --pico-sdk      # also install vendored pico-sdk/platform tools
 ./setup.sh --check         # report only; make no changes
 ./setup.sh --native-build  # setup, configure, and build native target

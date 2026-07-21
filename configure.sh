@@ -29,13 +29,13 @@ Configures (but does not build) MMCU for a chosen platform/target/toolchain.
 See docs/configure.md for the full MMCU_PLATFORM/MMCU_TARGET/toolchain model.
 
 Options:
-  -p, --platform <name>     MMCU_PLATFORM: native, mcu, or pico_sdk (default: native)
+  -p, --platform <name>     MMCU_PLATFORM: native, mcu, cmsis, or pico_sdk (default: native)
   -t, --target <name>       MMCU_TARGET (default depends on --platform)
       --board <name>        MMCU_BOARD override (default depends on MMCU_TARGET)
-      --compiler <name>     mcu/pico_sdk platforms only: gcc or clang, selects
+      --compiler <name>     mcu/cmsis/pico_sdk platforms only: gcc or clang, selects
                              the default toolchain file (default: gcc)
       --toolchain-file <f>  Explicit CMAKE_TOOLCHAIN_FILE, overrides --compiler
-      --cpu <cpu>           MMCU_CPU override (mcu/pico_sdk, default target-derived)
+      --cpu <cpu>           MMCU_CPU override (mcu/cmsis/pico_sdk, default target-derived)
       --cmsis-dir <path>    MMCU_CMSIS_DIR (cortex-m0, cortex-m0plus,
                              rp2040-cmsis, rp2350-cmsis)
       --cmsis-git-tag <tag> MMCU_CMSIS_GIT_TAG (default: v6.3.0)
@@ -54,10 +54,12 @@ Options:
 Examples:
   ./configure.sh
   ./configure.sh --platform mcu --target cortex-m0
+  ./configure.sh --platform cmsis --target cortex-m0
+  ./configure.sh --platform cmsis --target rp2350-cmsis --compiler clang
   ./configure.sh --platform mcu --target cortex-m0plus --compiler clang
   ./configure.sh --platform mcu --target cortex-m0 --toolchain-file cmake/toolchains/arm-none-eabi-clang.cmake
   ./configure.sh --platform pico_sdk --target rp2040
-  ./configure.sh --platform pico_sdk --target rp2350-cmsis --compiler clang
+  ./configure.sh --platform pico_sdk --target rp2040 --board pico-w
   ./configure.sh --interactive
 EOF
 }
@@ -234,16 +236,18 @@ run_interactive() {
     echo "MMCU interactive configuration (docs/configure.md)"
     echo "===================================================="
 
-    local platform_values=(native mcu pico_sdk)
+    local platform_values=(native mcu cmsis pico_sdk)
     local platform_labels=(
         "native   - host build, emu target"
-        "mcu      - bare-metal ARM (CMSIS-based): emu, cortex-m0, cortex-m0plus"
+        "mcu      - generic bare-metal: emu, cortex-m0, cortex-m0plus"
+        "cmsis    - CMSIS-Core bare-metal ARM: cortex-m0, cortex-m0plus, rp2040-cmsis, rp2350-cmsis"
         "pico_sdk - bare-metal RP2040/RP2350: rp2040, rp2350 (pico-sdk), rp2040-cmsis, rp2350-cmsis"
     )
     local platform_default=1
     case "$PLATFORM" in
         mcu) platform_default=2 ;;
-        pico_sdk) platform_default=3 ;;
+        cmsis) platform_default=3 ;;
+        pico_sdk) platform_default=4 ;;
     esac
     local idx
     idx="$(prompt_choice "Select MMCU_PLATFORM:" "$platform_default" "${platform_labels[@]}")"
@@ -261,6 +265,15 @@ run_interactive() {
                 "emu           - placeholder GPIO/UART target, no CMSIS required"
                 "cortex-m0     - CMSIS-based Cortex-M0 target"
                 "cortex-m0plus - CMSIS-based Cortex-M0+ target"
+            )
+            ;;
+        cmsis)
+            target_values=(cortex-m0 cortex-m0plus rp2040-cmsis rp2350-cmsis)
+            target_labels=(
+                "cortex-m0     - CMSIS-Core Cortex-M0 target"
+                "cortex-m0plus - CMSIS-Core Cortex-M0+ target"
+                "rp2040-cmsis  - Cortex-M0+ (RP2040), CMSIS-Core only, gcc or clang"
+                "rp2350-cmsis  - Cortex-M33 (RP2350), CMSIS-Core only, gcc or clang"
             )
             ;;
         pico_sdk)
@@ -291,7 +304,7 @@ run_interactive() {
         _rp2_pico_sdk_backed=1
     fi
 
-    if [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "pico_sdk" ]]; then
+    if [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "cmsis" || "$PLATFORM" == "pico_sdk" ]]; then
         prompt_board_choice
 
         local compiler_values=(gcc clang)
@@ -313,7 +326,7 @@ run_interactive() {
         CPU="$(prompt_default "ARM CPU for -mcpu (blank = derive from target)" "$CPU")"
 
         if [[ "$TARGET" != "emu" && $_rp2_pico_sdk_backed -eq 0 ]]; then
-            CMSIS_DIR="$(prompt_default "CMSIS_6 checkout path (blank = auto-clone into third_party/CMSIS_6)" "$CMSIS_DIR")"
+            CMSIS_DIR="$(prompt_default "CMSIS_6 checkout path (blank = platforms/cmsis/CMSIS_6, then third_party/CMSIS_6 fallback)" "$CMSIS_DIR")"
         fi
 
         if prompt_yes_no "Enable linker map + cross-reference (MMCU_LINKER_MAP)?" "n"; then
@@ -335,6 +348,8 @@ run_interactive() {
     local default_build_dir
     if [[ "$PLATFORM" == "native" ]]; then
         default_build_dir="build"
+    elif [[ "$PLATFORM" == "cmsis" ]]; then
+        default_build_dir="build-cmsis-${TARGET}-${COMPILER}"
     else
         default_build_dir="build-${TARGET}-${COMPILER}"
     fi
@@ -351,7 +366,7 @@ run_interactive() {
     echo "  MMCU_PLATFORM = $PLATFORM"
     echo "  MMCU_TARGET   = $TARGET"
     [[ -n "$BOARD" ]] && echo "  MMCU_BOARD    = $BOARD"
-    [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "pico_sdk" ]] && echo "  compiler      = $COMPILER"
+    [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "cmsis" || "$PLATFORM" == "pico_sdk" ]] && echo "  compiler      = $COMPILER"
     [[ -n "$CPU" ]] && echo "  MMCU_CPU      = $CPU"
     [[ -n "$CMSIS_DIR" ]] && echo "  MMCU_CMSIS_DIR = $CMSIS_DIR"
     [[ $LINKER_MAP -eq 1 ]] && echo "  MMCU_LINKER_MAP = ON"
@@ -452,17 +467,17 @@ if [[ $INTERACTIVE -eq 1 ]]; then
 fi
 
 case "$PLATFORM" in
-    native|mcu|pico_sdk)
+    native|mcu|cmsis|pico_sdk)
         ;;
     *)
-        echo "Error: --platform must be one of: native, mcu, pico_sdk" >&2
+        echo "Error: --platform must be one of: native, mcu, cmsis, pico_sdk" >&2
         exit 1
         ;;
 esac
 
 if [[ "$PLATFORM" == "native" ]]; then
     if [[ -n "$TOOLCHAIN_FILE" || "$COMPILER" != "gcc" ]]; then
-        echo "Error: --compiler/--toolchain-file only apply to --platform mcu or pico_sdk" >&2
+        echo "Error: --compiler/--toolchain-file only apply to --platform mcu, cmsis, or pico_sdk" >&2
         exit 1
     fi
 fi
@@ -477,7 +492,7 @@ if [[ "$PLATFORM" == "pico_sdk" ]]; then
     fi
 fi
 
-if [[ ( "$PLATFORM" == "mcu" || "$PLATFORM" == "pico_sdk" ) && -z "$TOOLCHAIN_FILE" ]]; then
+if [[ ( "$PLATFORM" == "mcu" || "$PLATFORM" == "cmsis" || "$PLATFORM" == "pico_sdk" ) && -z "$TOOLCHAIN_FILE" ]]; then
     case "$COMPILER" in
         gcc)
             TOOLCHAIN_FILE="cmake/toolchains/arm-none-eabi-gcc.cmake"
@@ -529,6 +544,8 @@ if [[ -z "$BUILD_DIR" ]]; then
         BUILD_DIR="build"
     elif [[ "$PLATFORM" == "mcu" ]]; then
         BUILD_DIR="build-${TARGET:-emu}-${COMPILER}"
+    elif [[ "$PLATFORM" == "cmsis" ]]; then
+        BUILD_DIR="build-cmsis-${TARGET:-cortex-m0}-${COMPILER}"
     else
         BUILD_DIR="build-${TARGET:-rp2040}-${COMPILER}"
     fi

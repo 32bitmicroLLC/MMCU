@@ -6,6 +6,27 @@ install them only when working with the platform that needs them.
 
 For common build, documentation, and YAML tools, see [Tools](tools.md).
 
+## cmsis: CMSIS_6 checkout
+
+CMSIS_6 belongs to the `cmsis` platform when installed explicitly. It is
+used by `MMCU_PLATFORM=cmsis` targets and by CMSIS-only target variants
+such as `rp2040-cmsis` and `rp2350-cmsis`.
+
+The normal install path is:
+
+```sh
+./platforms/cmsis/cmsis-install.sh
+```
+
+That script vendors CMSIS_6 under:
+
+```text
+platforms/cmsis/CMSIS_6/
+```
+
+Use `./configure.sh --cmsis-dir <path>` when a system-wide or externally
+managed CMSIS_6 checkout should be used instead.
+
 ## pico-sdk: picotool
 
 `picotool` belongs to the `pico_sdk` platform. It is used for

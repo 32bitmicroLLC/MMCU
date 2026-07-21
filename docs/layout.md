@@ -48,7 +48,8 @@
 - `targets/`: concrete CPU/board target modules (startup, linker script,
   register layout).
 - `platforms/`: vendor SDK *foundations* a target builds against
-  (`pico-sdk`, `cmsis`) — see [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md).
+  (`pico-sdk`, `cmsis`) — see [Bare-Metal CMSIS Platform](platforms-baremetal/cmsis.md)
+  and [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md).
 - `libraries/`: functional/topical libraries (display drivers, protocols,
   ...), organized by topic — see [Libraries](libraries.md).
 - `drivers/`: drivers for specific hardware peripherals/devices (sensors,

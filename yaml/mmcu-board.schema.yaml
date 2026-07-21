@@ -58,7 +58,7 @@ fields:
     required: true
     min_items: 1
     unique_items: true
-    enum: [native, mcu, pico_sdk]
+    enum: [native, mcu, cmsis, pico_sdk]
     description: MMCU_PLATFORM values that may use this board declaration.
 
   power:

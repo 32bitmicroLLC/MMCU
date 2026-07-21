@@ -17,7 +17,9 @@ does implicitly.
 
 Two external dependencies already exist, both hand-rolled, both kept as-is:
 
-- **CMSIS_6** (`mmcu_require_cmsis()` in root `CMakeLists.txt`): a plain
+- **CMSIS_6** (`platforms/cmsis/cmsis-install.sh` and
+  `mmcu_require_cmsis()` in root `CMakeLists.txt`): the preferred explicit
+  install is `platforms/cmsis/CMSIS_6`; CMake also has a fallback
   `execute_process(COMMAND git clone --branch ... --depth 1 ...)` into
   `third_party/CMSIS_6` the first time it's needed. It's header-only —
   nothing to build, just an include path.

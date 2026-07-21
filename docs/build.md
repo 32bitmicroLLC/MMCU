@@ -31,19 +31,23 @@ plain `build`).
   with `./setup.sh` for the project-local setup
 - Ninja (optional, auto-detected by `configure.sh`)
 - `/usr/bin/clang++-20` / `/usr/bin/clang-20` for `--platform mcu --compiler clang`
+  or `--platform cmsis --compiler clang`
 - `/usr/bin/arm-none-eabi-g++` / `/usr/bin/arm-none-eabi-gcc` for
-  `--platform mcu --compiler gcc` (the default)
+  `--platform mcu --compiler gcc` or `--platform cmsis --compiler gcc`
+  (the default)
 - `/usr/bin/arm-none-eabi-objdump` (or host `objdump` for native builds) for
   `./build.sh --map-and-list`
-- CMSIS_6 from `https://github.com/ARM-software/CMSIS_6` for the
-  `cortex-m0`/`cortex-m0plus` targets. CMake clones it into
-  `third_party/CMSIS_6` at configure time if no `--cmsis-dir` is provided.
+- CMSIS_6 from `https://github.com/ARM-software/CMSIS_6` for CMSIS-backed
+  targets. Prefer `./platform.sh install --platform cmsis`; CMake also
+  falls back to cloning into `third_party/CMSIS_6` if no `--cmsis-dir` or
+  platform-local checkout is provided.
 
 ## Configure
 
 ```bash
 ./configure.sh                                        # native, emu target
 ./configure.sh --platform mcu --target cortex-m0       # mcu, gcc (default)
+./configure.sh --platform cmsis --target cortex-m0      # CMSIS, gcc (default)
 ./configure.sh --platform mcu --target cortex-m0plus --compiler clang
 ./configure.sh --platform pico_sdk --target rp2040 --board pico-w
 ./configure.sh --interactive                           # numbered menus instead of flags
@@ -60,8 +64,9 @@ Useful options:
 - `./configure.sh --linker-map`
 
 `--platform mcu` build directories default to `build-<target>-<compiler>`
-(e.g. `build-cortex-m0-gcc`); `--platform native` defaults to `build`. Both
-are overridable with `--build-dir`. See `./configure.sh --help` and
+(e.g. `build-cortex-m0-gcc`); `--platform cmsis` defaults to
+`build-cmsis-<target>-<compiler>`; `--platform native` defaults to `build`.
+All are overridable with `--build-dir`. See `./configure.sh --help` and
 [Configure: Platform, Target, Toolchain](configure.md) for the rest of the
 options (CMSIS git tag, individual compiler-path overrides, etc.).
 
@@ -81,7 +86,7 @@ Useful options:
 - `./build.sh --run` — runs `mmcu_app` after a successful build
 - `./build.sh --map-and-list` — generates a linker map and full disassembly
   listings, using `arm-none-eabi-objdump` for a configured
-  `MMCU_PLATFORM=mcu` build or host `objdump` otherwise (override with
+  `MMCU_PLATFORM=mcu` or `MMCU_PLATFORM=cmsis` build or host `objdump` otherwise (override with
   `--objdump`)
 
 `--map-and-list` output:
@@ -223,15 +228,16 @@ build directories once each, then building each:
 ./build.sh --build-dir build-cortex-m0-clang
 ```
 
-If `--target cortex-m0` or `--target cortex-m0plus` is selected and
-`--cmsis-dir` is not provided, CMake clones CMSIS_6 at configure time into
-`third_party/CMSIS_6`. That checkout is shared by all build directories and
-reused until it is removed manually.
+If a CMSIS-backed target is selected and `--cmsis-dir` is not provided,
+CMake uses `platforms/cmsis/CMSIS_6` if present, then falls back to cloning
+CMSIS_6 at configure time into `third_party/CMSIS_6`. That fallback
+checkout is shared by all build directories and reused until it is removed
+manually.
 
 ## Run
 
 `./run.sh` builds (via `./build.sh`) and then runs MMCU as configured —
-directly for native, under QEMU for mcu — dispatching on the configured
+directly for native, under QEMU for mcu/cmsis — dispatching on the configured
 `MMCU_PLATFORM`. See [Run](run.md).
 
 ## Flash

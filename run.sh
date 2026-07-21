@@ -21,7 +21,7 @@ usage() {
 Usage: ./run.sh [options] [-- extra-args...]
 
 Runs MMCU as configured in --build-dir: directly, for MMCU_PLATFORM=native,
-or under QEMU, for MMCU_PLATFORM=mcu (read from the build directory's
+or under QEMU, for MMCU_PLATFORM=mcu/cmsis (read from the build directory's
 CMakeCache.txt after building). Configure the platform/target/toolchain
 first with ./configure.sh; run.sh never changes them. See docs/run.md.
 
@@ -30,13 +30,13 @@ Options:
   -c, --clean             Remove the build directory before building
       --no-build          Run the existing executable/ELF without building first
       --debug             Run under a debugger instead of directly
-                          (native: gdb; mcu: QEMU started paused with a gdbstub)
+                          (native: gdb; mcu/cmsis: QEMU started paused with a gdbstub)
       --gdb-bin <path>    GDB executable (default: gdb)
       --timeout <dur>     Stop after duration (default: 5s, use 0 to disable;
                           --debug implies 0 unless overridden after it)
   -h, --help              Show this help
 
-mcu (QEMU) options:
+mcu/cmsis (QEMU) options:
       --qemu <path>         QEMU system emulator (default: qemu-system-arm)
       --machine <name>      QEMU machine (default: target-selected)
       --cpu <name>          QEMU CPU (default: target-selected)
@@ -193,7 +193,7 @@ case "$PLATFORM" in
         fi
         ;;
 
-    mcu)
+    mcu|cmsis)
         if ! command -v "$QEMU" >/dev/null 2>&1; then
             echo "Error: $QEMU not found in PATH." >&2
             exit 1

@@ -31,6 +31,7 @@ nav:
       - Linux: platforms-native/linux.md
   - Bare-Metal Platforms:
       - MCU: platforms-baremetal/mcu.md
+      - CMSIS: platforms-baremetal/cmsis.md
       - pico-sdk: platforms-baremetal/pico-sdk.md
   - Project Layout: layout.md
   - Libraries: libraries.md

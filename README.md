@@ -96,7 +96,7 @@ states compatible `platforms` and target chip compatibility.
 The main configure-time choices are:
 
 ```text
-MMCU_PLATFORM   native | mcu | pico_sdk
+MMCU_PLATFORM   native | mcu | cmsis | pico_sdk
 MMCU_TARGET     selected from the platform's valid targets
 MMCU_BOARD      selected from board metadata, defaulted from target when applicable
 ```
@@ -106,6 +106,7 @@ Examples:
 ```bash
 ./configure.sh --platform native
 ./configure.sh --platform mcu --target cortex-m0
+./configure.sh --platform cmsis --target cortex-m0
 ./configure.sh --platform pico_sdk --target rp2040 --board pico-w
 ./configure.sh --interactive
 ```
@@ -132,6 +133,7 @@ build-*/                        # platform/target build directories
 site/                           # generated documentation site
 venv/                           # project-local Python virtual environment
 third_party/                    # fetched third-party source trees
+platforms/cmsis/CMSIS_6/        # vendored CMSIS_6 checkout
 platforms/pico-sdk/pico-sdk/    # vendored pico-sdk checkout
 platforms/pico-sdk/bin/         # platform-local tools such as picotool
 ```

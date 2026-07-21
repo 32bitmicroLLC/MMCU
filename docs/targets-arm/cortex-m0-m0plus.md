@@ -21,7 +21,16 @@ productive builds rather than the moving `main` branch.
 Install it as an external dependency, not as hand-copied source mixed into
 `src/core/`.
 
-CMake clones the default CMSIS_6 checkout into this shared local layout:
+The preferred project-local CMSIS_6 checkout lives under the CMSIS platform:
+
+```text
+platforms/
+  cmsis/
+    CMSIS_6/
+```
+
+CMake also keeps the older fallback of cloning CMSIS_6 into this shared
+local layout if the platform checkout is absent:
 
 ```text
 third_party/
@@ -160,15 +169,19 @@ Common flags:
 
 ## Build Script Direction
 
-Use `./configure.sh --platform mcu`:
+Use `./configure.sh --platform cmsis` for the first-class CMSIS-Core path:
 
 ```bash
-./configure.sh --platform mcu --target cortex-m0
-./configure.sh --platform mcu --target cortex-m0plus
+./configure.sh --platform cmsis --target cortex-m0
+./configure.sh --platform cmsis --target cortex-m0plus
 ```
 
-If `--cmsis-dir` is omitted, CMake clones CMSIS_6 into `third_party/CMSIS_6`
-and reuses that checkout for later build directories.
+`./configure.sh --platform mcu --target cortex-m0` remains supported, but
+new CMSIS-specific workflows should use `cmsis`.
+
+If `--cmsis-dir` is omitted, CMake first looks for
+`platforms/cmsis/CMSIS_6`, then falls back to cloning CMSIS_6 into
+`third_party/CMSIS_6`.
 
 The target option should select:
 

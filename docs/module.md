@@ -48,7 +48,7 @@ The same abstraction covers all of these module kinds:
 | `peripheral` | A hardware capability contract such as `GPIO`, `I2C`, `SPI`, `CAN`, `WIFI` | Sometimes |
 | `target` | A chip/MCU target: CPU, memory, peripherals, ABI facts | Sometimes |
 | `board` | A carrier board or virtual board subset: buses, rails, connectors, defaults | Sometimes |
-| `platform` | A build/runtime integration such as `native`, `mcu`, or `pico_sdk` | Sometimes |
+| `platform` | A build/runtime integration such as `native`, `mcu`, `cmsis`, or `pico_sdk` | Sometimes |
 
 [Modules](modules.md) describes only the `modules/` source tree. This page
 defines the broader module concept used across the whole system.

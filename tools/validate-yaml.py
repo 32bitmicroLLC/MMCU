@@ -141,7 +141,7 @@ class BoardDecl(BaseModel):
     target: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9-]*$")
     virtual: bool = False
     compatible_targets: list[str] | None = None
-    platforms: list[Literal["native", "mcu", "pico_sdk"]] = Field(min_length=1)
+    platforms: list[Literal["native", "mcu", "cmsis", "pico_sdk"]] = Field(min_length=1)
     power: Power
     rails: list[float] = Field(min_length=1)
     analog_io: AnalogIo | None = None

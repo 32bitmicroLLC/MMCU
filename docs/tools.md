@@ -62,7 +62,8 @@ its default generator.
 
 ### Bare-Metal ARM Builds
 
-Required for `MMCU_PLATFORM=mcu` and most `MMCU_PLATFORM=pico_sdk` builds:
+Required for `MMCU_PLATFORM=mcu`, `MMCU_PLATFORM=cmsis`, and most
+`MMCU_PLATFORM=pico_sdk` builds:
 
 | Tool | Default path or command | Used for |
 |---|---|---|
@@ -74,7 +75,7 @@ Optional Clang bare-metal toolchain:
 
 | Tool | Default path or command | Used for |
 |---|---|---|
-| Clang C compiler | `/usr/bin/clang-20` | `--platform mcu --compiler clang` and CMSIS-backed Pico targets |
+| Clang C compiler | `/usr/bin/clang-20` | `--platform mcu --compiler clang`, `--platform cmsis --compiler clang`, and CMSIS-backed Pico targets |
 | Clang C++ compiler | `/usr/bin/clang++-20` | C++ module compilation for Clang bare-metal builds |
 
 `rp2040` and `rp2350` pico-sdk-backed targets are GCC-only for now. Use
@@ -87,9 +88,14 @@ Optional Clang bare-metal toolchain:
 | `git` | Cloning CMSIS and vendored platform SDKs |
 
 CMSIS-backed ARM targets can use a local CMSIS checkout via
-`./configure.sh --cmsis-dir <dir>`. If no CMSIS directory is supplied for
-`cortex-m0`/`cortex-m0plus`, CMake clones CMSIS_6 into
-`third_party/CMSIS_6`.
+`./configure.sh --cmsis-dir <dir>`, or the platform-local install:
+
+```sh
+./platform.sh install --platform cmsis
+```
+
+If no CMSIS directory is supplied and `platforms/cmsis/CMSIS_6` is missing,
+CMake clones CMSIS_6 into `third_party/CMSIS_6`.
 
 Real pico-sdk-backed targets require:
 
@@ -215,6 +221,18 @@ arm-none-eabi-gcc
 arm-none-eabi-g++
 arm-none-eabi-objdump (for listings)
 git (if CMSIS is cloned automatically)
+ninja (optional)
+```
+
+CMSIS platform build:
+
+```text
+cmake
+python3 + PyYAML
+arm-none-eabi-gcc
+arm-none-eabi-g++
+arm-none-eabi-objdump (for listings)
+git (if CMSIS is installed or cloned automatically)
 ninja (optional)
 ```
 

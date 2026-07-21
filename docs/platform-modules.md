@@ -61,6 +61,7 @@ builds whatever was configured:
 ./configure.sh --platform mcu --target emu          # bare-metal
 ./configure.sh --platform mcu --target cortex-m0
 ./configure.sh --platform mcu --target cortex-m0plus
+./configure.sh --platform cmsis --target cortex-m0
 ```
 
 Concrete platform modules may exist internally:
@@ -68,20 +69,22 @@ Concrete platform modules may exist internally:
 ```cpp
 export module native;
 export module mcu;
+export module cmsis;
 export module pico_sdk;
 ```
 
 They are implementation details. CMake selects one of them based on which
 build script and target invoked it. `native` implements `halt()` with the
-host's `exit`. `mcu` and `pico_sdk` both implement the bare-metal side of the
+host's `exit`. `mcu`, `cmsis`, and `pico_sdk` all implement the bare-metal side of the
 contract (an infinite loop plus a `wait_for_event()` call from `cpu`), but are
-distinct modules because they sit on different vendor foundations: `mcu` on
-hand-rolled startup plus CMSIS-Core, `pico_sdk` on Raspberry Pi's pico-sdk for
-RP2040/RP2350. See [Native Linux Platform](platforms-native/linux.md),
-[Bare-Metal MCU Platform](platforms-baremetal/mcu.md), and
+distinct modules because they sit on different foundations: `mcu` is the
+generic bare-metal path, `cmsis` is Arm CMSIS-Core, and `pico_sdk` is
+Raspberry Pi's pico-sdk for RP2040/RP2350. See
+[Native Linux Platform](platforms-native/linux.md),
+[Bare-Metal MCU Platform](platforms-baremetal/mcu.md),
+[Bare-Metal CMSIS Platform](platforms-baremetal/cmsis.md), and
 [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md). Target
-selection implies which bare-metal implementation is linked in; there is no
-separate platform flag.
+selection is constrained by the selected platform.
 
 ## Rule
 
@@ -89,9 +92,9 @@ separate platform flag.
 - public API: `mmcu::platform::halt()`, `mmcu::platform::panic(message)`,
   `mmcu::platform::is_native`, `mmcu::platform::is_baremetal`
 - concrete platform is selected by `./configure.sh --platform <name>` and its
-  target (`native` is the default; `--platform mcu`/`--platform pico_sdk`
-  select `mcu` or `pico_sdk` depending on `<name>`'s vendor foundation)
-- concrete platform modules (`native`, `mcu`, `pico_sdk`) are internal
+  target (`native` is the default; `--platform mcu`/`--platform cmsis`/
+  `--platform pico_sdk` select the corresponding platform foundation)
+- concrete platform modules (`native`, `mcu`, `cmsis`, `pico_sdk`) are internal
   implementation details, and more may be added for other vendor foundations
 - `platform` does not own target/board selection; that stays with `target`
   as described in [Target Module Objects](target-modules.md)

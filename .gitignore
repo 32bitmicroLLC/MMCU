@@ -67,6 +67,9 @@ vcpkg_installed/
 # third-party dependencies fetched by CMake
 third_party/
 
+# vendored CMSIS checkout
+platforms/cmsis/CMSIS_6/
+
 # vendored pico-sdk checkout and its installed picotool
 platforms/pico-sdk/pico-sdk/
 platforms/pico-sdk/bin/

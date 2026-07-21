@@ -6,8 +6,8 @@ cmake_minimum_required(VERSION 4.0)
 # a default CMAKE_TOOLCHAIN_FILE, both overridable. This has to run before
 # project(), because CMake only reads CMAKE_TOOLCHAIN_FILE during the first
 # project()/enable_language() call. See docs/configure.md.
-set(MMCU_PLATFORM "native" CACHE STRING "MMCU platform: native, mcu, or pico_sdk")
-set_property(CACHE MMCU_PLATFORM PROPERTY STRINGS native mcu pico_sdk)
+set(MMCU_PLATFORM "native" CACHE STRING "MMCU platform: native, mcu, cmsis, or pico_sdk")
+set_property(CACHE MMCU_PLATFORM PROPERTY STRINGS native mcu cmsis pico_sdk)
 
 set(MMCU_TARGET "" CACHE STRING "MMCU target to build (default depends on MMCU_PLATFORM)")
 set(MMCU_BOARD "" CACHE STRING "MMCU board (default depends on MMCU_TARGET)")
@@ -20,6 +20,12 @@ elseif(MMCU_PLATFORM STREQUAL "mcu")
     set(_mmcu_valid_targets emu cortex-m0 cortex-m0plus)
     set(_mmcu_default_target "emu")
     set(_mmcu_default_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchains/arm-none-eabi-gcc.cmake")
+elseif(MMCU_PLATFORM STREQUAL "cmsis")
+    # CMSIS is the first-class Arm CMSIS-Core platform. It uses hand-rolled
+    # startup/linker integration plus CMSIS-Core headers, without a vendor SDK.
+    set(_mmcu_valid_targets cortex-m0 cortex-m0plus rp2040-cmsis rp2350-cmsis)
+    set(_mmcu_default_target "cortex-m0")
+    set(_mmcu_default_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchains/arm-none-eabi-gcc.cmake")
 elseif(MMCU_PLATFORM STREQUAL "pico_sdk")
     # rp2040/rp2350 build against the vendored pico-sdk (real boot2, clock
     # tree, linker script via pico_runtime/pico_standard_link — the same
@@ -31,7 +37,7 @@ elseif(MMCU_PLATFORM STREQUAL "pico_sdk")
     set(_mmcu_default_target "rp2040")
     set(_mmcu_default_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/cmake/toolchains/arm-none-eabi-gcc.cmake")
 else()
-    message(FATAL_ERROR "Unsupported MMCU_PLATFORM: ${MMCU_PLATFORM} (expected native, mcu, or pico_sdk)")
+    message(FATAL_ERROR "Unsupported MMCU_PLATFORM: ${MMCU_PLATFORM} (expected native, mcu, cmsis, or pico_sdk)")
 endif()
 
 if(NOT MMCU_TARGET)
@@ -53,6 +59,8 @@ endif()
 
 set(MMCU_PICO_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platforms/pico-sdk/pico-sdk" CACHE PATH
     "Vendored pico-sdk checkout used by the rp2040/rp2350 targets")
+set(MMCU_CMSIS_PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platforms/cmsis/CMSIS_6" CACHE PATH
+    "Vendored CMSIS_6 checkout used by the cmsis platform")
 
 if(MMCU_TARGET STREQUAL "rp2040" OR MMCU_TARGET STREQUAL "rp2350")
     if(NOT EXISTS "${MMCU_PICO_SDK_DIR}/pico_sdk_init.cmake")
@@ -119,6 +127,8 @@ set(MMCU_RP2350_MODULES
 function(mmcu_require_cmsis)
     if(MMCU_CMSIS_DIR)
         set(_cmsis_dir "${MMCU_CMSIS_DIR}")
+    elseif(EXISTS "${MMCU_CMSIS_PLATFORM_DIR}/CMSIS/Core/Include")
+        set(_cmsis_dir "${MMCU_CMSIS_PLATFORM_DIR}")
     else()
         set(_cmsis_dir "${MMCU_THIRD_PARTY_DIR}/CMSIS_6")
         if(NOT EXISTS "${_cmsis_dir}")

@@ -31,7 +31,7 @@ Options:
   -r, --run               Run mmcu_app after a successful build
       --map-and-list      Generate a linker map and full disassembly listings
       --objdump <path>    objdump for --map-and-list (default: arm-none-eabi-objdump
-                          for a configured MMCU_PLATFORM=mcu build, objdump otherwise)
+                          for configured mcu/cmsis builds, objdump otherwise)
   -c, --clean             Remove the build directory first (forces reconfigure)
   -h, --help              Show this help
 
@@ -157,7 +157,7 @@ find_app_path() {
 
 if [[ $MAP_AND_LIST -eq 1 ]]; then
     if [[ -z "$OBJDUMP" ]]; then
-        if [[ "$(read_cache_var MMCU_PLATFORM)" == "mcu" ]]; then
+        if [[ "$(read_cache_var MMCU_PLATFORM)" == "mcu" || "$(read_cache_var MMCU_PLATFORM)" == "cmsis" ]]; then
             OBJDUMP="arm-none-eabi-objdump"
         else
             OBJDUMP="objdump"
