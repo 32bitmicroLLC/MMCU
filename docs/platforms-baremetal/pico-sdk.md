@@ -14,8 +14,8 @@
 > described below and the exact `Required Dependency`/`Proposed Layout`
 > file lists below — `mmcu_app`'s actual CMake wiring lives in the root
 > `CMakeLists.txt`, not a separate `platforms/baremetal/pico_sdk/
-> pico_sdk.cppm`, and `src/platform.cppm` itself doesn't exist yet for any
-> platform (`native`, `mcu`, or `pico_sdk`). The rest of this document
+> pico_sdk.cppm`, and `src/core/platform.cppm` itself doesn't exist yet
+> for any platform (`native`, `mcu`, or `pico_sdk`). The rest of this document
 > remains the design for that layer, should it happen later.
 
 This document specifies a second concrete implementation of the generic

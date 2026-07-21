@@ -19,7 +19,7 @@ CMSIS_6 is the successor to CMSIS_5. The repository provides CMSIS-Core under
 productive builds rather than the moving `main` branch.
 
 Install it as an external dependency, not as hand-copied source mixed into
-`src/`.
+`src/core/`.
 
 CMake clones the default CMSIS_6 checkout into this shared local layout:
 
@@ -71,16 +71,21 @@ targets/
       linker.ld
 ```
 
-The existing generic modules stay flat:
+The existing core module specs and implementations stay separate:
 
 ```text
-src/
+modules/core/
+  mem/mmcu.yaml
+  cpu/mmcu.yaml
+  gpio/mmcu.yaml
+  uart/mmcu.yaml
+  emu/mmcu.yaml
+src/core/
   mem.cppm
   cpu.cppm
   gpio.cppm
   uart.cppm
   emu.cppm
-  main.cpp
 ```
 
 ## CMSIS-Core Use

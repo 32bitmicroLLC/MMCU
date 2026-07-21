@@ -42,17 +42,14 @@ platforms/
       linux.cppm
 ```
 
-The existing generic modules stay flat, and gain `platform.cppm`:
+The core module spec/implementation split would gain a platform core
+module:
 
 ```text
-src/
-  mem.cppm
-  cpu.cppm
-  gpio.cppm
-  uart.cppm
-  emu.cppm
+modules/core/
+  platform/mmcu.yaml
+src/core/
   platform.cppm
-  main.cpp
 ```
 
 `platform.cppm` exports the generic `mmcu::platform` namespace and its default
@@ -131,13 +128,13 @@ implemented `native`/`mcu`/`pico_sdk` naming, which this proposal predates).
 When `MMCU_PLATFORM` is `native`, add:
 
 ```text
-src/platform.cppm
+src/core/platform.cppm
 platforms/native/linux/linux.cppm
 ```
 
 to `MMCU_MODULES`. A later non-Linux native platform (macOS, Windows) would
 add its own `platforms/native/<os>/<os>.cppm` and select it by host OS, without
-changing `src/platform.cppm` or application code.
+changing `src/core/platform.cppm` or application code.
 
 ## Module Direction
 
@@ -161,7 +158,7 @@ if (!mmcu::uart::uart0.can_write()) {
 
 ## Default Object Selection Mechanism
 
-`src/platform.cppm` re-exports whichever concrete platform module CMake
+`src/core/platform.cppm` re-exports whichever concrete platform module CMake
 included, the same mechanism `target-modules.md` describes for `cpu`, `gpio`,
 and `uart`. For native Linux builds, that concrete module is
 `platforms/native/linux/linux.cppm`.

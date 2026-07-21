@@ -5,10 +5,10 @@
 name: mmcu_app
 kind: application
 
-# applications/main/main.cpp only imports the stable, target/platform-
-# resolved modules (cpu, gpio, uart -- see docs/target-modules.md) and
-# nothing from libraries/, drivers/, or modules/, which don't have any
-# packages in them yet (see docs/libraries.md, docs/drivers.md,
-# docs/modules.md: those trees are created on demand). There is nothing
-# for this application to depend on today.
+# applications/main/main.cpp directly imports the built-in core modules
+# (cpu, gpio, uart -- see docs/target-modules.md). Those core specs live in
+# modules/core/ and are currently added by CMake's core module list rather
+# than through this application dependency list. There is nothing from
+# libraries/, drivers/, or optional generic modules for this application to
+# depend on today.
 depends: []

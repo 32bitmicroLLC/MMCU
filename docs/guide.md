@@ -206,11 +206,13 @@ Today the real application has:
 depends: []
 ```
 
-because `applications/main/main.cpp` imports only stable target/platform
-modules (`cpu`, `gpio`, `uart`). That means the generated solution is
-expected to have empty `requirements`, `packages`, and dependency
-`outputs` until real libraries, drivers, or modules are added under
-`libraries/`, `drivers/`, or `modules/`.
+because `applications/main/main.cpp` imports only built-in core modules
+(`cpu`, `gpio`, `uart`). Their specs live in `modules/core/` and their
+implementations live in `src/core/`, but CMake still wires them directly
+today. That means the generated solution is expected to have empty
+`requirements`, `packages`, and dependency `outputs` until real optional
+libraries, drivers, or generic modules are added under `libraries/`,
+`drivers/`, or non-core `modules/` topics.
 
 `mmcu-deps.cmake` is the CMake projection of that solution. It may contain
 only comments for the current app, and that is valid.

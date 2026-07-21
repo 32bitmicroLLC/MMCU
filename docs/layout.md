@@ -11,12 +11,12 @@
 ├── clean.sh
 ├── platform.sh
 ├── applications/
+├── modules/
 ├── src/
 ├── targets/
 ├── platforms/
 ├── libraries/
 ├── drivers/
-├── modules/
 ├── docs/
 └── mkdocs.yml
 ```
@@ -35,7 +35,9 @@
 - `applications/<name>/`: an application's own entry point (`main.cpp`
   and friends) — see [Application](application.md); `applications/main/`
   is `mmcu_app`'s.
-- `src/`: generic, target-independent modules.
+- `modules/core/`: YAML specifications for MMCU's built-in core modules
+  (`mem`, `cpu`, `gpio`, `uart`, `emu`).
+- `src/core/`: C++20 implementations of the built-in core module specs.
 - `targets/`: concrete CPU/board target modules (startup, linker script,
   register layout).
 - `platforms/`: vendor SDK *foundations* a target builds against
@@ -45,8 +47,9 @@
 - `drivers/`: drivers for specific hardware peripherals/devices (sensors,
   motors, storage, ...), organized by device category — see
   [Drivers](drivers.md).
-- `modules/`: generic, hardware-independent C++20 modules (containers,
-  algorithms, utility types) that `libraries/` and `drivers/` build on,
-  organized by topic — see [Modules](modules.md).
+- `modules/`: MMCU module specifications. `modules/core/` is reserved for
+  built-in core specs; other topics hold generic, hardware-independent
+  modules (containers, algorithms, utility types) that `libraries/` and
+  `drivers/` build on — see [Modules](modules.md).
 - `mkdocs.yml`: MkDocs site configuration.
 - `docs/`: Markdown sources for project documentation.

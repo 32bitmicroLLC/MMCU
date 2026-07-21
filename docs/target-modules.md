@@ -71,7 +71,8 @@ application code.
 
 See [Modular Peripherals](peripherals.md) for how `cpu`/`gpio`/`uart` and
 their default objects (`core`/`gpio0`/`uart0`) are actually implemented in
-`src/`, and what makes them portable across targets in the first place.
+`src/core/`, and what makes them portable across targets in the first
+place. Their YAML module specifications live in `modules/core/`.
 See [Modular Target](target.md) for what a target is composed of
 underneath this naming — CPU core, memories, MMU, floating-point, debug,
 and peripherals as independent facets.

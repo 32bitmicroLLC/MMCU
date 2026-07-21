@@ -99,10 +99,10 @@ set(MMCU_LINKER_MAP OFF CACHE BOOL "Emit a linker map (mmcu_app.map) and cross-r
 add_executable(mmcu_app)
 target_compile_features(mmcu_app PRIVATE cxx_std_20)
 set(MMCU_MODULES
-    src/mem.cppm
-    src/cpu.cppm
-    src/gpio.cppm
-    src/uart.cppm
+    src/core/mem.cppm
+    src/core/cpu.cppm
+    src/core/gpio.cppm
+    src/core/uart.cppm
 )
 
 function(mmcu_require_cmsis)
@@ -209,7 +209,7 @@ endfunction()
 
 if(MMCU_TARGET STREQUAL "emu")
     list(APPEND MMCU_MODULES
-        src/emu.cppm
+        src/core/emu.cppm
     )
     if(MMCU_PLATFORM STREQUAL "mcu")
         mmcu_apply_freestanding_options()

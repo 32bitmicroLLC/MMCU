@@ -94,8 +94,8 @@ Useful options:
 
 ## Manifest/resolver build flow
 
-The build wires the core target/platform modules directly in
-`CMakeLists.txt`, then reads the application manifest through
+The build wires the built-in core C++20 modules from `src/core/` directly
+in `CMakeLists.txt`, then reads the application manifest through
 `tools/mmcu-deps.py`. CMake remains the orchestrator, but the Python
 resolver runs during **configure**, not during `cmake --build`.
 

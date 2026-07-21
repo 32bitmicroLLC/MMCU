@@ -1,0 +1,106 @@
+# MMCU YAML schema description for mmcu.yaml module declarations.
+#
+# Tooling loads these files with PyYAML and validates implemented fields
+# with Pydantic. This schema describes the current resolver-compatible
+# subset of the broader mmcu.module/v1 DSL in docs/module.md.
+
+schema: mmcu.schema/v1
+name: mmcu-module
+file_name: mmcu.yaml
+applies_to:
+  - applications/**/mmcu.yaml
+  - libraries/**/mmcu.yaml
+  - drivers/**/mmcu.yaml
+  - modules/**/mmcu.yaml
+
+description: >
+  MMCU module declaration. A module declaration names a typed graph unit,
+  lists capabilities it provides, declares dependencies, and points at the
+  C++20 module interface files and ordinary source files that implement it.
+
+rules:
+  unknown_fields: reject
+  current_subset: >
+    The implemented validator accepts the current resolver-compatible
+    fields. The normalized provides/requires/implementation object form is
+    specified in docs/module.md and can be added to this schema as the
+    resolver grows into it.
+
+fields:
+  schema:
+    type: enum
+    required: false
+    enum: [mmcu.module/v1]
+    description: Optional explicit module DSL version.
+
+  name:
+    type: str
+    required: true
+    pattern: "^[a-z0-9][a-z0-9_-]*$"
+    description: Unique module/package name.
+
+  kind:
+    type: enum
+    required: true
+    enum:
+      - application
+      - board
+      - driver
+      - library
+      - module
+      - peripheral
+      - platform
+      - target
+    description: Type of MMCU graph unit.
+
+  version:
+    type: semver
+    required: false
+    description: Version of this package or public interface.
+
+  description:
+    type: str
+    required: false
+
+  provides:
+    type: list[str]
+    required: false
+    unique_items: true
+    description: Resolver-compatible shorthand for provided capabilities.
+
+  depends:
+    type: list[str | dependency]
+    required: false
+    unique_by: [name]
+    description: Resolver-compatible shorthand for required packages or capabilities.
+
+  modules:
+    type: list[path]
+    required: false
+    unique_items: true
+    description: C++20 module interface units added to CMake's CXX_MODULES file set.
+
+  sources:
+    type: list[path]
+    required: false
+    unique_items: true
+    description: Ordinary source files added to the selected target.
+
+schemas:
+  dependency:
+    unknown_fields: reject
+    fields:
+      name:
+        type: str
+        required: true
+        min_length: 1
+      version:
+        type: semver
+        required: false
+
+validators:
+  - every modules path must be relative
+  - every sources path must be relative
+  - every modules path must stay inside the workspace after normalization
+  - every sources path must stay inside the workspace after normalization
+  - every listed module/source file must exist

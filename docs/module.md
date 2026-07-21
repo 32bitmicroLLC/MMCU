@@ -795,6 +795,7 @@ map into it as follows:
 | [Application](application.md) | `applications/<name>/mmcu.yaml` | `application` |
 | [Libraries](libraries.md) | `libraries/<topic>/<name>/mmcu.yaml` | `library` |
 | [Drivers](drivers.md) | `drivers/<topic>/<name>/mmcu.yaml` | `driver` |
+| Core modules | `modules/core/<name>/mmcu.yaml` + `src/core/<name>.cppm` | `module` |
 | [Modules](modules.md) | `modules/<topic>/<name>/mmcu.yaml` | `module` |
 | [Modular Peripherals](peripherals.md) | target/driver capability facts | `peripheral` |
 | [Modular Target](target.md) | target CMake/YAML facts | `target` |

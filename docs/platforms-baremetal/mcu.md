@@ -63,7 +63,7 @@ platforms/
       mcu.cppm
 ```
 
-`src/platform.cppm` re-exports whichever one CMake selected, the same
+`src/core/platform.cppm` re-exports whichever one CMake selected, the same
 mechanism `target-modules.md` describes for `cpu`, `gpio`, and `uart`.
 `platforms/baremetal/mcu/mcu.cppm` exports the concrete `baremetal` module.
 
@@ -146,7 +146,7 @@ actual implemented value; this proposal predates the `native`/`mcu`/
 When `MMCU_PLATFORM` is `baremetal`, add:
 
 ```text
-src/platform.cppm
+src/core/platform.cppm
 platforms/baremetal/mcu/mcu.cppm
 ```
 

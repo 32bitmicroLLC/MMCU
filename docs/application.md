@@ -38,13 +38,15 @@ depends:
 ```
 
 `applications/main/mmcu.yaml` exists in the repo today with this shape,
-minus the example `depends` entries above — there's nothing under
-`libraries/`/`drivers/`/`modules/` yet for the real
-`applications/main/main.cpp` to depend on, so its actual `depends` list is
-empty. CMake reads it during configure through `tools/mmcu-deps.py`; for
-today's empty dependency list, the generated dependency CMake is empty
-apart from comments and `mmcu.solution.yaml` records an empty resolved
-package graph.
+minus the example `depends` entries above. The real
+`applications/main/main.cpp` imports only the built-in core modules
+(`cpu`, `gpio`, `uart`), whose specs live in `modules/core/` and whose
+implementations are still wired directly by `CMakeLists.txt`. It does not
+depend on optional libraries, drivers, or generic modules, so its actual
+`depends` list is empty. CMake reads it during configure through
+`tools/mmcu-deps.py`; for today's empty dependency list, the generated
+dependency CMake is empty apart from comments and `mmcu.solution.yaml`
+records an empty resolved package graph.
 
 Same shape as every other `mmcu.yaml` in the repo — `depends` is the
 application's statement of *requirements*; there's nothing else an

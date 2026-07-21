@@ -1,8 +1,8 @@
 # Modules
 
-For the singular definition of an MMCU module as a C++20-backed,
-versioned capability provider, see [Module Definition](module.md). This
-page defines the `modules/` directory tree specifically.
+For the singular definition of an MMCU module as a generalized YAML graph
+unit with optional C++20 projection, see [Module Specification](module.md).
+This page defines the `modules/` directory tree specifically.
 
 A **module**, in the sense [Dependencies](dependencies.md) and
 [Dependency DSL](dependency-dsl.md) already use the word, is a composable
@@ -17,30 +17,33 @@ and `modules/` are three trees of that same abstraction, split by *kind of
 capability offered*, not by mechanism — every `mmcu.yaml` in any of the
 three uses the identical `provides`/`depends` shape.
 
-`modules/` specifically holds the kind whose capabilities are generic and
-hardware-independent — reusable building blocks like ring buffers, CRC
-routines, fixed-point types, and small containers — that
-[Libraries](libraries.md) and [Drivers](drivers.md) compose on top of,
-organized by topic the same way both of those are.
+`modules/` holds MMCU module specifications. `modules/core/` is reserved
+for the built-in core module specs implemented in `src/core/`; the rest of
+`modules/` holds generic, hardware-independent reusable building blocks
+like ring buffers, CRC routines, fixed-point types, and small containers
+that [Libraries](libraries.md) and [Drivers](drivers.md) compose on top
+of, organized by topic the same way both of those are.
 
-## Distinction from `libraries/`, `drivers/`, and `src/`
+## Distinction from `libraries/`, `drivers/`, `modules/core/`, and `src/core/`
 
 - `drivers/<topic>/` — drivers for *specific physical parts*: an IMU, a
   stepper controller, an EEPROM chip.
 - `libraries/<topic>/` — protocol/format/interface *implementations*: a
   bus protocol, a display technology, a data format.
+- `modules/core/<name>/` — built-in core module specifications for stable
+  MMCU interfaces (`mem`, `cpu`, `gpio`, `uart`, `emu`). These are part of
+  the framework's core surface, not optional third-party-style packages.
 - `modules/<topic>/` — generic C++ facilities with **no hardware or
   protocol awareness at all**. A ring buffer, a CRC-16 routine, or a
   fixed-point type behaves identically whether it's used inside a UART
   driver, a CANopen library, or plain application code — it never imports
   anything from `drivers/`, `libraries/`, `platforms/`, or `targets/`.
-- `src/` — the project's stable, generic *hardware abstraction* surface
-  (`cpu`, `gpio`, `uart` — see
-  [Target Module Objects](target-modules.md)): stable names the build
-  resolves to a concrete target/platform module. `modules/` is never
-  resolved per target or platform; the same module compiles identically
-  everywhere. If a module needs `#ifdef`-style target branching, it
-  belongs in `src/`/`targets/`, not `modules/`.
+- `src/core/` — C++20 implementation files for `modules/core/`. These
+  provide the stable generic *hardware abstraction* imports (`cpu`,
+  `gpio`, `uart` — see [Target Module Objects](target-modules.md)).
+  If a module needs target-specific behavior, keep the stable spec in
+  `modules/core/`/`src/core/` and put the concrete target-specific part in
+  `targets/` or `platforms/`.
 
 ## Position in the dependency chain
 
@@ -65,8 +68,14 @@ requirement for `ring-buffer` maps to whichever module `provides:
 bottoms out most often — it sits at the base of the graph, depending on
 nothing under `libraries/`, `drivers/`, `platforms/`, or `targets/`.
 
-```
+```text
 modules/
+  core/
+    mem/
+    cpu/
+    gpio/
+    uart/
+    emu/
   Containers/
     RingBuffer/
     FixedVector/
@@ -141,7 +150,7 @@ carry a `peripherals.requires`/`any_of` like any other package (see
 [Dependencies](dependencies.md)) — but this should be rare and worth a
 second look before adding, since it's exactly the hardware-awareness
 `modules/` otherwise avoids by design; prefer keeping the hardware-specific
-part in `src/`/`targets/` and the generic part in `modules/`.
+part in `src/core/`/`targets/` and the generic part in `modules/`.
 
 ## Modules that belong to more than one topic
 
@@ -160,5 +169,6 @@ it's relevant to. When adding a module that spans topics, decide the
 primary topic first (the one it's most fundamentally *about*), put the
 real directory there, and symlink from the rest.
 
-`modules/` itself doesn't need to exist until the first module lands in
-it — it's created on demand, not scaffolded empty ahead of time.
+`modules/core/` exists for the built-in core specs. Additional generic
+module topic directories are still created on demand when the first module
+in that topic lands.

@@ -1,6 +1,7 @@
 # Chapter 4: Current MMCU Modules
 
-MMCU is currently organized as a small set of flat C++20 modules under `src/`.
+MMCU's built-in core modules are specified under `modules/core/` and
+implemented as C++20 modules under `src/core/`.
 
 The goal is to keep the public API generic. The modules do not name a specific CPU
 core, vendor, board, or register map. Concrete addresses and register layouts live

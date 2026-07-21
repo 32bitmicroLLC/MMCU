@@ -1,0 +1,9 @@
+schema: mmcu.module/v1
+name: mem
+kind: module
+version: 1.0.0
+description: Core memory/register access C++20 module.
+provides: [mem]
+modules:
+  - ../../../src/core/mem.cppm
+depends: []

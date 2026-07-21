@@ -1,16 +1,17 @@
-# Modular Peripherals (`src/`)
+# Modular Peripherals (`modules/core` and `src/core`)
 
 [Dependencies](dependencies.md) treats a **peripheral** as an abstract
 capability name (`GPIO`, `UART`, `I2C`, ...) that a target either provides
-or doesn't. This doc describes what actually implements that capability:
-the peripheral modules in `src/` (`mem`, `cpu`, `gpio`, `uart`), and the
-pattern that makes each one *modular* — reusable across targets without
-its behavior code ever changing.
+or doesn't. This doc describes the core peripheral modules whose YAML
+specifications live in `modules/core/` and whose C++20 implementations
+live in `src/core/` (`mem`, `cpu`, `gpio`, `uart`), and the pattern that
+makes each one *modular* — reusable across targets without its behavior
+code ever changing.
 
 ## The generic foundation: `mem`
 
-Every peripheral module is built from two pieces in `src/mem.cppm`, and
-neither one is peripheral-specific:
+Every peripheral module is built from two pieces in
+`src/core/mem.cppm`, and neither one is peripheral-specific:
 
 ```cpp
 template <typename T>
@@ -76,8 +77,8 @@ hardware address — this is what makes `gpio0`/`uart0` work identically on
 `native` and the `emu` target: there's no real chip underneath either, so
 a plain array stands in for one.
 
-`src/emu.cppm` shows the shape a *real* per-target override takes, even
-though nothing wires it in as the active default yet: it redeclares
+`src/core/emu.cppm` shows the shape a *real* per-target override takes,
+even though nothing wires it in as the active default yet: it redeclares
 `gpio::layout`/`uart::layout` values and its own backing register arrays
 under `mmcu::emu::gpio0`/`mmcu::emu::uart0` — same `layout` type, same
 `gpio`/`uart` class, different base address and data.

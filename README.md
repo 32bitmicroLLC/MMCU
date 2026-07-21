@@ -53,8 +53,9 @@ details, see `docs/setup.md`.
 ├── docs/                       # MkDocs documentation sources
 ├── drivers/                    # device/peripheral drivers
 ├── libraries/                  # functional libraries
+├── modules/                    # MMCU module specifications, including core specs
 ├── platforms/                  # vendor/platform SDK integrations
-├── src/                        # generic target-independent C++20 modules
+├── src/                        # C++20 implementations, including src/core
 ├── targets/                    # target-specific modules/startup/linker files
 ├── tools/                      # Python tooling used by configure/validation
 ├── yaml/                       # human-readable YAML schema descriptions

@@ -1,0 +1,15 @@
+schema: mmcu.module/v1
+name: emu
+kind: module
+version: 1.0.0
+description: Core emulated target C++20 module for host and smoke-test builds.
+provides: [emu]
+modules:
+  - ../../../src/core/emu.cppm
+depends:
+  - name: gpio
+    version: 1.0.0
+  - name: mem
+    version: 1.0.0
+  - name: uart
+    version: 1.0.0

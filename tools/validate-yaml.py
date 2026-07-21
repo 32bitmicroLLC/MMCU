@@ -185,6 +185,51 @@ class BoardDecl(BaseModel):
         return self
 
 
+class Dependency(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1)
+    version: str | None = None
+
+
+class ModuleManifest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_: Literal["mmcu.module/v1"] | None = Field(default=None, alias="schema")
+    name: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")
+    kind: Literal[
+        "application",
+        "board",
+        "driver",
+        "library",
+        "module",
+        "peripheral",
+        "platform",
+        "target",
+    ]
+    version: str | None = None
+    description: str | None = None
+    provides: list[str] | None = None
+    depends: list[str | Dependency] | None = None
+    modules: list[str] | None = None
+    sources: list[str] | None = None
+
+    @model_validator(mode="after")
+    def unique_lists(self) -> "ModuleManifest":
+        for field_name in ("provides", "modules", "sources"):
+            values = getattr(self, field_name)
+            if values and len(values) != len(set(values)):
+                raise ValueError(f"{field_name} must not contain duplicates")
+        if self.depends:
+            names = [
+                dependency if isinstance(dependency, str) else dependency.name
+                for dependency in self.depends
+            ]
+            if len(names) != len(set(names)):
+                raise ValueError("depends must not contain duplicate names")
+        return self
+
+
 def load_yaml(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as handle:
         return yaml.safe_load(handle)
@@ -192,6 +237,23 @@ def load_yaml(path: Path) -> Any:
 
 def validate_board(path: Path) -> None:
     BoardDecl.model_validate(load_yaml(path))
+
+
+def validate_module(path: Path, data: dict[str, Any] | None = None) -> ModuleManifest:
+    manifest = ModuleManifest.model_validate(load_yaml(path) if data is None else data)
+    for field_name in ("modules", "sources"):
+        for raw_path in getattr(manifest, field_name) or []:
+            candidate = Path(raw_path)
+            if candidate.is_absolute():
+                raise ValueError(f"{field_name} path must be relative: {raw_path}")
+            resolved = (path.parent / candidate).resolve()
+            try:
+                resolved.relative_to(ROOT)
+            except ValueError as exc:
+                raise ValueError(f"{field_name} path escapes workspace: {raw_path}") from exc
+            if not resolved.exists():
+                raise ValueError(f"{field_name} path does not exist: {raw_path}")
+    return manifest
 
 
 def validate_board_collection(path: Path) -> BoardCollection:
@@ -238,6 +300,8 @@ def validate_path(path: Path) -> None:
         validate_board_registry(path)
     elif schema == "mmcu.boards/v1":
         validate_board_collection(path)
+    elif schema == "mmcu.module/v1" or path.name == "mmcu.yaml":
+        validate_module(path, data)
     elif path.name == "mmcu-board.yaml":
         BoardDecl.model_validate(data)
     else:
@@ -248,7 +312,13 @@ def main() -> int:
     paths = [Path(arg) for arg in sys.argv[1:]]
     if not paths:
         registry = ROOT / "boards" / "mmcu-boards.yaml"
-        paths = [registry] if registry.exists() else sorted((ROOT / "boards").rglob("mmcu-board.yaml"))
+        paths = []
+        if registry.exists():
+            paths.append(registry)
+        paths.extend(sorted((ROOT / "applications").rglob("mmcu.yaml")))
+        paths.extend(sorted((ROOT / "libraries").rglob("mmcu.yaml")))
+        paths.extend(sorted((ROOT / "drivers").rglob("mmcu.yaml")))
+        paths.extend(sorted((ROOT / "modules").rglob("mmcu.yaml")))
 
     failures = 0
     for path in paths:

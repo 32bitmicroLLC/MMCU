@@ -1,0 +1,11 @@
+schema: mmcu.module/v1
+name: uart
+kind: module
+version: 1.0.0
+description: Core UART hardware abstraction C++20 module.
+provides: [uart]
+modules:
+  - ../../../src/core/uart.cppm
+depends:
+  - name: mem
+    version: 1.0.0

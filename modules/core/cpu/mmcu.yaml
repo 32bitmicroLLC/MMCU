@@ -1,0 +1,11 @@
+schema: mmcu.module/v1
+name: cpu
+kind: module
+version: 1.0.0
+description: Core CPU control C++20 module.
+provides: [cpu]
+modules:
+  - ../../../src/core/cpu.cppm
+depends:
+  - name: mem
+    version: 1.0.0

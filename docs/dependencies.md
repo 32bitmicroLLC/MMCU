@@ -10,13 +10,15 @@ declaration, no peripheral-capability check. This doc (and
 `libraries/`/`drivers/`/`modules/` need it, the same way
 [Target Module Objects](target-modules.md) and
 [Platform Modules](platform-modules.md) specify a naming convention —
-except those two are already reflected in `src/`, and this one isn't yet.
+except those two are already reflected in `modules/core/` and `src/core/`,
+and this one isn't yet.
 
 See [Application](application.md) for the top-of-the-chain view: what a
 whole application's manifest and resulting dependency graph look like,
 built out of the mechanics this doc defines. See [Modular
 Peripherals](peripherals.md) for the bottom-of-the-chain view: what
-actually implements a "peripheral" capability in `src/`. See
+actually implements a "peripheral" capability in `modules/core/` and
+`src/core/`. See
 [Build Process](process.md) for how a declared graph actually gets walked
 (mapped) and built (resolved).
 
@@ -24,8 +26,8 @@ actually implements a "peripheral" capability in `src/`. See
 these docs, and context disambiguates them. A **C++20 module**
 (`export module foo;`, `import foo;`) is a compiler-level translation
 unit — the mechanism [Target Module Objects](target-modules.md),
-[Platform Modules](platform-modules.md), and `src/` use. The **module**
-defined below is this dependency system's package abstraction — an
+[Platform Modules](platform-modules.md), and `src/core/` use. The
+**module** defined below is this dependency system's package abstraction — an
 `mmcu-module.cmake`/`mmcu.yaml` entry in `libraries/`, `drivers/`, or
 `modules/`. A single package is normally both at once (one `mmcu.yaml`
 entry wrapping one or more `.cppm` files), but the two concepts operate at
