@@ -29,8 +29,11 @@ def main() -> int:
     result = subprocess.run(command, cwd=root, capture_output=True)
     stdout = result.stdout.decode("utf-8", errors="replace")
     stderr = result.stderr.decode("utf-8", errors="replace")
-    if result.returncode != 0:
+    if args.diagnostic and stderr:
         sys.stderr.write(stderr)
+    if result.returncode != 0:
+        if not args.diagnostic:
+            sys.stderr.write(stderr)
         return result.returncode
     try:
         response = json.loads(stdout)
