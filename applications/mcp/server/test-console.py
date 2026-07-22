@@ -14,6 +14,7 @@ def main() -> int:
     parser.add_argument("--wait", type=float, default=2.0)
     parser.add_argument("--build-dir", help="accepted by test.sh for dispatcher compatibility")
     parser.add_argument("--diagnostic", action="store_true")
+    parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
 
     root = pathlib.Path(__file__).resolve().parents[3]
@@ -44,8 +45,9 @@ def main() -> int:
     if response.get("id") != 1 or "result" not in response:
         print(f"MCP test: unexpected response: {response}", file=sys.stderr)
         return 1
-    print(f"MCP request: {json.dumps(request, separators=(',', ':'))}")
-    print(f"MCP response: {json.dumps(response, separators=(',', ':'))}")
+    if not args.quiet:
+        print(f"MCP request: {json.dumps(request, separators=(',', ':'))}")
+        print(f"MCP response: {json.dumps(response, separators=(',', ':'))}")
     print("MCP initialize: PASS")
     return 0
 

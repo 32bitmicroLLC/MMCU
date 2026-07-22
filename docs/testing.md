@@ -21,7 +21,12 @@ the first `test-*.py` script:
 
 Normal tests print the MCP request and decoded response. `--verbose` additionally
 prints the selected command and protocol diagnostics for Python tests,
-including transmitted and received serial bytes.
+including transmitted and received serial bytes. Use `--quiet` to print only
+the final pass result:
+
+```bash
+./test.sh --quiet /dev/ttyACM0
+```
 
 Use explicit application or build directory overrides when testing a
 configuration other than the current `.config`:

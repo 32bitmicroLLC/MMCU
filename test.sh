@@ -5,6 +5,7 @@ APPLICATION_DIR=""
 BUILD_DIR=""
 LIST=0
 VERBOSE=0
+QUIET=0
 TEST_ARGS=()
 
 usage() {
@@ -19,6 +20,7 @@ Options:
   -d, --build-dir <dir>       Build directory override (passed to tests)
       --list                  List applications with test entry points
   -v, --verbose                Show the selected test command
+      --quiet                  Show only the final test result
   -h, --help                   Show this help
 EOF
 }
@@ -34,6 +36,7 @@ while [[ $# -gt 0 ]]; do
         -d|--build-dir) BUILD_DIR="${2:-}"; shift 2 ;;
         --list) LIST=1; shift ;;
         -v|--verbose) VERBOSE=1; shift ;;
+        --quiet) QUIET=1; TEST_ARGS+=(--quiet); shift ;;
         -h|--help) usage; exit 0 ;;
         --) shift; TEST_ARGS+=("$@"); break ;;
         *) TEST_ARGS+=("$1"); shift ;;
