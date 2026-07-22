@@ -1,0 +1,120 @@
+schema: mmcu.schema/v1
+name: mmcu-toolchain
+file_name: mmcu-toolchain.yaml
+applies_to:
+  - toolchains/**/mmcu-toolchain.yaml
+
+description: >
+  MMCU toolchain declaration. A toolchain declaration describes compiler
+  family discovery, minimum versions, provided build capabilities, and
+  platform compatibility.
+
+rules:
+  unknown_fields: reject
+
+fields:
+  schema:
+    type: enum
+    required: true
+    enum: [mmcu.toolchain/v1]
+
+  name:
+    type: str
+    required: true
+    pattern: "^[a-z0-9][a-z0-9_-]*$"
+
+  kind:
+    type: enum
+    required: true
+    enum: [toolchain]
+
+  family:
+    type: enum
+    required: true
+    enum: [gcc, clang, armclang, iar]
+
+  target_triple:
+    type: str
+    required: false
+
+  description:
+    type: str
+    required: false
+
+  provides:
+    type: list[str]
+    required: true
+    unique_items: true
+
+  version:
+    type: version_constraint
+    required: false
+
+  commands:
+    type: commands
+    required: true
+
+  targets:
+    type: map
+    required: false
+
+  platforms:
+    type: platforms
+    required: false
+
+schemas:
+  version_constraint:
+    unknown_fields: reject
+    fields:
+      minimum:
+        type: semver
+        required: false
+
+  commands:
+    unknown_fields: reject
+    fields:
+      cc:
+        type: command_spec
+        required: true
+      cxx:
+        type: command_spec
+        required: true
+      required_flags:
+        type: list[str]
+        required: false
+
+  command_spec:
+    unknown_fields: reject
+    fields:
+      exact:
+        type: str
+        required: false
+      patterns:
+        type: list[str]
+        required: false
+
+  platforms:
+    unknown_fields: reject
+    fields:
+      compatible:
+        type: list[str]
+        required: false
+      incompatible:
+        type: list[incompatibility]
+        required: false
+
+  incompatibility:
+    unknown_fields: reject
+    fields:
+      platform:
+        type: str
+        required: true
+      reason:
+        type: str
+        required: true
+
+validators:
+  - each toolchain must provide at least one capability
+  - command specs must provide either exact or patterns
+  - compatible platform names must be unique
+  - incompatible platform names must be unique

@@ -1,0 +1,28 @@
+schema: mmcu.toolchain/v1
+name: clang-native
+kind: toolchain
+family: clang
+description: Native host Clang toolchain for MMCU C++20 module builds.
+provides:
+  - C
+  - CXX
+  - CXX20
+  - CXX20_MODULES
+  - CMAKE_CXX_MODULE_SCAN
+version:
+  minimum: "20.0.0"
+commands:
+  cc:
+    patterns:
+      - clang-{version}
+      - clang
+  cxx:
+    patterns:
+      - clang++-{version}
+      - clang++
+targets:
+  host:
+    supported: true
+platforms:
+  compatible:
+    - native

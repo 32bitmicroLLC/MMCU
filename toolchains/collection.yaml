@@ -1,0 +1,12 @@
+schema: mmcu.toolchain-collection/v1
+name: mmcu-toolchains
+description: MMCU built-in toolchain declaration collection.
+toolchains:
+  - name: gcc-native
+    path: native/gcc/mmcu-toolchain.yaml
+  - name: clang-native
+    path: native/clang/mmcu-toolchain.yaml
+  - name: arm-none-eabi-gcc
+    path: arm-none-eabi/gcc/mmcu-toolchain.yaml
+  - name: clang-arm-none-eabi
+    path: arm-none-eabi/clang/mmcu-toolchain.yaml

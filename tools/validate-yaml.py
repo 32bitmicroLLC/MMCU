@@ -192,6 +192,40 @@ class Dependency(BaseModel):
     version: str | None = None
 
 
+class ToolchainIncompatibility(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    platform: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+
+
+class ModuleToolchainIncompatibility(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+
+
+class ModuleToolchains(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    requires: list[str] | None = None
+    compatible: list[str] | None = None
+    incompatible: list[ModuleToolchainIncompatibility] | None = None
+
+    @model_validator(mode="after")
+    def unique_lists(self) -> "ModuleToolchains":
+        for field_name in ("requires", "compatible"):
+            values = getattr(self, field_name)
+            if values and len(values) != len(set(values)):
+                raise ValueError(f"toolchains.{field_name} must not contain duplicates")
+        if self.incompatible:
+            names = [item.name for item in self.incompatible]
+            if len(names) != len(set(names)):
+                raise ValueError("toolchains.incompatible must not contain duplicate names")
+        return self
+
+
 class ModuleMetadata(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -220,6 +254,7 @@ class ModuleManifest(BaseModel):
     modules: list[str] | None = None
     sources: list[str] | None = None
     metadata: ModuleMetadata | None = None
+    toolchains: ModuleToolchains | None = None
 
     @model_validator(mode="after")
     def unique_lists(self) -> "ModuleManifest":
@@ -234,6 +269,123 @@ class ModuleManifest(BaseModel):
             ]
             if len(names) != len(set(names)):
                 raise ValueError("depends must not contain duplicate names")
+        return self
+
+
+class ToolchainCommandSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    exact: str | None = None
+    patterns: list[str] | None = None
+
+    @model_validator(mode="after")
+    def has_discovery_rule(self) -> "ToolchainCommandSpec":
+        if not self.exact and not self.patterns:
+            raise ValueError("command spec requires exact or patterns")
+        if self.patterns and len(self.patterns) != len(set(self.patterns)):
+            raise ValueError("command patterns must not contain duplicates")
+        return self
+
+
+class ToolchainCommands(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cc: ToolchainCommandSpec
+    cxx: ToolchainCommandSpec
+    required_flags: list[str] | None = None
+
+    @model_validator(mode="after")
+    def unique_flags(self) -> "ToolchainCommands":
+        if self.required_flags and len(self.required_flags) != len(set(self.required_flags)):
+            raise ValueError("required_flags must not contain duplicates")
+        return self
+
+
+class ToolchainVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    minimum: str | None = None
+
+
+class ToolchainHostTarget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    supported: bool
+
+
+class ToolchainTargets(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    host: ToolchainHostTarget | None = None
+
+
+class ToolchainPlatforms(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    compatible: list[str] | None = None
+    incompatible: list[ToolchainIncompatibility] | None = None
+
+    @model_validator(mode="after")
+    def unique_platforms(self) -> "ToolchainPlatforms":
+        if self.compatible and len(self.compatible) != len(set(self.compatible)):
+            raise ValueError("platforms.compatible must not contain duplicates")
+        if self.incompatible:
+            names = [item.platform for item in self.incompatible]
+            if len(names) != len(set(names)):
+                raise ValueError("platforms.incompatible must not contain duplicates")
+        return self
+
+
+class ToolchainManifest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_: Literal["mmcu.toolchain/v1"] = Field(alias="schema")
+    name: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")
+    kind: Literal["toolchain"]
+    family: Literal["gcc", "clang", "armclang", "iar"]
+    target_triple: str | None = None
+    description: str | None = None
+    provides: list[str] = Field(min_length=1)
+    version: ToolchainVersion | None = None
+    commands: ToolchainCommands
+    targets: ToolchainTargets | None = None
+    platforms: ToolchainPlatforms | None = None
+
+    @model_validator(mode="after")
+    def unique_provides(self) -> "ToolchainManifest":
+        if len(self.provides) != len(set(self.provides)):
+            raise ValueError("provides must not contain duplicates")
+        return self
+
+
+class ToolchainRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")
+    path: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def relative_path(self) -> "ToolchainRef":
+        safe_relative_path(self.path)
+        return self
+
+
+class ToolchainCollection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_: Literal["mmcu.toolchain-collection/v1"] = Field(alias="schema")
+    name: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")
+    description: str | None = None
+    toolchains: list[ToolchainRef] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def unique_toolchains(self) -> "ToolchainCollection":
+        names = [toolchain.name for toolchain in self.toolchains]
+        paths = [toolchain.path for toolchain in self.toolchains]
+        if len(names) != len(set(names)):
+            raise ValueError("toolchains must not contain duplicate names")
+        if len(paths) != len(set(paths)):
+            raise ValueError("toolchains must not contain duplicate paths")
         return self
 
 
@@ -298,6 +450,25 @@ def validate_board_registry(path: Path) -> BoardRegistry:
     return registry
 
 
+def validate_toolchain(path: Path) -> ToolchainManifest:
+    return ToolchainManifest.model_validate(load_yaml(path))
+
+
+def validate_toolchain_collection(path: Path) -> ToolchainCollection:
+    collection = ToolchainCollection.model_validate(load_yaml(path))
+    for toolchain_ref in collection.toolchains:
+        toolchain_path = path.parent / toolchain_ref.path
+        if not toolchain_path.exists():
+            raise ValueError(f"listed toolchain '{toolchain_ref.name}' is missing: {toolchain_path}")
+        declaration = validate_toolchain(toolchain_path)
+        if declaration.name != toolchain_ref.name:
+            raise ValueError(
+                f"{toolchain_path}: toolchain name '{declaration.name}' "
+                f"does not match collection entry '{toolchain_ref.name}'"
+            )
+    return collection
+
+
 def validate_path(path: Path) -> None:
     data = load_yaml(path)
     if not isinstance(data, dict):
@@ -307,6 +478,10 @@ def validate_path(path: Path) -> None:
         validate_board_registry(path)
     elif schema == "mmcu.boards/v1":
         validate_board_collection(path)
+    elif schema == "mmcu.toolchain-collection/v1":
+        validate_toolchain_collection(path)
+    elif schema == "mmcu.toolchain/v1":
+        validate_toolchain(path)
     elif schema == "mmcu.module/v1" or path.name == "mmcu.yaml":
         validate_module(path, data)
     elif path.name == "mmcu-board.yaml":
@@ -326,6 +501,9 @@ def main() -> int:
         paths.extend(sorted((ROOT / "libraries").rglob("mmcu.yaml")))
         paths.extend(sorted((ROOT / "drivers").rglob("mmcu.yaml")))
         paths.extend(sorted((ROOT / "modules").rglob("mmcu.yaml")))
+        toolchain_registry = ROOT / "toolchains" / "collection.yaml"
+        if toolchain_registry.exists():
+            paths.append(toolchain_registry)
 
     failures = 0
     for path in paths:

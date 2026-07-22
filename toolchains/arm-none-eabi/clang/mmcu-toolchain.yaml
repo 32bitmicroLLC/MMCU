@@ -1,0 +1,36 @@
+schema: mmcu.toolchain/v1
+name: clang-arm-none-eabi
+kind: toolchain
+family: clang
+target_triple: arm-none-eabi
+description: Clang frontend targeting Arm bare-metal EABI.
+provides:
+  - C
+  - CXX
+  - ASM
+  - FREESTANDING_C
+  - FREESTANDING_CXX
+  - ARM_EABI
+  - CXX20
+  - CXX20_MODULES
+  - CMAKE_CXX_MODULE_SCAN
+version:
+  minimum: "20.0.0"
+commands:
+  cc:
+    patterns:
+      - clang-{version}
+      - clang
+  cxx:
+    patterns:
+      - clang++-{version}
+      - clang++
+  required_flags:
+    - --target=arm-none-eabi
+platforms:
+  compatible:
+    - mcu
+    - cmsis
+  incompatible:
+    - platform: pico_sdk
+      reason: pico-sdk Clang support requires a configured ARM runtime/sysroot and is not wired yet

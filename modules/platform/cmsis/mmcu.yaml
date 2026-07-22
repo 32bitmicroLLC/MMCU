@@ -13,6 +13,18 @@ metadata:
 provides:
   - cmsis-platform
   - platform-cmsis
+toolchains:
+  requires:
+    - C
+    - CXX
+    - ASM
+    - FREESTANDING_C
+    - FREESTANDING_CXX
+    - ARM_EABI
+    - CXX20_MODULES
+  compatible:
+    - arm-none-eabi-gcc
+    - clang-arm-none-eabi
 depends:
   - name: platform-cmsis-6
     version: 6.0.0

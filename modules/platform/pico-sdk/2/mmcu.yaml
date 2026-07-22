@@ -19,4 +19,19 @@ provides:
   - pico-sdk
   - pico-sdk-2
   - pico_sdk
+toolchains:
+  requires:
+    - C
+    - CXX
+    - ASM
+    - FREESTANDING_C
+    - FREESTANDING_CXX
+    - ARM_EABI
+    - CXX20_MODULES
+    - PICO_SDK_SUPPORTED
+  compatible:
+    - arm-none-eabi-gcc
+  incompatible:
+    - name: clang-arm-none-eabi
+      reason: pico-sdk Clang support requires a configured ARM runtime/sysroot and is not wired yet
 depends: []

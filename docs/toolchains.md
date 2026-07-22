@@ -48,7 +48,7 @@ The split is intentional:
 
 The detailed DSL is defined in [Toolchain Model](toolchain.md).
 
-## Intended repository layout
+## Repository layout
 
 ```text
 toolchains/
@@ -70,9 +70,10 @@ modules/platform/pico-sdk/mmcu.yaml
 modules/platform/pico-sdk/2/mmcu.yaml
 ```
 
-This keeps `configure.sh` from becoming the specification. The script should
-eventually become an executor that reads metadata, discovers installed
-commands, shows choices, and passes selected paths to CMake.
+The `toolchains/` metadata and platform module `toolchains:` sections are
+now present in the tree. `configure.sh` still contains the active shell
+resolver bridge: it discovers installed commands, shows choices, and passes
+selected paths to CMake.
 
 ## Configure behavior
 

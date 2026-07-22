@@ -16,6 +16,8 @@ ARM_GCC=""
 ARM_GXX=""
 CLANG_CC=""
 CLANG_CXX=""
+MMCU_CC=""
+MMCU_CXX=""
 APPLICATION_DIR=""
 BUILD_DIR=""
 BUILD_TYPE="Release"
@@ -49,6 +51,8 @@ Options:
       --arm-gxx <path>      MMCU_ARM_GXX override
       --clang-cc <path>     MMCU_CLANG_CC override
       --clang-cxx <path>    MMCU_CLANG_CXX override
+      --cc <path>           Native C compiler override recorded as MMCU_CC
+      --cxx <path>          Native C++ compiler override recorded as MMCU_CXX
       --application-dir <d>  Application directory containing mmcu.yaml and main.cpp
                              (default: applications/main)
   -d, --build-dir <dir>     Build directory (default depends on platform/target)
@@ -308,6 +312,271 @@ prompt_board_choice() {
     BOARD="${board_values[$((idx - 1))]}"
 }
 
+version_at_least() {
+    local required="$1" actual="$2"
+    [[ -n "$actual" ]] || return 1
+    [[ "$(printf '%s\n' "$required" "$actual" | sort -V | head -n1)" == "$required" ]]
+}
+
+compiler_version_for() {
+    local path="$1" version_line
+    [[ -x "$path" ]] || return 0
+    version_line="$("$path" --version 2>/dev/null | head -1)"
+    if [[ "$version_line" == *clang* || "$version_line" == *Clang* ]]; then
+        printf '%s\n' "$version_line" | sed -E 's/.*version ([0-9]+([.][0-9]+)*).*/\1/'
+    else
+        "$path" -dumpfullversion -dumpversion 2>/dev/null | head -1
+    fi
+}
+
+native_c_candidate_for() {
+    local cxx_path="$1" c_path
+
+    if [[ -n "$MMCU_CC" ]]; then
+        echo "$MMCU_CC"
+        return 0
+    fi
+    if [[ -n "${CC:-}" ]]; then
+        echo "$CC"
+        return 0
+    fi
+
+    case "$(basename "$cxx_path")" in
+        g++-*)
+            c_path="$(dirname "$cxx_path")/gcc-${cxx_path##*g++-}"
+            ;;
+        clang++-*)
+            c_path="$(dirname "$cxx_path")/clang-${cxx_path##*clang++-}"
+            ;;
+        g++)
+            c_path="$(dirname "$cxx_path")/gcc"
+            ;;
+        clang++)
+            c_path="$(dirname "$cxx_path")/clang"
+            ;;
+        c++)
+            c_path=""
+            ;;
+        *)
+            c_path=""
+            ;;
+    esac
+
+    if [[ -n "$c_path" && -x "$c_path" ]]; then
+        echo "$c_path"
+    elif command -v cc >/dev/null 2>&1; then
+        command -v cc
+    elif command -v gcc >/dev/null 2>&1; then
+        command -v gcc
+    elif command -v clang >/dev/null 2>&1; then
+        command -v clang
+    fi
+}
+
+emit_native_toolchain_candidate() {
+    local id="$1" family="$2" cxx_path="$3" cc_path version status reason label
+    [[ -n "$cxx_path" && -x "$cxx_path" ]] || return 0
+    cc_path="$(native_c_candidate_for "$cxx_path")"
+    version="$(compiler_version_for "$cxx_path")"
+    status="usable"
+    reason=""
+    if [[ "$family" == "gcc" ]] && ! version_at_least "15.0.0" "$version"; then
+        status="unsupported"
+        reason="need GCC 15+ for CMake C++20 module scanning"
+    elif [[ "$family" == "clang" ]] && ! version_at_least "20.0.0" "$version"; then
+        status="unsupported"
+        reason="need Clang 20+ for CMake C++20 module scanning"
+    fi
+    if [[ "$status" == "usable" ]]; then
+        label="$id - $cxx_path $version, usable for native C++20 modules"
+    else
+        label="$id - $cxx_path $version, unsupported: $reason"
+    fi
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$family" "$cc_path" "$cxx_path" "$version" "$status" "$reason" "$label"
+}
+
+emit_arm_gcc_toolchain_candidate() {
+    local cc_path cxx_path status reason label version
+    cc_path="${ARM_GCC:-}"
+    cxx_path="${ARM_GXX:-}"
+    [[ -z "$cc_path" ]] && command -v arm-none-eabi-gcc >/dev/null 2>&1 && cc_path="$(command -v arm-none-eabi-gcc)"
+    [[ -z "$cxx_path" ]] && command -v arm-none-eabi-g++ >/dev/null 2>&1 && cxx_path="$(command -v arm-none-eabi-g++)"
+    status="usable"
+    reason=""
+    if [[ -z "$cc_path" || -z "$cxx_path" ]]; then
+        status="unsupported"
+        reason="arm-none-eabi-gcc/g++ not found"
+    fi
+    version="$(compiler_version_for "${cxx_path:-$cc_path}")"
+    if [[ "$status" == "usable" ]]; then
+        label="arm-none-eabi-gcc - $cxx_path ${version:-unknown}, usable"
+    else
+        label="arm-none-eabi-gcc - unsupported: $reason"
+    fi
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "arm-none-eabi-gcc" "gcc" "$cc_path" "$cxx_path" "$version" "$status" "$reason" "$label"
+}
+
+emit_arm_clang_toolchain_candidate() {
+    local platform="$1" target="$2" cc_path cxx_path major version status reason label
+    for major in 23 22 21 20; do
+        if command -v "clang++-$major" >/dev/null 2>&1; then
+            cxx_path="$(command -v "clang++-$major")"
+            command -v "clang-$major" >/dev/null 2>&1 && cc_path="$(command -v "clang-$major")"
+            break
+        fi
+    done
+    if [[ -z "${cxx_path:-}" && -n "$CLANG_CXX" ]]; then
+        cxx_path="$CLANG_CXX"
+        cc_path="$CLANG_CC"
+    fi
+    if [[ -z "${cxx_path:-}" ]] && command -v clang++ >/dev/null 2>&1; then
+        cxx_path="$(command -v clang++)"
+        command -v clang >/dev/null 2>&1 && cc_path="$(command -v clang)"
+    fi
+    version="$(compiler_version_for "${cxx_path:-}")"
+    status="usable"
+    reason=""
+    if [[ -z "${cc_path:-}" || -z "${cxx_path:-}" ]]; then
+        status="unsupported"
+        reason="clang/clang++ 20+ not found"
+    elif ! version_at_least "20.0.0" "$version"; then
+        status="unsupported"
+        reason="need Clang 20+"
+    elif [[ "$platform" == "pico_sdk" && ( "$target" == "rp2040" || "$target" == "rp2350" ) ]]; then
+        status="unsupported"
+        reason="pico-sdk Clang runtime/sysroot integration is not wired yet"
+    fi
+    if [[ "$status" == "usable" ]]; then
+        label="clang-arm-none-eabi - $cxx_path $version, usable"
+    else
+        label="clang-arm-none-eabi - ${cxx_path:-not found} ${version:-}, unsupported: $reason"
+    fi
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "clang-arm-none-eabi" "clang" "${cc_path:-}" "${cxx_path:-}" "$version" "$status" "$reason" "$label"
+}
+
+list_toolchain_candidates() {
+    local platform="$1" target="$2" major candidate path seen_paths=""
+    if [[ "$platform" == "native" ]]; then
+        if [[ -n "$MMCU_CXX" ]]; then
+            case "$(basename "$MMCU_CXX")" in
+                *clang++*) emit_native_toolchain_candidate "clang-explicit" "clang" "$MMCU_CXX" ;;
+                *) emit_native_toolchain_candidate "gcc-explicit" "gcc" "$MMCU_CXX" ;;
+            esac
+            return 0
+        fi
+        if [[ -n "${CXX:-}" ]]; then
+            case "$(basename "$CXX")" in
+                *clang++*) emit_native_toolchain_candidate "clang-env" "clang" "$CXX" ;;
+                *) emit_native_toolchain_candidate "gcc-env" "gcc" "$CXX" ;;
+            esac
+            return 0
+        fi
+        for major in 23 22 21 20 19 18 17 16 15; do
+            candidate="g++-$major"
+            if command -v "$candidate" >/dev/null 2>&1; then
+                path="$(command -v "$candidate")"
+                [[ "$seen_paths" == *"|$path|"* ]] || emit_native_toolchain_candidate "gcc-$major" "gcc" "$path"
+                seen_paths="$seen_paths|$path|"
+            fi
+        done
+        for major in 23 22 21 20; do
+            candidate="clang++-$major"
+            if command -v "$candidate" >/dev/null 2>&1; then
+                path="$(command -v "$candidate")"
+                [[ "$seen_paths" == *"|$path|"* ]] || emit_native_toolchain_candidate "clang-$major" "clang" "$path"
+                seen_paths="$seen_paths|$path|"
+            fi
+        done
+        for candidate in c++ g++ clang++; do
+            if command -v "$candidate" >/dev/null 2>&1; then
+                path="$(command -v "$candidate")"
+                [[ "$seen_paths" == *"|$path|"* ]] && continue
+                case "$candidate" in
+                    clang++) emit_native_toolchain_candidate "clang-system" "clang" "$path" ;;
+                    *) emit_native_toolchain_candidate "gcc-system" "gcc" "$path" ;;
+                esac
+                seen_paths="$seen_paths|$path|"
+            fi
+        done
+    else
+        emit_arm_gcc_toolchain_candidate
+        emit_arm_clang_toolchain_candidate "$platform" "$target"
+    fi
+}
+
+prompt_toolchain_choice() {
+    local rows=() usable_indexes=() labels=() default_index=1 idx row
+    local id family cc_path cxx_path version status reason label
+
+    mapfile -t rows < <(list_toolchain_candidates "$PLATFORM" "$TARGET")
+    if [[ ${#rows[@]} -eq 0 ]]; then
+        echo "Error: no compiler toolchains were discovered." >&2
+        exit 1
+    fi
+
+    echo "Discovered compiler toolchains:"
+    for i in "${!rows[@]}"; do
+        IFS=$'\t' read -r id family cc_path cxx_path version status reason label <<< "${rows[$i]}"
+        labels+=("$label")
+        if [[ "$status" == "usable" ]]; then
+            usable_indexes+=("$i")
+            if [[ ${#usable_indexes[@]} -eq 1 ]]; then
+                default_index=$((i + 1))
+            fi
+        fi
+    done
+
+    if [[ ${#usable_indexes[@]} -eq 0 ]]; then
+        for label in "${labels[@]}"; do
+            echo "  - $label"
+        done
+        echo "Error: no compatible compiler toolchain was found for MMCU_PLATFORM=$PLATFORM MMCU_TARGET=$TARGET." >&2
+        exit 1
+    fi
+
+    if [[ ${#usable_indexes[@]} -eq 1 && ${#rows[@]} -gt 1 ]]; then
+        idx="${usable_indexes[0]}"
+        IFS=$'\t' read -r id family cc_path cxx_path version status reason label <<< "${rows[$idx]}"
+        echo "Only one compatible compiler toolchain was found:"
+        echo "  $label"
+        echo
+        echo "Rejected toolchains:"
+        for i in "${!rows[@]}"; do
+            [[ "$i" == "$idx" ]] && continue
+            IFS=$'\t' read -r id family cc_path cxx_path version status reason label <<< "${rows[$i]}"
+            [[ "$status" == "usable" ]] || echo "  $label"
+        done
+        echo
+        if ! prompt_yes_no "Use $id?" "y"; then
+            echo "Aborted." >&2
+            exit 1
+        fi
+    else
+        idx="$(prompt_choice "Select compiler toolchain:" "$default_index" "${labels[@]}")"
+        idx=$((idx - 1))
+        IFS=$'\t' read -r id family cc_path cxx_path version status reason label <<< "${rows[$idx]}"
+        if [[ "$status" != "usable" ]]; then
+            echo "Error: selected toolchain is unsupported: $reason" >&2
+            exit 1
+        fi
+    fi
+
+    COMPILER="$family"
+    if [[ "$PLATFORM" == "native" ]]; then
+        MMCU_CC="$cc_path"
+        MMCU_CXX="$cxx_path"
+        TOOLCHAIN_FILE=""
+    elif [[ "$family" == "gcc" ]]; then
+        ARM_GCC="$cc_path"
+        ARM_GXX="$cxx_path"
+        TOOLCHAIN_FILE=""
+    else
+        CLANG_CC="$cc_path"
+        CLANG_CXX="$cxx_path"
+        TOOLCHAIN_FILE=""
+    fi
+}
+
 run_interactive() {
     if [[ ! -t 0 ]]; then
         echo "Error: --interactive requires an interactive terminal (stdin is not a tty)." >&2
@@ -379,37 +648,18 @@ run_interactive() {
         TARGET="${target_values[$((idx - 1))]}"
     fi
 
-    local _rp2_pico_sdk_backed=0
     local _rp2040_cmsis_dfp_backed=0
-    if [[ "$PLATFORM" == "pico_sdk" && ( "$TARGET" == "rp2040" || "$TARGET" == "rp2350" ) ]]; then
-        _rp2_pico_sdk_backed=1
-    fi
     if [[ "$PLATFORM" == "cmsis" && "$TARGET" == "rp2040" ]]; then
         _rp2040_cmsis_dfp_backed=1
     fi
 
     if [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "cmsis" || "$PLATFORM" == "pico_sdk" ]]; then
         prompt_board_choice
-
-        local compiler_values=(gcc clang)
-        local compiler_labels=(
-            "gcc   - arm-none-eabi-gcc/g++"
-            "clang - clang/clang++ targeting arm-none-eabi"
-        )
-        if [[ $_rp2_pico_sdk_backed -eq 1 ]]; then
-            COMPILER="gcc"
-            echo "Compiler toolchain: gcc (only option for MMCU_TARGET=$TARGET)"
-        else
-            local compiler_default=1
-            [[ "$COMPILER" == "clang" ]] && compiler_default=2
-            idx="$(prompt_choice "Select compiler toolchain:" "$compiler_default" "${compiler_labels[@]}")"
-            COMPILER="${compiler_values[$((idx - 1))]}"
-        fi
-        TOOLCHAIN_FILE=""
+        prompt_toolchain_choice
 
         CPU="$(prompt_default "ARM CPU for -mcpu (blank = derive from target)" "$CPU")"
 
-        if [[ "$TARGET" != "emu" && $_rp2_pico_sdk_backed -eq 0 ]]; then
+        if [[ "$TARGET" != "emu" && "$PLATFORM" != "pico_sdk" ]]; then
             CMSIS_DIR="$(prompt_default "CMSIS_6 checkout path (blank = platforms/cmsis/CMSIS_6, then third_party/CMSIS_6 fallback)" "$CMSIS_DIR")"
         fi
         if [[ $_rp2040_cmsis_dfp_backed -eq 1 ]]; then
@@ -421,6 +671,8 @@ run_interactive() {
         else
             LINKER_MAP=0
         fi
+    else
+        prompt_toolchain_choice
     fi
 
     local type_values=(Release Debug RelWithDebInfo MinSizeRel)
@@ -454,7 +706,13 @@ run_interactive() {
     echo "  MMCU_PLATFORM = $PLATFORM"
     echo "  MMCU_TARGET   = $TARGET"
     [[ -n "$BOARD" ]] && echo "  MMCU_BOARD    = $BOARD"
-    [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "cmsis" || "$PLATFORM" == "pico_sdk" ]] && echo "  compiler      = $COMPILER"
+    echo "  compiler      = $COMPILER"
+    [[ -n "$MMCU_CC" ]] && echo "  MMCU_CC       = $MMCU_CC"
+    [[ -n "$MMCU_CXX" ]] && echo "  MMCU_CXX      = $MMCU_CXX"
+    [[ -n "$ARM_GCC" ]] && echo "  MMCU_ARM_GCC  = $ARM_GCC"
+    [[ -n "$ARM_GXX" ]] && echo "  MMCU_ARM_GXX  = $ARM_GXX"
+    [[ -n "$CLANG_CC" ]] && echo "  MMCU_CLANG_CC = $CLANG_CC"
+    [[ -n "$CLANG_CXX" ]] && echo "  MMCU_CLANG_CXX = $CLANG_CXX"
     [[ -n "$CPU" ]] && echo "  MMCU_CPU      = $CPU"
     [[ -n "$CMSIS_DIR" ]] && echo "  MMCU_CMSIS_DIR = $CMSIS_DIR"
     [[ -n "$CMSIS_RP2XXX_DFP_DIR" ]] && echo "  MMCU_CMSIS_RP2XXX_DFP_DIR = $CMSIS_RP2XXX_DFP_DIR"
@@ -523,6 +781,14 @@ while [[ $# -gt 0 ]]; do
             CLANG_CXX="${2:-}"
             shift 2
             ;;
+        --cc)
+            MMCU_CC="${2:-}"
+            shift 2
+            ;;
+        --cxx)
+            MMCU_CXX="${2:-}"
+            shift 2
+            ;;
         --application-dir|--app-dir)
             APPLICATION_DIR="${2:-}"
             shift 2
@@ -577,8 +843,8 @@ case "$PLATFORM" in
 esac
 
 if [[ "$PLATFORM" == "native" ]]; then
-    if [[ -n "$TOOLCHAIN_FILE" || "$COMPILER" != "gcc" ]]; then
-        echo "Error: --compiler/--toolchain-file only apply to --platform mcu, cmsis, or pico_sdk" >&2
+    if [[ -n "$TOOLCHAIN_FILE" ]]; then
+        echo "Error: --toolchain-file only applies to --platform mcu, cmsis, or pico_sdk" >&2
         exit 1
     fi
 fi
@@ -709,17 +975,21 @@ check_ninja_version() {
     NINJA_PROGRAM="$ninja_path"
 }
 
-version_at_least() {
-    local required="$1" actual="$2"
-    [[ -n "$actual" ]] || return 1
-    [[ "$(printf '%s\n' "$required" "$actual" | sort -V | head -n1)" == "$required" ]]
-}
-
 native_cxx_candidate() {
     local candidate major
-    if [[ -n "${CXX:-}" ]]; then
+    if [[ -n "$MMCU_CXX" ]]; then
+        echo "$MMCU_CXX"
+        return 0
+    elif [[ -n "${CXX:-}" ]]; then
         echo "$CXX"
         return 0
+    fi
+    if [[ "$COMPILER" == "clang" ]]; then
+        for major in 23 22 21 20; do
+            candidate="clang++-$major"
+            command -v "$candidate" >/dev/null 2>&1 && command -v "$candidate" && return 0
+        done
+        command -v clang++ >/dev/null 2>&1 && command -v clang++ && return 0
     fi
     for major in 23 22 21 20 19 18 17 16 15; do
         candidate="g++-$major"
@@ -732,46 +1002,6 @@ native_cxx_candidate() {
     for candidate in c++ g++ clang++; do
         command -v "$candidate" >/dev/null 2>&1 && command -v "$candidate" && return 0
     done
-}
-
-native_c_candidate_for() {
-    local cxx_path="$1" c_path
-
-    if [[ -n "${CC:-}" ]]; then
-        echo "$CC"
-        return 0
-    fi
-
-    case "$(basename "$cxx_path")" in
-        g++-*)
-            c_path="$(dirname "$cxx_path")/gcc-${cxx_path##*g++-}"
-            ;;
-        clang++-*)
-            c_path="$(dirname "$cxx_path")/clang-${cxx_path##*clang++-}"
-            ;;
-        g++)
-            c_path="$(dirname "$cxx_path")/gcc"
-            ;;
-        clang++)
-            c_path="$(dirname "$cxx_path")/clang"
-            ;;
-        c++)
-            c_path=""
-            ;;
-        *)
-            c_path=""
-            ;;
-    esac
-
-    if [[ -n "$c_path" && -x "$c_path" ]]; then
-        echo "$c_path"
-    elif command -v cc >/dev/null 2>&1; then
-        command -v cc
-    elif command -v gcc >/dev/null 2>&1; then
-        command -v gcc
-    elif command -v clang >/dev/null 2>&1; then
-        command -v clang
-    fi
 }
 
 check_native_cxx_modules_compiler() {
@@ -794,6 +1024,7 @@ check_native_cxx_modules_compiler() {
         if version_at_least "20.0.0" "$version"; then
             NATIVE_CXX_PROGRAM="$cxx_path"
             NATIVE_C_PROGRAM="$(native_c_candidate_for "$cxx_path")"
+            COMPILER="clang"
             echo "Using native C++20 module compiler: $NATIVE_CXX_PROGRAM"
             [[ -n "$NATIVE_C_PROGRAM" ]] && echo "Using native C compiler: $NATIVE_C_PROGRAM"
             return 0
@@ -811,6 +1042,7 @@ check_native_cxx_modules_compiler() {
     if version_at_least "15.0.0" "$version"; then
         NATIVE_CXX_PROGRAM="$cxx_path"
         NATIVE_C_PROGRAM="$(native_c_candidate_for "$cxx_path")"
+        COMPILER="gcc"
         echo "Using native C++20 module compiler: $NATIVE_CXX_PROGRAM"
         [[ -n "$NATIVE_C_PROGRAM" ]] && echo "Using native C compiler: $NATIVE_C_PROGRAM"
         return 0
@@ -982,6 +1214,8 @@ MMCU_CMSIS_DIR=$CMSIS_DIR
 MMCU_CMSIS_GIT_TAG=$CMSIS_GIT_TAG
 MMCU_CMSIS_RP2XXX_DFP_DIR=$CMSIS_RP2XXX_DFP_DIR
 MMCU_LINKER_MAP=$LINKER_MAP
+MMCU_CC=${NATIVE_C_PROGRAM:-$MMCU_CC}
+MMCU_CXX=${NATIVE_CXX_PROGRAM:-$MMCU_CXX}
 MMCU_ARM_GCC=$ARM_GCC
 MMCU_ARM_GXX=$ARM_GXX
 MMCU_CLANG_CC=$CLANG_CC

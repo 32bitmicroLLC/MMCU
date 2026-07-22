@@ -1,6 +1,6 @@
 # Toolchain Model
 
-This page defines the abstract MMCU toolchain model and the proposed
+This page defines the abstract MMCU toolchain model and the
 `mmcu.toolchain/v1` DSL. For the top-level guide tying all toolchain pages
 together, see [Toolchains](toolchains.md). For compiler-specific operational
 details, see [GCC Toolchain](toolchain-gcc.md) and

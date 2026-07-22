@@ -146,6 +146,8 @@ if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
         CONFIG_CMSIS_GIT_TAG="$(read_config_var MMCU_CMSIS_GIT_TAG)"
         CONFIG_CMSIS_RP2XXX_DFP_DIR="$(read_config_var MMCU_CMSIS_RP2XXX_DFP_DIR)"
         CONFIG_LINKER_MAP="$(read_config_var MMCU_LINKER_MAP)"
+        CONFIG_CC="$(read_config_var MMCU_CC)"
+        CONFIG_CXX="$(read_config_var MMCU_CXX)"
         CONFIG_ARM_GCC="$(read_config_var MMCU_ARM_GCC)"
         CONFIG_ARM_GXX="$(read_config_var MMCU_ARM_GXX)"
         CONFIG_CLANG_CC="$(read_config_var MMCU_CLANG_CC)"
@@ -169,6 +171,8 @@ if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
         [[ -n "$CONFIG_CMSIS_GIT_TAG" ]] && CONFIGURE_ARGS+=(--cmsis-git-tag "$CONFIG_CMSIS_GIT_TAG")
         [[ -n "$CONFIG_CMSIS_RP2XXX_DFP_DIR" ]] && CONFIGURE_ARGS+=(--cmsis-rp2xxx-dfp-dir "$CONFIG_CMSIS_RP2XXX_DFP_DIR")
         [[ "$CONFIG_LINKER_MAP" == "1" || "$CONFIG_LINKER_MAP" == "ON" ]] && CONFIGURE_ARGS+=(--linker-map)
+        [[ -n "$CONFIG_CC" ]] && CONFIGURE_ARGS+=(--cc "$CONFIG_CC")
+        [[ -n "$CONFIG_CXX" ]] && CONFIGURE_ARGS+=(--cxx "$CONFIG_CXX")
         [[ -n "$CONFIG_ARM_GCC" ]] && CONFIGURE_ARGS+=(--arm-gcc "$CONFIG_ARM_GCC")
         [[ -n "$CONFIG_ARM_GXX" ]] && CONFIGURE_ARGS+=(--arm-gxx "$CONFIG_ARM_GXX")
         [[ -n "$CONFIG_CLANG_CC" ]] && CONFIGURE_ARGS+=(--clang-cc "$CONFIG_CLANG_CC")

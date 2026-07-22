@@ -1,0 +1,25 @@
+schema: mmcu.toolchain/v1
+name: arm-none-eabi-gcc
+kind: toolchain
+family: gcc
+target_triple: arm-none-eabi
+description: GNU Arm Embedded toolchain for MMCU bare-metal builds.
+provides:
+  - C
+  - CXX
+  - ASM
+  - FREESTANDING_C
+  - FREESTANDING_CXX
+  - ARM_EABI
+  - CXX20
+  - CXX20_MODULES
+commands:
+  cc:
+    exact: arm-none-eabi-gcc
+  cxx:
+    exact: arm-none-eabi-g++
+platforms:
+  compatible:
+    - mcu
+    - cmsis
+    - pico_sdk
