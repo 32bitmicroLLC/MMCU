@@ -114,6 +114,15 @@ selection options after `--` when more than one board is connected:
 
 The doctor returns a non-zero status when a required check fails or no target
 can be queried, which makes it suitable for a preflight check in scripts.
+When a board is running application firmware, Linux may show its USB-serial
+identity (`2e8a:000a`) while `picotool info` reports that no BOOTSEL device is
+accessible. The doctor classifies that state as a warning and explains that
+BOOTSEL mode is required for info; it does not reset the board automatically.
+For application-mode USB it also reports matching `/dev/ttyACM*` or
+`/dev/ttyUSB*` nodes, udev model/serial/interface properties, the kernel USB
+driver, device ownership and access mode, current user-group access, and tty
+settings. When available, USB topology and driver lines from `lsusb -t` are
+shown as well.
 
 ## pico-sdk: platform smoke test
 

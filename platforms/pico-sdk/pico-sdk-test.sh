@@ -73,6 +73,9 @@ if [[ "$(uname -s)" == Linux* ]]; then
             DEVICE_PRESENT=1
             pass "Raspberry Pi USB device detected"
             echo "$USB_RPI" | sed 's/^/      /'
+            if grep -q '2e8a:000a' <<<"$USB_RPI"; then
+                warn "USB serial application is running; picotool info requires BOOTSEL mode"
+            fi
         else
             warn "no Raspberry Pi USB device (2e8a:*) detected"
         fi
@@ -101,22 +104,31 @@ elif [[ $DEVICE_PRESENT -eq 0 ]]; then
     warn "device query skipped because no Raspberry Pi USB device was detected"
 else
     echo "==> $PICOTOOL info ${EXTRA_ARGS[*]}"
+    INFO_LOG="$(mktemp)"
+    trap 'rm -f "$INFO_LOG"' EXIT
     set +e
-    "$PICOTOOL" info --debug "${EXTRA_ARGS[@]}"
+    "$PICOTOOL" info --debug "${EXTRA_ARGS[@]}" >"$INFO_LOG" 2>&1
     INFO_STATUS=$?
     set -e
+    cat "$INFO_LOG"
     case "$INFO_STATUS" in
         0) pass "picotool info completed successfully" ;;
-        139)
-            fail "picotool info crashed with SIGSEGV (exit 139)"
-            if [[ "$VERSION" == 2.3.0* ]]; then
+        *)
+            if grep -qiE 'USB serial connection|consider -f|consider.*force' "$INFO_LOG"; then
+                warn "target is running application firmware; picotool did not query BOOTSEL"
+                echo "      Use BOOTSEL or explicitly run: picotool info -f"
+            elif [[ $INFO_STATUS -eq 139 ]]; then
+                fail "picotool info crashed with SIGSEGV (exit 139)"
+            else
+                fail "picotool info failed with exit status $INFO_STATUS"
+            fi
+            if [[ $INFO_STATUS -eq 139 && "$VERSION" == 2.3.0* ]]; then
                 echo "      picotool 2.3.0 is known to crash on non-partition-capable RP2040 devices."
                 echo "      Rebuild from upstream commit 282a3ca or a newer release."
-            else
+            elif [[ $INFO_STATUS -eq 139 ]]; then
                 echo "      Capture a GDB backtrace and report the picotool version/build."
             fi
             ;;
-        *) fail "picotool info failed with exit status $INFO_STATUS" ;;
     esac
 fi
 
