@@ -87,10 +87,12 @@ full list.
 For pico-sdk, `./run.sh` loads and executes the generated UF2 on a connected
 RP2040/RP2350 device. This is not emulation. It requires a board already in
 BOOTSEL mode, or firmware that supports picotool's reset-to-BOOTSEL request.
-Pass picotool `load` options after `--`, for example a serial selector:
+`--reboot` is the explicit pico-sdk target-run flag and matches the default
+load-and-execute behavior. Pass picotool `load` options after `--`, for
+example a serial selector:
 
 ```bash
-./run.sh -- --ser 12345678
+./run.sh --reboot -- --ser 12345678
 ```
 
 ## Examples

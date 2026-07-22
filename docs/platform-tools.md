@@ -95,6 +95,26 @@ platforms/pico-sdk/share/picotool/
 `platforms/pico-sdk/bin/picotool` first, then falls back to `picotool` in
 `PATH`.
 
+## pico-sdk: device diagnostics
+
+Use the read-only doctor before flashing or running an RP2040/RP2350 image:
+
+```sh
+./platforms/pico-sdk/pico-sdk-doctor.sh
+```
+
+It reports picotool availability, Linux USB enumeration, udev permissions,
+whether the RP2 BOOTSEL volume is mounted, and the result of `picotool info`.
+It does not flash, reset, erase, mount, or unmount anything. Pass device
+selection options after `--` when more than one board is connected:
+
+```sh
+./platforms/pico-sdk/pico-sdk-doctor.sh -- --ser E0C9125B0D9B
+```
+
+The doctor returns a non-zero status when a required check fails or no target
+can be queried, which makes it suitable for a preflight check in scripts.
+
 ## pico-sdk: picotool host prerequisites
 
 Building picotool with USB support requires host packages outside MMCU:

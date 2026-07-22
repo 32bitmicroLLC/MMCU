@@ -50,6 +50,16 @@ if `.config` doesn't exist — see [Build And Run](build.md).
 
 ## `platforms/pico-sdk/pico-sdk-flash.sh`
 
+If device detection or USB permissions are uncertain, run the read-only
+preflight first:
+
+```bash
+./platforms/pico-sdk/pico-sdk-doctor.sh
+```
+
+The doctor checks picotool, USB visibility, udev rules, mounted BOOTSEL
+volumes, and `picotool info`; it never changes the board.
+
 The pico-sdk-specific flash script, usable directly (`./flash.sh` is just a
 thin dispatcher to it for `pico_sdk` builds):
 
@@ -74,7 +84,8 @@ picotool load -f -x <file>
 `./run.sh` for `pico_sdk` uses `platforms/pico-sdk/pico-sdk-run.sh`, which
 wraps this flash script with execution always enabled. Use `./flash.sh
 -- --no-execute` only when you want to program the device without running
-the new firmware.
+the new firmware. `./run.sh --reboot` is the corresponding explicit
+target-run form.
 
 Extra `picotool load` options (device selection like `--ser`/`--bus`/
 `--address`, `-v`/`--verify`, `-u`/`--update`, ...) can be passed through

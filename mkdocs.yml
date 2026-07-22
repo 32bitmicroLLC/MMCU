@@ -16,6 +16,7 @@ nav:
   - GCC Toolchain: toolchain-gcc.md
   - Clang Toolchain: toolchain-clang.md
   - Platform Tools: platform-tools.md
+  - Doctor: doctor.md
   - Build And Run: build.md
   - Configure: configure.md
   - Run: run.md

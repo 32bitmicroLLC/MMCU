@@ -13,6 +13,7 @@ emulation.
 
 Options:
   --uf2 <file>        Image to load and execute (required): .uf2, .elf, or .bin
+  --reboot            Reboot into the loaded image after flashing (default)
   --picotool <path>   picotool executable (passed through)
   --no-force          Don't force a BOOTSEL-mode reboot first (passed through)
   -h, --help          Show this help
@@ -27,6 +28,9 @@ while [[ $# -gt 0 ]]; do
         -h|--help)
             usage
             exit 0
+            ;;
+        --reboot)
+            shift
             ;;
         --no-execute)
             echo "Error: pico-sdk-run.sh always executes the loaded image." >&2

@@ -10,6 +10,7 @@ NO_TIMEOUT_SET=1
 TIMEOUT="5s"
 GDB="gdb"
 GDB_ENDPOINT=""
+REBOOT=0
 QEMU="qemu-system-arm"
 MACHINE=""
 CPU=""
@@ -46,6 +47,10 @@ mcu/cmsis (QEMU) options:
       --cpu <name>          QEMU CPU (default: target-selected)
       --start-paused        Start QEMU paused for debugger attachment
       --gdb-endpoint <ep>   QEMU gdbstub endpoint (default: tcp::1234 with --debug)
+
+pico_sdk target-run options:
+      --reboot              Reboot into the freshly built image after loading
+                            (default for pico_sdk runs)
 
 -- extra-args are passed to the native executable, QEMU, or the
 platform-specific runner, depending on the configured platform.
@@ -114,6 +119,10 @@ while [[ $# -gt 0 ]]; do
         --gdb-endpoint)
             GDB_ENDPOINT="${2:-}"
             shift 2
+            ;;
+        --reboot)
+            REBOOT=1
+            shift
             ;;
         -h|--help)
             usage
@@ -184,6 +193,10 @@ find_app_path() {
 
 case "$PLATFORM" in
     native)
+        if [[ $REBOOT -eq 1 ]]; then
+            echo "Error: --reboot only applies to MMCU_PLATFORM=pico_sdk target runs." >&2
+            exit 1
+        fi
         APP_PATH="$(find_app_path)" || {
             echo "Error: native executable not found in $BUILD_DIR" >&2
             exit 1
@@ -203,6 +216,10 @@ case "$PLATFORM" in
         ;;
 
     mcu|cmsis)
+        if [[ $REBOOT -eq 1 ]]; then
+            echo "Error: --reboot only applies to MMCU_PLATFORM=pico_sdk target runs." >&2
+            exit 1
+        fi
         if ! command -v "$QEMU" >/dev/null 2>&1; then
             echo "Error: $QEMU not found in PATH." >&2
             exit 1
@@ -297,6 +314,9 @@ case "$PLATFORM" in
             echo "       Use ./flash.sh/./run.sh for load-and-execute, or attach a platform-specific probe/debugger manually." >&2
             exit 1
         fi
+        if [[ $REBOOT -eq 0 ]]; then
+            REBOOT=1
+        fi
         case "$TARGET" in
             rp2040|rp2350)
                 UF2_PATH="$BUILD_DIR/mmcu_app.uf2"
@@ -304,7 +324,9 @@ case "$PLATFORM" in
                     echo "Error: $UF2_PATH not found. Build with --no-build dropped, or rebuild first." >&2
                     exit 1
                 fi
-                exec "$SCRIPT_DIR/platforms/pico-sdk/pico-sdk-run.sh" --uf2 "$UF2_PATH" "${EXTRA_ARGS[@]}"
+                RUN_ARGS=(--uf2 "$UF2_PATH")
+                [[ $REBOOT -eq 1 ]] && RUN_ARGS+=(--reboot)
+                exec "$SCRIPT_DIR/platforms/pico-sdk/pico-sdk-run.sh" "${RUN_ARGS[@]}" "${EXTRA_ARGS[@]}"
                 ;;
             *)
                 echo "Error: no run tool for MMCU_TARGET '$TARGET' in $BUILD_DIR/CMakeCache.txt" >&2
