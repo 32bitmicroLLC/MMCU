@@ -104,6 +104,22 @@ set(MMCU_CMSIS_DIR "" CACHE PATH "Path to an installed CMSIS_6 checkout")
 set(MMCU_CMSIS_GIT_TAG "v6.3.0" CACHE STRING "CMSIS_6 git tag to fetch when MMCU_CMSIS_DIR is not set")
 set(MMCU_THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party" CACHE PATH "Shared third-party source directory")
 set(MMCU_LINKER_MAP OFF CACHE BOOL "Emit a linker map (mmcu_app.map) and cross-reference table")
+set(MMCU_APPLICATION_DIR "applications/main" CACHE PATH
+    "Application directory containing mmcu.yaml and main.cpp")
+
+if(IS_ABSOLUTE "${MMCU_APPLICATION_DIR}")
+    set(_mmcu_application_dir "${MMCU_APPLICATION_DIR}")
+else()
+    set(_mmcu_application_dir "${CMAKE_CURRENT_SOURCE_DIR}/${MMCU_APPLICATION_DIR}")
+endif()
+set(_mmcu_application_manifest "${_mmcu_application_dir}/mmcu.yaml")
+set(_mmcu_application_main "${_mmcu_application_dir}/main.cpp")
+if(NOT EXISTS "${_mmcu_application_manifest}")
+    message(FATAL_ERROR "MMCU application manifest not found: ${_mmcu_application_manifest}")
+endif()
+if(NOT EXISTS "${_mmcu_application_main}")
+    message(FATAL_ERROR "MMCU application entry point not found: ${_mmcu_application_main}")
+endif()
 
 add_executable(mmcu_app)
 target_compile_features(mmcu_app PRIVATE cxx_std_20)
@@ -355,7 +371,7 @@ execute_process(
     COMMAND
         "${MMCU_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/mmcu-deps.py"
         --root "${CMAKE_CURRENT_SOURCE_DIR}"
-        --app "${CMAKE_CURRENT_SOURCE_DIR}/applications/main/mmcu.yaml"
+        --app "${_mmcu_application_manifest}"
         --platform "${MMCU_PLATFORM}"
         --target "${MMCU_TARGET}"
         --board "${MMCU_BOARD}"
@@ -370,9 +386,17 @@ if(NOT _mmcu_deps_result EQUAL 0)
 endif()
 include("${CMAKE_CURRENT_BINARY_DIR}/mmcu-deps.cmake")
 
+set(_mmcu_normalized_modules)
+foreach(_mmcu_module IN LISTS MMCU_MODULES)
+    get_filename_component(_mmcu_module_abs "${_mmcu_module}" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+    list(APPEND _mmcu_normalized_modules "${_mmcu_module_abs}")
+endforeach()
+set(MMCU_MODULES "${_mmcu_normalized_modules}")
+list(REMOVE_DUPLICATES MMCU_MODULES)
+
 target_sources(mmcu_app
     PRIVATE
-        applications/main/main.cpp
+        "${_mmcu_application_main}"
     PRIVATE
         FILE_SET cxx_modules TYPE CXX_MODULES FILES
             ${MMCU_MODULES}

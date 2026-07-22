@@ -1,8 +1,8 @@
 # MMCU
 
 MMCU is a modular MCU project scaffold built around CMake and C++20
-modules. The current application target is `mmcu_app`, with source under
-`applications/main/`.
+modules. The configured application target is `mmcu_app`; the default
+application source lives under `applications/main/`.
 
 ## Quick Start
 
@@ -66,7 +66,7 @@ details, see `docs/setup.md`.
 
 ### Applications
 
-`applications/main/` is the current application:
+`applications/main/` is the default application:
 
 ```text
 applications/main/main.cpp      # C++ entry point
@@ -74,8 +74,17 @@ applications/main/mmcu.yaml     # application dependency manifest
 ```
 
 The manifest is read during CMake configure by `tools/mmcu-deps.py`.
-The current application has no package dependencies yet, so its
+The default application has no package dependencies yet, so its
 `depends` list is intentionally empty.
+
+`applications/mcp/server/` is a self-contained MCP-over-stdio server
+application. Select it at configure time with:
+
+```bash
+./configure.sh --application-dir applications/mcp/server \
+  --build-dir build-mcp-server-native
+./build.sh --build-dir build-mcp-server-native
+```
 
 ### Board Metadata
 

@@ -168,7 +168,7 @@ execute_process(
     COMMAND
         "${MMCU_PYTHON}" "${CMAKE_SOURCE_DIR}/tools/mmcu-deps.py"
         --root "${CMAKE_SOURCE_DIR}"
-        --app "${CMAKE_SOURCE_DIR}/applications/main/mmcu.yaml"
+        --app "${_mmcu_application_manifest}"
         --platform "${MMCU_PLATFORM}"
         --target "${MMCU_TARGET}"
         --board "${MMCU_BOARD}"
@@ -184,6 +184,15 @@ if(NOT _mmcu_deps_result EQUAL 0)
 endif()
 
 include("${CMAKE_BINARY_DIR}/mmcu-deps.cmake")
+```
+
+The selected application defaults to `applications/main`. Override it with
+`MMCU_APPLICATION_DIR` when configuring a different application, for example:
+
+```bash
+./configure.sh --application-dir applications/mcp/server \
+  --build-dir build-mcp-server-native
+./build.sh --build-dir build-mcp-server-native
 ```
 
 For the real application today,

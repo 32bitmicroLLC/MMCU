@@ -16,6 +16,7 @@ ARM_GCC=""
 ARM_GXX=""
 CLANG_CC=""
 CLANG_CXX=""
+APPLICATION_DIR=""
 BUILD_DIR=""
 BUILD_TYPE="Release"
 GENERATOR=""
@@ -48,6 +49,8 @@ Options:
       --arm-gxx <path>      MMCU_ARM_GXX override
       --clang-cc <path>     MMCU_CLANG_CC override
       --clang-cxx <path>    MMCU_CLANG_CXX override
+      --application-dir <d>  Application directory containing mmcu.yaml and main.cpp
+                             (default: applications/main)
   -d, --build-dir <dir>     Build directory (default depends on platform/target)
   -b, --type <type>         CMAKE_BUILD_TYPE (default: Release)
   -G, --generator <name>    CMake generator (default: Ninja if available)
@@ -65,6 +68,7 @@ Examples:
   ./configure.sh --platform mcu --target cortex-m0 --toolchain-file cmake/toolchains/arm-none-eabi-clang.cmake
   ./configure.sh --platform pico_sdk --target rp2040
   ./configure.sh --platform pico_sdk --target rp2040 --board pico-w
+  ./configure.sh --application-dir applications/mcp/server --build-dir build-mcp-server-native
   ./configure.sh --interactive
 EOF
 }
@@ -459,6 +463,10 @@ while [[ $# -gt 0 ]]; do
             CLANG_CXX="${2:-}"
             shift 2
             ;;
+        --application-dir|--app-dir)
+            APPLICATION_DIR="${2:-}"
+            shift 2
+            ;;
         -d|--build-dir)
             BUILD_DIR="${2:-}"
             shift 2
@@ -691,11 +699,14 @@ fi
 if [[ -n "$CLANG_CXX" ]]; then
     CMAKE_ARGS+=(-DMMCU_CLANG_CXX="$CLANG_CXX")
 fi
+if [[ -n "$APPLICATION_DIR" ]]; then
+    CMAKE_ARGS+=(-DMMCU_APPLICATION_DIR="$APPLICATION_DIR")
+fi
 if [[ -n "$GENERATOR" ]]; then
     CMAKE_ARGS+=(-G "$GENERATOR")
 fi
 
-echo "==> Configuring MMCU_PLATFORM=$PLATFORM${TARGET:+ MMCU_TARGET=$TARGET} in $BUILD_DIR"
+echo "==> Configuring MMCU_PLATFORM=$PLATFORM${TARGET:+ MMCU_TARGET=$TARGET}${APPLICATION_DIR:+ MMCU_APPLICATION_DIR=$APPLICATION_DIR} in $BUILD_DIR"
 cmake "${CMAKE_ARGS[@]}"
 
 cat > .config <<CONFIG
@@ -721,6 +732,7 @@ MMCU_ARM_GCC=$ARM_GCC
 MMCU_ARM_GXX=$ARM_GXX
 MMCU_CLANG_CC=$CLANG_CC
 MMCU_CLANG_CXX=$CLANG_CXX
+MMCU_APPLICATION_DIR=$APPLICATION_DIR
 CONFIG
 
 echo "Run: ./build.sh"

@@ -122,19 +122,28 @@ import imu;        // open capability — resolves to whichever driver won,
                     // never named directly as `bmi270` or `mpu6050`
 ```
 
-## One application today, more later
+## Selected application
 
-Right now there is exactly one application: one `mmcu_app` executable
-target, its entry point at `applications/main/main.cpp`, built from the
-core target/platform module list in `CMakeLists.txt` plus whatever
-`tools/mmcu-deps.py` resolves from `applications/main/mmcu.yaml`. Nothing
-in this model requires staying single-application: a second application
-would be a second directory, `applications/<name>/`, with its own
-`mmcu.yaml` and `depends`, resolved independently against the same shared
-`libraries/`, `drivers/`, and `modules/` trees, producing its own
-executable target. That's a straightforward extension of this model, not
-a redesign of it — not specified in more detail here because there's only
-one application to build today.
+`CMakeLists.txt` builds one `mmcu_app` executable per configured build
+directory. The selected application directory is controlled by the
+`MMCU_APPLICATION_DIR` cache variable and defaults to `applications/main`.
+That directory must contain:
+
+- `mmcu.yaml` — the application manifest passed to `tools/mmcu-deps.py`;
+- `main.cpp` — the executable entry point.
+
+For example, the MCP stdio server lives at `applications/mcp/server` and can
+be configured with:
+
+```bash
+./configure.sh --application-dir applications/mcp/server \
+  --build-dir build-mcp-server-native
+./build.sh --build-dir build-mcp-server-native
+```
+
+Multiple simultaneous application executables in one CMake configure are still
+out of scope; use separate build directories for separate selected
+applications.
 
 ## What this doesn't cover
 
@@ -142,10 +151,8 @@ one application to build today.
   tie-breaking, error messages) — see [Dependencies](dependencies.md) and
   [Dependency DSL](dependency-dsl.md); this doc only describes the shape
   an application's own manifest and resulting graph take.
-- **Multiple simultaneous applications sharing a build** — the single
-  extra manifest per application described above is the shape it would
-  take, but building more than one `mmcu_app`-equivalent target from one
-  `CMakeLists.txt` invocation isn't specified here.
+- **Multiple simultaneous applications sharing a build** — one selected
+  `MMCU_APPLICATION_DIR` is supported per build directory.
 - **External/fetched dependencies** — an application depending on
   something outside this repo entirely goes through
   [External Dependencies](external-dependencies.md), not through its own

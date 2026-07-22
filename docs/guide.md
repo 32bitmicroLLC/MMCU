@@ -8,9 +8,18 @@ details live in [Setup](setup.md), [Tools](tools.md),
 
 ## Mental model
 
-MMCU builds one application today: `mmcu_app`, with its entry point at
-`applications/main/main.cpp` and manifest at
-`applications/main/mmcu.yaml`.
+MMCU builds one selected application per configured build directory. The
+executable target is `mmcu_app`; by default it uses
+`applications/main/main.cpp` and `applications/main/mmcu.yaml`.
+
+Select a different application with `./configure.sh --application-dir`, for
+example:
+
+```bash
+./configure.sh --application-dir applications/mcp/server \
+  --build-dir build-mcp-server-native
+./build.sh --build-dir build-mcp-server-native
+```
 
 The build has two explicit steps:
 
@@ -195,15 +204,15 @@ directory:
 <build-dir>/mmcu-deps.cmake
 ```
 
-`mmcu.solution.yaml` is the static, concrete result of resolving
-`applications/main/mmcu.yaml` for one platform/target/board tuple. It is
-intended to be inspectable:
+`mmcu.solution.yaml` is the static, concrete result of resolving the selected
+application manifest for one platform/target/board tuple. It is intended to be
+inspectable:
 
 ```bash
 sed -n '1,160p' build/mmcu.solution.yaml
 ```
 
-Today the real application has:
+The default application has:
 
 ```yaml
 depends: []

@@ -1,0 +1,9 @@
+# Manifest for the self-contained MCP-over-stdio server application.
+
+schema: mmcu.module/v1
+name: mmcu_mcp_server
+kind: application
+
+depends:
+  - name: mcp
+    version: 0.1.0
