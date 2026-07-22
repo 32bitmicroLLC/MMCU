@@ -12,6 +12,7 @@ CMSIS_DIR=""
 CMSIS_GIT_TAG="v6.3.0"
 CMSIS_RP2XXX_DFP_DIR=""
 LINKER_MAP=0
+STDIO_BACKEND="uart"
 ARM_GCC=""
 ARM_GXX=""
 CLANG_CC=""
@@ -48,6 +49,7 @@ Options:
                              Raspberry Pi CMSIS-RP2xxx-DFP checkout
                              (cmsis + rp2040)
       --linker-map          Enable MMCU_LINKER_MAP (mmcu_app.map + --cref)
+      --stdio-backend <b>   Standard I/O backend: uart, usb, or none (default: uart)
       --arm-gcc <path>      MMCU_ARM_GCC override
       --arm-gxx <path>      MMCU_ARM_GXX override
       --clang-cc <path>     MMCU_CLANG_CC override
@@ -603,6 +605,21 @@ prompt_toolchain_choice() {
     fi
 }
 
+prompt_stdio_backend() {
+    local backend_values=(uart usb none)
+    local backend_labels=(
+        "uart - default UART stdio"
+        "usb  - USB CDC stdio"
+        "none - no platform stdio backend"
+    )
+    local default_index=1 idx
+    for i in "${!backend_values[@]}"; do
+        [[ "${backend_values[$i]}" == "$STDIO_BACKEND" ]] && default_index=$((i + 1))
+    done
+    idx="$(prompt_choice "Select MMCU_STDIO_BACKEND:" "$default_index" "${backend_labels[@]}")"
+    STDIO_BACKEND="${backend_values[$((idx - 1))]}"
+}
+
 run_interactive() {
     if [[ ! -t 0 ]]; then
         echo "Error: --interactive requires an interactive terminal (stdin is not a tty)." >&2
@@ -682,6 +699,7 @@ run_interactive() {
     if [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "cmsis" || "$PLATFORM" == "pico_sdk" ]]; then
         prompt_board_choice
         prompt_toolchain_choice
+        prompt_stdio_backend
 
         CPU="$(prompt_default "ARM CPU for -mcpu (blank = derive from target)" "$CPU")"
 
@@ -733,6 +751,7 @@ run_interactive() {
     echo "  MMCU_TARGET   = $TARGET"
     [[ -n "$BOARD" ]] && echo "  MMCU_BOARD    = $BOARD"
     echo "  compiler      = $COMPILER"
+    echo "  stdio backend = $STDIO_BACKEND"
     [[ -n "$MMCU_CC" ]] && echo "  MMCU_CC       = $MMCU_CC"
     [[ -n "$MMCU_CXX" ]] && echo "  MMCU_CXX      = $MMCU_CXX"
     [[ -n "$ARM_GCC" ]] && echo "  MMCU_ARM_GCC  = $ARM_GCC"
@@ -790,6 +809,10 @@ while [[ $# -gt 0 ]]; do
         --linker-map)
             LINKER_MAP=1
             shift
+            ;;
+        --stdio-backend)
+            STDIO_BACKEND="${2:-}"
+            shift 2
             ;;
         --arm-gcc)
             ARM_GCC="${2:-}"
@@ -888,6 +911,21 @@ if [[ "$PLATFORM" == "native" ]]; then
         echo "Error: --toolchain-file only applies to --platform mcu, cmsis, or pico_sdk" >&2
         exit 1
     fi
+fi
+
+case "$STDIO_BACKEND" in
+    uart|usb|none)
+        ;;
+    *)
+        echo "Error: --stdio-backend must be one of: uart, usb, none" >&2
+        exit 1
+        ;;
+esac
+
+if [[ "$STDIO_BACKEND" == "usb" && "$PLATFORM" != "pico_sdk" ]]; then
+    echo "Error: --stdio-backend usb currently has an implemented provider only for MMCU_PLATFORM=pico_sdk." >&2
+    echo "       The generic usb and stdio-usb modules exist; other platform providers still need CMake/runtime integration." >&2
+    exit 1
 fi
 
 if [[ "$PLATFORM" == "pico_sdk" ]]; then
@@ -1211,6 +1249,7 @@ fi
 if [[ $LINKER_MAP -eq 1 ]]; then
     CMAKE_ARGS+=(-DMMCU_LINKER_MAP=ON)
 fi
+CMAKE_ARGS+=(-DMMCU_STDIO_BACKEND="$STDIO_BACKEND")
 if [[ -n "$ARM_GCC" ]]; then
     CMAKE_ARGS+=(-DMMCU_ARM_GCC="$ARM_GCC")
 fi
@@ -1255,6 +1294,7 @@ MMCU_CMSIS_DIR=$CMSIS_DIR
 MMCU_CMSIS_GIT_TAG=$CMSIS_GIT_TAG
 MMCU_CMSIS_RP2XXX_DFP_DIR=$CMSIS_RP2XXX_DFP_DIR
 MMCU_LINKER_MAP=$LINKER_MAP
+MMCU_STDIO_BACKEND=$STDIO_BACKEND
 MMCU_CC=${NATIVE_C_PROGRAM:-$MMCU_CC}
 MMCU_CXX=${NATIVE_CXX_PROGRAM:-$MMCU_CXX}
 MMCU_ARM_GCC=$ARM_GCC

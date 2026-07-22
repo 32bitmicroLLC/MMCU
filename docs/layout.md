@@ -36,7 +36,8 @@
   and friends) — see [Application](application.md); `applications/main/`
   is `mmcu_app`'s.
 - `modules/core/`: YAML specifications for MMCU's built-in core modules
-  (`mem`, `cpu`, `gpio`, `uart`, `i2c`, `spi`, `adc`, `emu`).
+  (`mem`, `cpu`, `gpio`, `uart`, `i2c`, `spi`, `adc`, `usb`, `stdio`,
+  `stdio-usb`, `emu`).
 - `src/core/`: C++20 implementations of the built-in core module specs.
 - `modules/pico/`: YAML specifications for Raspberry Pi RP-series modules
   (`pio`, `sio`, `hstx`, `multicore`) that are intentionally not portable

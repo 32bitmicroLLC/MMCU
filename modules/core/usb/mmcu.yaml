@@ -1,0 +1,13 @@
+schema: mmcu.module/v1
+name: usb
+kind: module
+version: 1.0.0
+description: Generic USB capability and interface.
+provides:
+  - usb
+  - usb-device
+modules:
+  - ../../../src/core/usb.cppm
+depends:
+  - name: mem
+    version: 1.0.0

@@ -1,0 +1,15 @@
+schema: mmcu.module/v1
+name: stdio-usb
+kind: module
+version: 1.0.0
+description: Generic standard I/O backend over USB CDC.
+provides:
+  - stdio-usb
+  - usb-cdc-stdio
+modules:
+  - ../../../src/core/stdio_usb.cppm
+depends:
+  - name: usb
+    version: 1.0.0
+  - name: stdio
+    version: 1.0.0

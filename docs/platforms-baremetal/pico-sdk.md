@@ -63,9 +63,10 @@ generic `platform` module and calls `mmcu::platform::halt()` /
 - `is_native`: `false`.
 - `is_baremetal`: `true`.
 
-Nothing else. Multicore (core1) bring-up, USB stdio, and pico-sdk's own
-runtime init (clocks, watchdog, etc.) are `target` concerns for `rp2040`/
-`rp2350`, not `platform` concerns, and are out of scope here.
+Nothing else. Multicore (core1) bring-up and pico-sdk's own runtime init
+(clocks, watchdog, etc.) are `target` concerns for `rp2040`/`rp2350`, not
+`platform` concerns. USB stdio is modeled separately as a generic
+`stdio-usb` capability with a pico-sdk provider.
 
 ## MMCU module declarations
 
@@ -75,6 +76,8 @@ The pico-sdk platform is represented in the MMCU module graph under
 ```text
 modules/platform/pico-sdk/mmcu.yaml
 modules/platform/pico-sdk/2/mmcu.yaml
+modules/platform/pico-sdk/2/usb/mmcu.yaml
+modules/platform/pico-sdk/2/stdio-usb/mmcu.yaml
 ```
 
 `modules/platform/pico-sdk/mmcu.yaml` declares the pico-sdk platform family:
@@ -104,6 +107,49 @@ depends: []
 These module declarations are resolver metadata. The platform-local scripts,
 vendored pico-sdk checkout, picotool build, and smoke-test project still live
 under `platforms/pico-sdk/`.
+
+The pico-sdk USB provider modules are:
+
+```text
+modules/platform/pico-sdk/2/usb/mmcu.yaml
+modules/platform/pico-sdk/2/stdio-usb/mmcu.yaml
+```
+
+They implement pico-sdk-specific support for the generic `usb` and
+`stdio-usb` capabilities declared under `modules/core/`.
+
+## Standard I/O Backend
+
+`MMCU_STDIO_BACKEND` selects the standard I/O backend:
+
+```text
+uart
+usb
+none
+```
+
+For pico-sdk, `usb` maps to pico-sdk's USB CDC stdio support:
+
+```cmake
+target_link_libraries(mmcu_app PRIVATE pico_stdio_usb)
+pico_enable_stdio_usb(mmcu_app 1)
+pico_enable_stdio_uart(mmcu_app 0)
+```
+
+Configure USB stdio with:
+
+```bash
+./configure.sh \
+  --platform pico_sdk \
+  --target rp2040 \
+  --board pico \
+  --compiler gcc \
+  --stdio-backend usb
+```
+
+The generic `usb` and `stdio-usb` C++20 modules are part of the core module
+surface. `MMCU_STDIO_BACKEND=usb` selects the pico-sdk runtime provider that
+backs USB CDC stdio for the configured executable.
 
 ## Required Dependency
 

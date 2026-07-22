@@ -106,6 +106,14 @@ set(MMCU_THIRD_PARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party" CACHE PATH "S
 set(MMCU_LINKER_MAP OFF CACHE BOOL "Emit a linker map (mmcu_app.map) and cross-reference table")
 set(MMCU_APPLICATION_DIR "applications/main" CACHE PATH
     "Application directory containing mmcu.yaml and main.cpp")
+set(MMCU_STDIO_BACKEND "uart" CACHE STRING "Standard I/O backend: uart, usb, or none")
+set_property(CACHE MMCU_STDIO_BACKEND PROPERTY STRINGS uart usb none)
+set(_mmcu_stdio_backends uart usb none)
+if(NOT MMCU_STDIO_BACKEND IN_LIST _mmcu_stdio_backends)
+    message(FATAL_ERROR
+        "Unsupported MMCU_STDIO_BACKEND='${MMCU_STDIO_BACKEND}' "
+        "(expected one of: ${_mmcu_stdio_backends})")
+endif()
 
 if(IS_ABSOLUTE "${MMCU_APPLICATION_DIR}")
     set(_mmcu_application_dir "${MMCU_APPLICATION_DIR}")
@@ -132,6 +140,8 @@ set(MMCU_MODULES
     src/core/i2c.cppm
     src/core/spi.cppm
     src/core/adc.cppm
+    src/core/usb.cppm
+    src/core/stdio_usb.cppm
     libraries/MCP/mcp/mcp.cppm
 )
 set(MMCU_PICO_MODULES
@@ -254,6 +264,17 @@ function(mmcu_require_pico_sdk_foundation pico_platform pico_board)
     set(PICO_BOARD "${pico_board}")
     pico_sdk_init()
     target_link_libraries(mmcu_app PRIVATE pico_runtime pico_standard_link)
+    if(MMCU_STDIO_BACKEND STREQUAL "usb")
+        target_link_libraries(mmcu_app PRIVATE pico_stdio_usb)
+        pico_enable_stdio_usb(mmcu_app 1)
+        pico_enable_stdio_uart(mmcu_app 0)
+    elseif(MMCU_STDIO_BACKEND STREQUAL "uart")
+        pico_enable_stdio_usb(mmcu_app 0)
+        pico_enable_stdio_uart(mmcu_app 1)
+    elseif(MMCU_STDIO_BACKEND STREQUAL "none")
+        pico_enable_stdio_usb(mmcu_app 0)
+        pico_enable_stdio_uart(mmcu_app 0)
+    endif()
     mmcu_apply_cxx_constraints()
     # pico_sdk_init() sets CMAKE_EXECUTABLE_SUFFIX=.elf (see
     # src/cmake/on_device.cmake), but mmcu_app's add_executable() already ran

@@ -1,0 +1,25 @@
+schema: mmcu.module/v1
+name: pico-sdk-stdio-usb
+kind: module
+version: 2.0.0
+description: pico-sdk USB CDC stdio provider.
+metadata:
+  links:
+    documentation:
+      - label: Raspberry Pi Pico SDK stdio documentation
+        url: https://www.raspberrypi.com/documentation/pico-sdk/runtime.html
+      - label: TinyUSB documentation
+        url: https://docs.tinyusb.org/
+    support_repositories:
+      - label: raspberrypi pico-sdk
+        url: https://github.com/raspberrypi/pico-sdk
+      - label: hathach tinyusb
+        url: https://github.com/hathach/tinyusb
+provides:
+  - pico-sdk-stdio-usb
+  - pico-sdk-usb-cdc-stdio
+depends:
+  - name: pico-sdk-usb
+    version: 2.0.0
+  - name: stdio
+    version: 1.0.0

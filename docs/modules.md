@@ -37,8 +37,8 @@ organized by topic the same way both of those are.
   bus protocol, a display technology, a data format.
 - `modules/core/<name>/` — built-in core module specifications for stable
   MMCU interfaces (`mem`, `cpu`, `gpio`, `uart`, `i2c`, `spi`, `adc`,
-  `emu`). These are part of the framework's core surface, not optional
-  third-party-style packages.
+  `usb`, `stdio`, `stdio-usb`, `emu`). These are part of the framework's
+  core surface, not optional third-party-style packages.
 - `modules/pico/<name>/` — Raspberry Pi RP-series-specific module
   specifications (`pio`, `sio`, `hstx`, `multicore`). These are not
   portable MCU abstractions; they are selected only for `rp2040`/`rp2350`
@@ -59,7 +59,7 @@ organized by topic the same way both of those are.
   anything from `drivers/`, `libraries/`, `platforms/`, or `targets/`.
 - `src/core/` — C++20 implementation files for `modules/core/`. These
   provide the stable generic *hardware abstraction* imports (`cpu`,
-  `gpio`, `uart`, `i2c`, `spi`, `adc` — see
+  `gpio`, `uart`, `i2c`, `spi`, `adc`, `usb`, `stdio`, `stdio_usb` — see
   [Target Module Objects](target-modules.md)).
 - `src/pico/` — C++20 implementation files for `modules/pico/`.
 - `src/arm/` — C++20 implementation files for `modules/arm/`.
@@ -101,6 +101,9 @@ modules/
     i2c/
     spi/
     adc/
+    usb/
+    stdio/
+    stdio-usb/
     emu/
   pico/
     pio/

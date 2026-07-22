@@ -109,10 +109,30 @@ compile for every target today. A driver's `REQUIRES GPIO` is a promise
 that `mmcu::gpio::gpio0` really talks to that target's GPIO controller —
 today that promise only genuinely holds for the emulated targets.
 
+## Bus/service modules: `usb` and `stdio-usb`
+
+`usb` and `stdio-usb` are core module specifications, but they are not
+currently register-layout peripheral modules in the same shape as `gpio`
+or `uart`.
+
+- `modules/core/usb/` declares the portable USB capability surface.
+  `src/core/usb.cppm` exposes generic USB role/speed/status types and a
+  conservative default that reports no configured USB device.
+- `modules/core/stdio-usb/` declares standard I/O over USB CDC as a
+  portable capability layered on `usb` and `stdio`.
+  `src/core/stdio_usb.cppm` is a small facade over the selected platform's
+  actual backend.
+
+Concrete USB device stacks remain platform providers. For example,
+`MMCU_PLATFORM=pico_sdk` with `MMCU_STDIO_BACKEND=usb` links
+`pico_stdio_usb`, enables USB stdio, and disables UART stdio. Other platforms
+can provide the same generic capabilities without changing application-facing
+module names.
+
 ## Adding a new peripheral kind
 
-A new peripheral follows the same recipe as `gpio`, `uart`, `i2c`, `spi`,
-and `adc`:
+A new register-layout peripheral follows the same recipe as `gpio`, `uart`,
+`i2c`, `spi`, and `adc`:
 
 1. Define a `layout` struct for its register map (offsets, masks, encoded
    field values).

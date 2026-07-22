@@ -1,0 +1,23 @@
+schema: mmcu.module/v1
+name: pico-sdk-usb
+kind: module
+version: 2.0.0
+description: pico-sdk USB provider for RP-series USB device support.
+metadata:
+  links:
+    documentation:
+      - label: Raspberry Pi Pico SDK stdio documentation
+        url: https://www.raspberrypi.com/documentation/pico-sdk/runtime.html
+      - label: TinyUSB documentation
+        url: https://docs.tinyusb.org/
+    support_repositories:
+      - label: raspberrypi pico-sdk
+        url: https://github.com/raspberrypi/pico-sdk
+      - label: hathach tinyusb
+        url: https://github.com/hathach/tinyusb
+provides:
+  - pico-sdk-usb
+  - pico-sdk-usb-device
+depends:
+  - name: platform-pico-sdk-2
+    version: 2.0.0

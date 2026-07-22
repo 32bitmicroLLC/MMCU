@@ -16,6 +16,9 @@ outside the generic modules.
 - `i2c`: generic I2C controller abstraction.
 - `spi`: generic SPI controller abstraction.
 - `adc`: generic ADC abstraction.
+- `usb`: generic USB capability/status abstraction.
+- `stdio`: generic standard I/O abstraction.
+- `stdio-usb`: generic USB CDC standard I/O backend abstraction.
 - `emu`: emulator-style placeholder device layout and instances.
 
 ## `mem`

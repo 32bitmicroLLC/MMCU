@@ -188,8 +188,8 @@ selected target. Run `cmake --build <dir>` afterward to build.
 `./configure.sh --interactive` (or `-i`) walks through the same choices as
 numbered menus instead of flags: application, platform, target (skipped when
 the platform has only one valid target), board override, discovered compiler
-toolchain, CPU/CMSIS overrides, linker map, build type, build directory, and
-clean. The application prompt is first and lists application directories that
+toolchain, stdio backend, CPU/CMSIS overrides, linker map, build type, build
+directory, and clean. The application prompt is first and lists application directories that
 contain both `mmcu.yaml` and `main.cpp`. The board prompt reads the board
 registry and shows only boards compatible with the selected
 `MMCU_PLATFORM`/`MMCU_TARGET`; if no compatible boards are discoverable, it
@@ -210,7 +210,7 @@ After configuring, `./configure.sh` writes `.config` (repo root,
 git-ignored) recording the last build directory plus the relevant
 configure-time choices: `MMCU_PLATFORM`, `MMCU_TARGET`, `MMCU_BOARD`,
 compiler/toolchain, build type, CMSIS path/tag, CMSIS-RP2xxx-DFP path, CPU
-override, linker-map flag, compiler path overrides, and
+override, linker-map flag, `MMCU_STDIO_BACKEND`, compiler path overrides, and
 `MMCU_APPLICATION_DIR`. It then prints
 `Run: ./build.sh`. `./build.sh`/`./run.sh` read `.config` as their default
 `--build-dir` — see [Build And Run](build.md) — so you don't have to
@@ -269,9 +269,10 @@ cmake -S . -B build-rp2040-pico-w-gcc \
   `MMCU_PLATFORM`/`MMCU_TARGET`/`MMCU_BOARD`/`CMAKE_TOOLCHAIN_FILE`.
   `--compiler <gcc|clang>` picks the matching toolchain file
   (`cmake/toolchains/arm-none-eabi-<compiler>.cmake`) unless
-  `--toolchain-file` overrides it; `--cpu` sets `MMCU_CPU`; `--linker-map`
-  sets `MMCU_LINKER_MAP=ON`; `--verbose` enables CMake verbose configure
-  logging for that invocation only.
+  `--toolchain-file` overrides it; `--cpu` sets `MMCU_CPU`;
+  `--stdio-backend <uart|usb|none>` sets `MMCU_STDIO_BACKEND`;
+  `--linker-map` sets `MMCU_LINKER_MAP=ON`; `--verbose` enables CMake
+  verbose configure logging for that invocation only.
 - `./build.sh` never sets these variables — it just builds whatever a build
   directory was already configured with, auto-configuring `native`/`emu`
   defaults if the directory doesn't exist yet. `--verbose` passes
