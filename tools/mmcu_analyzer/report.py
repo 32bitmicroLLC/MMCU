@@ -9,6 +9,14 @@ from __future__ import annotations
 from .models import ModuleProposals, RepoModel
 
 
+def _limit_names(names: list[str], limit: int = 8) -> str:
+    if not names:
+        return "(none)"
+    shown = names[:limit]
+    suffix = f", ... (+{len(names) - limit} more)" if len(names) > limit else ""
+    return ", ".join(shown) + suffix
+
+
 def _readiness_sentence(model: RepoModel) -> str:
     platform = model.platform.inferred or "an unknown platform"
     target = model.target.inferred or "an unknown target"
@@ -23,6 +31,54 @@ def _readiness_sentence(model: RepoModel) -> str:
         f"{subject} can be represented as an MMCU {platform}/{target} {kind}, "
         "but it is not ready for automatic import."
     )
+
+
+def render_summary(model: RepoModel) -> str:
+    """Render a compact, human-readable summary of the analyzer result."""
+
+    finding_counts = {"info": 0, "warning": 0, "error": 0}
+    for finding in model.findings:
+        finding_counts[finding.level] += 1
+
+    board = ", ".join(model.board.base_candidates) if model.board.base_candidates else "unknown"
+    attachments = ", ".join(model.attachments) if model.attachments else "(none)"
+    missing = sorted({dep.name for dep in model.dependencies.missing})
+
+    lines = [
+        "summary:",
+        f"  repo: {model.repo_name}",
+        f"  classification: {model.classification.primary_kind}",
+        f"  fit: {model.fit.level}",
+        (
+            "  model: "
+            f"platform={model.platform.inferred or 'unknown'}, "
+            f"target={model.target.inferred or 'unknown'}, "
+            f"board={board}"
+        ),
+        f"  board_complete: {str(model.board.complete_solution).lower()}",
+        f"  attachments: {attachments}",
+        (
+            "  inventory: "
+            f"files={sum(model.inventory.file_counts_by_extension.values())}, "
+            f"cmake_roots={len(model.inventory.cmake_roots)}, "
+            f"cmake_targets={len(model.cmake.static.targets)}, "
+            f"source_tags={len(model.source.tags)}"
+        ),
+        (
+            "  dependencies: "
+            f"satisfied={len(model.dependencies.satisfied)}, "
+            f"missing={len(model.dependencies.missing)}, "
+            f"partial={len(model.dependencies.partial)}"
+        ),
+        f"  missing: {_limit_names(missing)}",
+        (
+            "  findings: "
+            f"info={finding_counts['info']}, "
+            f"warning={finding_counts['warning']}, "
+            f"error={finding_counts['error']}"
+        ),
+    ]
+    return "\n".join(lines)
 
 
 def render_report(model: RepoModel, proposals: ModuleProposals) -> str:

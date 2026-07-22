@@ -5,7 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import sys
 import tempfile
+import time
 from pathlib import Path
 
 from .cmake_scan import scan_cmake
@@ -23,7 +25,7 @@ from .models import (
     MmcuContextSummary,
     RepoModel,
 )
-from .report import render_report
+from .report import render_report, render_summary
 from .source_scan import scan_source
 from .synthesis import (
     build_findings,
@@ -39,12 +41,27 @@ THIS_FILE = Path(__file__).resolve()
 DEFAULT_MMCU_ROOT = THIS_FILE.parents[2]
 
 
+def _verbose_enabled(args: argparse.Namespace) -> bool:
+    return bool(args.verbose and not args.quiet)
+
+
+def _progress(args: argparse.Namespace, message: str) -> None:
+    if _verbose_enabled(args):
+        print(f"==> {message}", file=sys.stderr, flush=True)
+
+
+def _progress_done(args: argparse.Namespace, message: str, started_at: float) -> None:
+    if _verbose_enabled(args):
+        elapsed = time.perf_counter() - started_at
+        print(f"ok: {message} ({elapsed:.2f}s)", file=sys.stderr, flush=True)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="mmcu-analyze-repo")
     sub = parser.add_subparsers(dest="command", required=True)
 
     analyze = sub.add_parser("analyze", help="Analyze an external repository, read-only.")
-    analyze.add_argument("--repo", required=True, help="Path to the repository to analyze.")
+    analyze.add_argument("--repo", default=None, help="Path to the repository to analyze.")
     analyze.add_argument("--mmcu-root", default=None, help="Path to the MMCU checkout (default: this tool's own repo).")
     analyze.add_argument("--out", default=None, help="Output path for the repo model YAML.")
     analyze.add_argument("--proposals-out", default=None, help="Output path for the module proposals YAML.")
@@ -55,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("--generator", default=None, help="CMake generator to use with --configure.")
     analyze.add_argument("--cache", action="append", default=[], metavar="KEY=VALUE", help="Extra -D cache entries for --configure.")
     analyze.add_argument("--history", action="store_true", help="Also run a git history scan via PyDriller (opt-in).")
+    analyze.add_argument("--summary", action="store_true", help="Print a short human-readable summary.")
     analyze.add_argument("--fail-on", choices=["warning", "error"], default=None, help="Exit non-zero if a finding at/above this level is recorded.")
     analyze.add_argument("--quiet", action="store_true")
     analyze.add_argument("--verbose", action="store_true")
@@ -107,6 +125,7 @@ def _run_configure(
     for entry in args.cache:
         cmd += ["-D", entry]
 
+    _progress(args, f"Running CMake configure in {build_dir}")
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, check=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
@@ -141,6 +160,7 @@ def _run_configure(
             except (KeyError, OSError, json.JSONDecodeError) as exc:
                 findings.append(Finding(level="warning", message=f"Could not parse CMake file-api reply: {exc}"))
 
+    _progress(args, f"CMake file-api targets discovered: {len(targets)}")
     return CMakeConfigured(ok=True, generator=args.generator, build_dir=str(build_dir), targets=targets)
 
 
@@ -165,12 +185,24 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         args.out = args.out or request.out
         args.proposals_out = args.proposals_out or request.proposals_out
         args.report_out = args.report_out or request.report_out
+        args.configure = args.configure or request.configure
+        args.build_dir = args.build_dir or request.build_dir
+        args.generator = args.generator or request.generator
+        args.cache = args.cache or [f"{key}={value}" for key, value in request.cache.items()]
+        args.history = args.history or request.history
+        args.summary = args.summary or request.summary
+        args.fail_on = args.fail_on or request.fail_on
+
+    if not args.repo:
+        raise SystemExit("--repo is required unless supplied by --request.")
 
     repo = Path(args.repo).resolve()
     if not repo.is_dir():
         raise SystemExit(f"--repo path does not exist or is not a directory: {repo}")
 
     mmcu_root = Path(args.mmcu_root).resolve() if args.mmcu_root else DEFAULT_MMCU_ROOT
+    _progress(args, f"Analyzing repository: {repo}")
+    _progress(args, f"Using MMCU root: {mmcu_root}")
 
     default_out, default_proposals_out, default_report_out = _default_paths(mmcu_root, repo)
     out_path = Path(args.out).resolve() if args.out else default_out
@@ -179,32 +211,143 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
     for path in (out_path, proposals_path, report_path):
         _validate_output_path(path, mmcu_root, repo)
+    _progress(args, f"Outputs will be written under: {out_path.parent}")
 
     findings: list[Finding] = []
 
+    phase_started = time.perf_counter()
+    _progress(args, "Scanning repository inventory")
     inventory = scan_inventory(repo)
-    git_info = scan_git(repo, findings)
-    cmake_static = scan_cmake(repo, inventory.cmake_roots, findings)
-    source_info = scan_source(repo)
-    generated_code = scan_generated_code(repo, inventory, cmake_static)
-    platform, target, board, attachments = scan_hardware(repo, inventory, cmake_static, source_info, git_info)
+    _progress_done(
+        args,
+        (
+            "inventory: "
+            f"{len(inventory.cmake_roots)} CMake roots, "
+            f"{len(inventory.source_dirs)} source dirs, "
+            f"{sum(inventory.file_counts_by_extension.values())} files"
+        ),
+        phase_started,
+    )
 
+    phase_started = time.perf_counter()
+    _progress(args, "Reading Git metadata")
+    git_info = scan_git(repo, findings)
+    git_head = git_info.head[:12] if git_info.head else "none"
+    _progress_done(
+        args,
+        f"git: present={git_info.present}, branch={git_info.branch or 'none'}, head={git_head}",
+        phase_started,
+    )
+
+    phase_started = time.perf_counter()
+    _progress(args, "Scanning CMake files")
+    cmake_static = scan_cmake(repo, inventory.cmake_roots, findings)
+    _progress_done(
+        args,
+        (
+            "cmake: "
+            f"{len(cmake_static.targets)} targets, "
+            f"{len(cmake_static.sdk_calls)} SDK calls, "
+            f"{len(cmake_static.subdirectories)} subdirectories"
+        ),
+        phase_started,
+    )
+
+    phase_started = time.perf_counter()
+    _progress(args, "Scanning source includes and symbols")
+    source_info = scan_source(repo)
+    _progress_done(
+        args,
+        (
+            "source: "
+            f"{len(source_info.includes)} include hits, "
+            f"{len(source_info.symbols)} symbol hits, "
+            f"{len(source_info.pin_claims)} pin claims, "
+            f"{len(source_info.tags)} tags"
+        ),
+        phase_started,
+    )
+
+    phase_started = time.perf_counter()
+    _progress(args, "Detecting generated-code evidence")
+    generated_code = scan_generated_code(repo, inventory, cmake_static)
+    _progress_done(
+        args,
+        (
+            "generated-code: "
+            f"classification={generated_code.classification}, "
+            f"generators={len(generated_code.generators)}"
+        ),
+        phase_started,
+    )
+
+    phase_started = time.perf_counter()
+    _progress(args, "Inferring platform, target, board, and attachments")
+    platform, target, board, attachments = scan_hardware(repo, inventory, cmake_static, source_info, git_info)
+    _progress_done(
+        args,
+        (
+            "hardware: "
+            f"platform={platform.inferred or 'unknown'} ({platform.confidence}), "
+            f"target={target.inferred or 'unknown'} ({target.confidence}), "
+            f"boards={board.base_candidates or ['unknown']}, "
+            f"attachments={len(attachments)}"
+        ),
+        phase_started,
+    )
+
+    phase_started = time.perf_counter()
+    _progress(args, "Loading MMCU manifests and capability index")
     mmcu_context = load_mmcu_context(mmcu_root, findings)
+    _progress_done(
+        args,
+        (
+            "MMCU context: "
+            f"{len(mmcu_context.packages)} packages, "
+            f"{len(mmcu_context.capability_index)} capabilities, "
+            f"{len(mmcu_context.boards)} boards"
+        ),
+        phase_started,
+    )
 
     has_source = bool(source_info.tags or source_info.includes or source_info.symbols)
+    phase_started = time.perf_counter()
+    _progress(args, "Classifying repository kind")
     classification = classify_primary_kind(cmake_static, has_source, bool(inventory.cmake_roots))
+    _progress_done(args, f"classification: {classification.primary_kind}", phase_started)
 
+    phase_started = time.perf_counter()
+    _progress(args, "Resolving inferred dependencies against MMCU capabilities")
     dependencies = compute_dependencies(cmake_static, source_info, generated_code, mmcu_context)
+    _progress_done(
+        args,
+        (
+            "dependencies: "
+            f"{len(dependencies.satisfied)} satisfied, "
+            f"{len(dependencies.missing)} missing, "
+            f"{len(dependencies.partial)} partial"
+        ),
+        phase_started,
+    )
+
+    phase_started = time.perf_counter()
+    _progress(args, "Computing fit and migration findings")
     fit = compute_fit(classification, platform, target, board, dependencies, generated_code, source_info)
     findings.extend(build_findings(classification, platform, target, board, dependencies, generated_code))
     migration = build_migration_notes(classification, dependencies, board)
+    _progress_done(args, f"fit: {fit.level}, findings={len(findings)}", phase_started)
 
     cmake_info = CMakeInfo(static=cmake_static)
     if args.configure:
+        phase_started = time.perf_counter()
         cmake_info.configured = _run_configure(repo, mmcu_root, args, findings)
+        _progress_done(args, "configured CMake codemodel scan complete", phase_started)
 
     if args.history:
+        phase_started = time.perf_counter()
+        _progress(args, "Scanning optional Git history")
         _run_history(repo, findings)
+        _progress_done(args, "history scan complete", phase_started)
 
     model = RepoModel(
         repo_path=str(repo),
@@ -230,20 +373,28 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         findings=findings,
     )
 
+    phase_started = time.perf_counter()
+    _progress(args, f"Writing repository model: {out_path}")
     write_yaml(out_path, model)
 
     proposals = build_module_proposal(repo.name, str(out_path), classification, dependencies)
+    _progress(args, f"Writing module proposals: {proposals_path}")
     write_yaml(proposals_path, proposals)
 
     report_text = render_report(model, proposals)
     report_path.parent.mkdir(parents=True, exist_ok=True)
+    _progress(args, f"Writing Markdown report: {report_path}")
     report_path.write_text(report_text, encoding="utf-8")
+    _progress_done(args, "outputs written", phase_started)
 
     if not args.quiet:
         print(f"model:     {out_path}")
         print(f"proposals: {proposals_path}")
         print(f"report:    {report_path}")
-        print(f"fit: {fit.level}")
+        if args.summary:
+            print(render_summary(model))
+        else:
+            print(f"fit: {fit.level}")
 
     if args.verbose:
         for finding in findings:

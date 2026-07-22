@@ -74,6 +74,11 @@ fields:
     required: false
     description: Also run a git history scan via PyDriller, if installed.
 
+  summary:
+    type: bool
+    required: false
+    description: Print a short human-readable summary after writing outputs.
+
   fail_on:
     type: enum
     required: false

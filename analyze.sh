@@ -12,6 +12,7 @@ BUILD_DIR=""
 GENERATOR=""
 CACHE_ARGS=()
 HISTORY=0
+SUMMARY=0
 FAIL_ON=""
 QUIET=0
 VERBOSE=0
@@ -45,9 +46,11 @@ Options:
       --cache <KEY=VALUE>        Extra CMake -D cache entry for --configure
                                  (repeatable)
       --history                  Try optional Git history scan via PyDriller
+      --summary                  Print a short analysis summary instead of
+                                 only the fit line
       --fail-on <warning|error>  Exit nonzero if findings at/above level exist
   -q, --quiet                    Suppress normal output
-  -v, --verbose                  Print detailed findings
+  -v, --verbose                  Print phase progress and detailed findings
   -h, --help                     Show this help
 
 Default outputs, when not specified:
@@ -106,6 +109,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --history)
             HISTORY=1
+            shift
+            ;;
+        --summary)
+            SUMMARY=1
             shift
             ;;
         --fail-on)
@@ -170,6 +177,7 @@ for entry in "${CACHE_ARGS[@]}"; do
     ARGS+=(--cache "$entry")
 done
 [[ $HISTORY -eq 1 ]] && ARGS+=(--history)
+[[ $SUMMARY -eq 1 ]] && ARGS+=(--summary)
 [[ -n "$FAIL_ON" ]] && ARGS+=(--fail-on "$FAIL_ON")
 [[ $QUIET -eq 1 ]] && ARGS+=(--quiet)
 [[ $VERBOSE -eq 1 ]] && ARGS+=(--verbose)

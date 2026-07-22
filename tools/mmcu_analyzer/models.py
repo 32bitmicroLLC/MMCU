@@ -65,6 +65,7 @@ class AnalyzerRequest(StrictModel):
     generator: str | None = None
     cache: dict[str, str] = Field(default_factory=dict)
     history: bool = False
+    summary: bool = False
     fail_on: Literal["warning", "error"] | None = None
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)

@@ -82,7 +82,24 @@ analyzed repository.
 --request <path>           YAML request file
 --configure                Run configure-only CMake file-api analysis
 --history                  Try optional PyDriller history scan
+--summary                  Print a short analysis summary
 --fail-on warning|error    Return nonzero on findings at or above level
 --quiet                    Suppress normal output
---verbose                  Print detailed findings
+--verbose                  Print phase progress and detailed findings
 ```
+
+Use `--summary` when you want the console output to include the inferred MMCU
+shape without opening the full Markdown report:
+
+```bash
+./analyze.sh --summary --repo platforms/pico-sdk/pico-sdk
+```
+
+The summary includes the repository kind, fit level, inferred platform/target/
+board, board completeness, attachment count, inventory counts, dependency
+counts, a shortened missing-dependency list, and finding counts.
+
+With `--verbose`, the wrapper shows each major analysis phase as it runs:
+inventory, Git metadata, CMake scanning, source scanning, generated-code
+detection, hardware inference, MMCU capability indexing, dependency resolution,
+fit computation, optional configure/history steps, and output writing.
