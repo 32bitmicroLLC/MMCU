@@ -215,6 +215,15 @@ generators. Direct CMake invocations can reuse a stale `CMAKE_MAKE_PROGRAM`
 from an existing `CMakeCache.txt`; if that happens, delete/recreate the build
 directory or pass a fresh `-B <dir>`.
 
+For native builds, `./configure.sh` also checks that the selected host C++
+compiler can support CMake's C++20 module dependency scanning. GCC 11.x is too
+old for this project. Use GCC 15+ or Clang 20+:
+
+```bash
+CC=/usr/bin/gcc-15 CXX=/usr/bin/g++-15 ./configure.sh --clean
+CC=/usr/bin/clang-20 CXX=/usr/bin/clang++-20 ./configure.sh --clean
+```
+
 ```bash
 # native (default)
 cmake -S . -B build

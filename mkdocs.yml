@@ -11,6 +11,7 @@ nav:
   - Setup: setup.md
   - User Guide: guide.md
   - Tools: tools.md
+  - Clang Toolchain: toolchain-clang.md
   - Platform Tools: platform-tools.md
   - Build And Run: build.md
   - Configure: configure.md

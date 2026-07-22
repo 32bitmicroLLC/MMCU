@@ -4,11 +4,13 @@ This page is the first-run path for a fresh MMCU checkout. For the full
 tool inventory, see [Tools](tools.md). For platform-owned tools such as
 `picotool`, see [Platform Tools](platform-tools.md).
 
-`setup.sh` bootstraps project-local tooling and reports missing host
-tools. It deliberately does **not** install operating-system packages with
-`apt`, `dnf`, `brew`, `pacman`, or similar tools. Install missing host
-tools using the mechanism appropriate for your machine, then rerun the
-check.
+`setup.sh` bootstraps project-local tooling and reports missing host tools.
+By default it does **not** install operating-system packages with `apt`,
+`dnf`, `brew`, `pacman`, or similar tools. The explicit exception is
+`./setup.sh --install-clang`, which can install a suitable native Clang from
+apt.llvm.org on Debian/Ubuntu systems; see [Clang Toolchain](toolchain-clang.md).
+Install other missing host tools using the mechanism appropriate for your
+machine, then rerun the check.
 
 ## Minimum native setup
 
@@ -21,7 +23,7 @@ check.
 The default setup does three things:
 
 - checks required host tools: CMake 4.0+, Ninja 1.11+, Python 3, C compiler,
-  and C++20 compiler support;
+  and a native C++20 module compiler currently matching GCC 15+ or Clang 20+;
 - creates or updates `./venv`;
 - bootstraps `pip` into an existing `./venv` if the interpreter exists but
   `pip` is missing;
@@ -41,6 +43,13 @@ validation tools.
 Use this on an already-provisioned machine or in CI when you want a quick
 report without creating `./venv`, installing Python packages, downloading
 SDKs, or configuring a build directory.
+
+If the host C++ compiler is too old for CMake C++20 modules, install or
+select GCC 15+ or Clang 20+. On Debian/Ubuntu:
+
+```bash
+./setup.sh --install-clang
+```
 
 ## Repair or recreate `./venv`
 
@@ -167,6 +176,7 @@ Board variants are configured separately from the target:
 ./setup.sh --cmsis         # also install vendored CMSIS_6 and CMSIS-RP2xxx-DFP
 ./setup.sh --pico-sdk      # also install vendored pico-sdk/platform tools
 ./setup.sh --check         # report only; make no changes
+./setup.sh --install-clang # install apt.llvm.org Clang if needed
 ./setup.sh --native-build  # setup, configure, and build native target
 ```
 
@@ -178,7 +188,7 @@ Combine options when useful:
 
 ## What setup does not do
 
-`setup.sh` does not:
+By default, `setup.sh` does not:
 
 - install OS packages;
 - choose a platform or board for you beyond the normal defaults;
@@ -188,3 +198,6 @@ Combine options when useful:
 
 Those actions stay explicit because they either depend on the host OS or
 change external hardware/build state.
+
+The `--install-clang` flag is the only current OS-package installer path in
+`setup.sh`, and it is opt-in.

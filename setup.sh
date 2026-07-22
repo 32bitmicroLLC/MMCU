@@ -8,13 +8,16 @@ CHECK_ONLY=0
 NATIVE_BUILD=0
 FORCE_VENV=0
 CLEAR_VENV=0
+INSTALL_CLANG=0
+CLANG_VERSION=21
 
 usage() {
     cat <<'EOF'
 Usage: ./setup.sh [options]
 
 Bootstraps project-local MMCU tooling and reports missing host tools.
-This script does not install OS packages with apt/dnf/brew/pacman.
+By default this script does not install OS packages. The explicit exception
+is --install-clang, which uses apt.llvm.org on Debian/Ubuntu.
 
 Default action:
   - check required host tools
@@ -27,8 +30,13 @@ Options:
       --pico-sdk      Also run platforms/pico-sdk/pico-sdk-install.sh
       --native-build  Configure and build the default native target as a smoke test
       --check         Report tool status only; make no changes
-      --force         Repair/reinstall ./venv in place; force-reinstall Python requirements
+      --force         Repair/reinstall ./venv in place; with --install-clang,
+                      install the requested Clang even if another usable
+                      compiler exists
       --clear         Recreate ./venv from scratch before installing requirements
+      --install-clang Install Clang from apt.llvm.org if no usable native compiler exists
+      --clang-version <n>
+                      LLVM/Clang major version for --install-clang (default: 21)
   -h, --help          Show this help
 
 Examples:
@@ -39,6 +47,8 @@ Examples:
   ./setup.sh --check
   ./setup.sh --force
   ./setup.sh --clear
+  ./setup.sh --install-clang
+  ./setup.sh --install-clang --clang-version 21
   ./setup.sh --native-build
 EOF
 }
@@ -98,6 +108,109 @@ check_compiler() {
     [[ $c_ok -eq 1 && $cxx_ok -eq 1 ]]
 }
 
+version_at_least() {
+    local required="$1" actual="$2"
+    [[ -n "$actual" ]] || return 1
+    [[ "$(printf '%s\n' "$required" "$actual" | sort -V | head -n1)" == "$required" ]]
+}
+
+native_cxx_candidate() {
+    local candidate major
+    if [[ -n "${CXX:-}" ]]; then
+        echo "$CXX"
+        return 0
+    fi
+    for major in 23 22 21 20 19 18 17 16 15; do
+        candidate="g++-$major"
+        have_command "$candidate" && command -v "$candidate" && return 0
+    done
+    for major in 23 22 21 20; do
+        candidate="clang++-$major"
+        have_command "$candidate" && command -v "$candidate" && return 0
+    done
+    for candidate in c++ g++ clang++; do
+        have_command "$candidate" && command -v "$candidate" && return 0
+    done
+}
+
+check_native_cxx_modules_compiler() {
+    local cxx_path version_line version
+
+    cxx_path="$(native_cxx_candidate)"
+    if [[ -z "$cxx_path" ]]; then
+        echo "missing: native C++20 module compiler (GCC 15+ or Clang 20+)"
+        return 1
+    fi
+
+    version_line="$("$cxx_path" --version 2>/dev/null | head -1)"
+    if [[ "$version_line" == *clang* || "$version_line" == *Clang* ]]; then
+        version="$(printf '%s\n' "$version_line" | sed -E 's/.*version ([0-9]+([.][0-9]+)*).*/\1/')"
+        if version_at_least "20.0.0" "$version"; then
+            echo "ok: native C++20 module compiler (Clang $version)"
+            return 0
+        fi
+        echo "missing: native C++20 module compiler requires Clang 20+ or GCC 15+ (found Clang $version at $cxx_path)"
+        return 1
+    fi
+
+    version="$("$cxx_path" -dumpfullversion -dumpversion 2>/dev/null | head -1)"
+    if version_at_least "15.0.0" "$version"; then
+        echo "ok: native C++20 module compiler (GCC $version)"
+        return 0
+    fi
+
+    echo "missing: native C++20 module compiler requires GCC 15+ or Clang 20+ (found GNU $version at $cxx_path)"
+    return 1
+}
+
+usable_native_cxx_modules_compiler() {
+    check_native_cxx_modules_compiler >/dev/null 2>&1
+}
+
+install_clang_toolchain() {
+    local tmp_dir llvm_script clang_bin clangxx_bin
+
+    if [[ $CHECK_ONLY -eq 1 ]]; then
+        return 0
+    fi
+
+    if usable_native_cxx_modules_compiler && [[ $FORCE_VENV -eq 0 ]]; then
+        info "Usable native C++20 module compiler already installed; skipping Clang install"
+        return 0
+    fi
+
+    if ! have_command apt-get; then
+        fail "--install-clang is only supported on apt-based Debian/Ubuntu systems. Install GCC 15+ or Clang 20+ manually."
+    fi
+    if ! have_command wget; then
+        fail "--install-clang requires wget to download https://apt.llvm.org/llvm.sh"
+    fi
+    if ! have_command sudo; then
+        fail "--install-clang requires sudo because apt.llvm.org installs OS packages"
+    fi
+    if [[ ! "$CLANG_VERSION" =~ ^[0-9]+$ ]] || (( CLANG_VERSION < 20 )); then
+        fail "--clang-version must be an integer >= 20"
+    fi
+
+    tmp_dir="$(mktemp -d)"
+    info "Downloading apt.llvm.org installer"
+    wget -O "$tmp_dir/llvm.sh" https://apt.llvm.org/llvm.sh
+    chmod +x "$tmp_dir/llvm.sh"
+
+    info "Installing Clang $CLANG_VERSION through apt.llvm.org"
+    sudo "$tmp_dir/llvm.sh" "$CLANG_VERSION"
+
+    clang_bin="/usr/bin/clang-$CLANG_VERSION"
+    clangxx_bin="/usr/bin/clang++-$CLANG_VERSION"
+    if [[ ! -x "$clang_bin" || ! -x "$clangxx_bin" ]]; then
+        fail "Expected $clang_bin and $clangxx_bin after installation, but one is missing"
+    fi
+
+    info "Installed Clang toolchain"
+    "$clangxx_bin" --version | head -1
+    echo "Use: CC=$clang_bin CXX=$clangxx_bin ./configure.sh --clean"
+}
+
 check_ninja_version() {
     local version
     require_command ninja "CMake C++20 module generator" || return 1
@@ -116,6 +229,7 @@ check_host_tools() {
     check_cmake_version || required_missing=1
     require_command python3 "project-local virtual environment and Python tooling" || required_missing=1
     check_compiler || required_missing=1
+    check_native_cxx_modules_compiler || required_missing=1
     check_ninja_version || required_missing=1
 
     if [[ $INSTALL_CMSIS -eq 1 || $INSTALL_PICO_SDK -eq 1 ]]; then
@@ -298,6 +412,19 @@ while [[ $# -gt 0 ]]; do
             CLEAR_VENV=1
             shift
             ;;
+        --install-clang)
+            INSTALL_CLANG=1
+            shift
+            ;;
+        --clang-version)
+            CLANG_VERSION="${2:-}"
+            if [[ -z "$CLANG_VERSION" ]]; then
+                echo "Error: --clang-version requires a value" >&2
+                usage
+                exit 1
+            fi
+            shift 2
+            ;;
         -h|--help)
             usage
             exit 0
@@ -316,6 +443,10 @@ fi
 
 if [[ $CLEAR_VENV -eq 1 && $FORCE_VENV -eq 1 ]]; then
     FORCE_VENV=0
+fi
+
+if [[ $INSTALL_CLANG -eq 1 ]]; then
+    install_clang_toolchain
 fi
 
 check_host_tools

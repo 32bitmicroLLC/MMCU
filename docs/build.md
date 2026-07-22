@@ -32,7 +32,8 @@ that directory.
 ## Requirements
 
 - CMake 4.0 or newer
-- C++20-capable compiler with module support
+- C++20 compiler with CMake-compatible module dependency scanning. Native
+  builds currently require GCC 15+ or Clang 20+.
 - Python 3 with PyYAML for the configure-time manifest resolver
   (`tools/mmcu-deps.py`); install `requirements-yaml.txt` into `./venv/`
   with `./setup.sh` for the project-local setup
@@ -54,6 +55,16 @@ If CMake reports Ninja 1.10.x even though `ninja --version` shows 1.11+,
 the existing build directory has a stale `CMAKE_MAKE_PROGRAM` in
 `CMakeCache.txt`. Reconfigure with `./configure.sh --clean` or choose a fresh
 `--build-dir`.
+
+If CMake says the compiler cannot discover the C++20 module import graph,
+the selected host compiler is too old for MMCU's module build. Install or
+select GCC 15+ or Clang 20+. On Debian/Ubuntu, see
+[Clang Toolchain](toolchain-clang.md) for `./setup.sh --install-clang`.
+
+```bash
+CC=/usr/bin/gcc-15 CXX=/usr/bin/g++-15 ./configure.sh --clean
+CC=/usr/bin/clang-20 CXX=/usr/bin/clang++-20 ./configure.sh --clean
+```
 
 ## Configure
 

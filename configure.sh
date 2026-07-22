@@ -709,6 +709,124 @@ check_ninja_version() {
     NINJA_PROGRAM="$ninja_path"
 }
 
+version_at_least() {
+    local required="$1" actual="$2"
+    [[ -n "$actual" ]] || return 1
+    [[ "$(printf '%s\n' "$required" "$actual" | sort -V | head -n1)" == "$required" ]]
+}
+
+native_cxx_candidate() {
+    local candidate major
+    if [[ -n "${CXX:-}" ]]; then
+        echo "$CXX"
+        return 0
+    fi
+    for major in 23 22 21 20 19 18 17 16 15; do
+        candidate="g++-$major"
+        command -v "$candidate" >/dev/null 2>&1 && command -v "$candidate" && return 0
+    done
+    for major in 23 22 21 20; do
+        candidate="clang++-$major"
+        command -v "$candidate" >/dev/null 2>&1 && command -v "$candidate" && return 0
+    done
+    for candidate in c++ g++ clang++; do
+        command -v "$candidate" >/dev/null 2>&1 && command -v "$candidate" && return 0
+    done
+}
+
+native_c_candidate_for() {
+    local cxx_path="$1" c_path
+
+    if [[ -n "${CC:-}" ]]; then
+        echo "$CC"
+        return 0
+    fi
+
+    case "$(basename "$cxx_path")" in
+        g++-*)
+            c_path="$(dirname "$cxx_path")/gcc-${cxx_path##*g++-}"
+            ;;
+        clang++-*)
+            c_path="$(dirname "$cxx_path")/clang-${cxx_path##*clang++-}"
+            ;;
+        g++)
+            c_path="$(dirname "$cxx_path")/gcc"
+            ;;
+        clang++)
+            c_path="$(dirname "$cxx_path")/clang"
+            ;;
+        c++)
+            c_path=""
+            ;;
+        *)
+            c_path=""
+            ;;
+    esac
+
+    if [[ -n "$c_path" && -x "$c_path" ]]; then
+        echo "$c_path"
+    elif command -v cc >/dev/null 2>&1; then
+        command -v cc
+    elif command -v gcc >/dev/null 2>&1; then
+        command -v gcc
+    elif command -v clang >/dev/null 2>&1; then
+        command -v clang
+    fi
+}
+
+check_native_cxx_modules_compiler() {
+    local cxx_path version_line version compiler_id
+
+    [[ "$PLATFORM" == "native" ]] || return 0
+
+    cxx_path="$(native_cxx_candidate)"
+    if [[ -z "$cxx_path" ]]; then
+        echo "Error: native builds require a C++ compiler with C++20 module dependency scanning." >&2
+        echo "       Install GCC 15+ or Clang 20+, then rerun ./configure.sh." >&2
+        echo "       On Debian/Ubuntu, './setup.sh --install-clang' can install a suitable Clang." >&2
+        exit 1
+    fi
+
+    version_line="$("$cxx_path" --version 2>/dev/null | head -1)"
+    if [[ "$version_line" == *clang* || "$version_line" == *Clang* ]]; then
+        compiler_id="Clang"
+        version="$(printf '%s\n' "$version_line" | sed -E 's/.*version ([0-9]+([.][0-9]+)*).*/\1/')"
+        if version_at_least "20.0.0" "$version"; then
+            NATIVE_CXX_PROGRAM="$cxx_path"
+            NATIVE_C_PROGRAM="$(native_c_candidate_for "$cxx_path")"
+            echo "Using native C++20 module compiler: $NATIVE_CXX_PROGRAM"
+            [[ -n "$NATIVE_C_PROGRAM" ]] && echo "Using native C compiler: $NATIVE_C_PROGRAM"
+            return 0
+        fi
+        echo "Error: native C++20 module builds require Clang 20+ or GCC 15+." >&2
+        echo "       Found $compiler_id $version at $cxx_path." >&2
+        echo "       Select a newer compiler, for example:" >&2
+        echo "         CC=/usr/bin/gcc-15 CXX=/usr/bin/g++-15 ./configure.sh --clean" >&2
+        echo "         CC=/usr/bin/clang-20 CXX=/usr/bin/clang++-20 ./configure.sh --clean" >&2
+        echo "       On Debian/Ubuntu, './setup.sh --install-clang' can install a suitable Clang." >&2
+        exit 1
+    fi
+
+    version="$("$cxx_path" -dumpfullversion -dumpversion 2>/dev/null | head -1)"
+    if version_at_least "15.0.0" "$version"; then
+        NATIVE_CXX_PROGRAM="$cxx_path"
+        NATIVE_C_PROGRAM="$(native_c_candidate_for "$cxx_path")"
+        echo "Using native C++20 module compiler: $NATIVE_CXX_PROGRAM"
+        [[ -n "$NATIVE_C_PROGRAM" ]] && echo "Using native C compiler: $NATIVE_C_PROGRAM"
+        return 0
+    fi
+
+    version="$("$cxx_path" -dumpfullversion -dumpversion 2>/dev/null | head -1)"
+    echo "Error: native C++20 module builds require GCC 15+ or Clang 20+." >&2
+    echo "       Found GNU $version at $cxx_path." >&2
+    echo "       CMake cannot discover C++20 module import dependencies with this compiler." >&2
+    echo "       Select a newer compiler, for example:" >&2
+    echo "         CC=/usr/bin/gcc-15 CXX=/usr/bin/g++-15 ./configure.sh --clean" >&2
+    echo "         CC=/usr/bin/clang-20 CXX=/usr/bin/clang++-20 ./configure.sh --clean" >&2
+    echo "       On Debian/Ubuntu, './setup.sh --install-clang' can install a suitable Clang." >&2
+    exit 1
+}
+
 cached_cmake_var() {
     local var="$1"
     [[ -f "$BUILD_DIR/CMakeCache.txt" ]] || return 0
@@ -742,6 +860,7 @@ case "$GENERATOR" in
     ""|"Ninja"|"Ninja Multi-Config")
         check_ninja_version
         check_cached_ninja_version
+        check_native_cxx_modules_compiler
         ;;
     "Visual Studio "*)
         ;;
@@ -799,6 +918,12 @@ if [[ -n "$BOARD" ]]; then
 fi
 if [[ -n "$TOOLCHAIN_FILE" ]]; then
     CMAKE_ARGS+=(-DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE")
+fi
+if [[ "$PLATFORM" == "native" && -n "${NATIVE_CXX_PROGRAM:-}" ]]; then
+    CMAKE_ARGS+=(-DCMAKE_CXX_COMPILER="$NATIVE_CXX_PROGRAM")
+fi
+if [[ "$PLATFORM" == "native" && -n "${NATIVE_C_PROGRAM:-}" ]]; then
+    CMAKE_ARGS+=(-DCMAKE_C_COMPILER="$NATIVE_C_PROGRAM")
 fi
 if [[ -n "$CPU" ]]; then
     CMAKE_ARGS+=(-DMMCU_CPU="$CPU")

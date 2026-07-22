@@ -43,14 +43,15 @@ environment.
 |---|---|
 | POSIX shell / Bash | Running repo scripts such as `configure.sh`, `build.sh`, `docs.sh`, `platform.sh`, `run.sh`, and `flash.sh` |
 | Python 3 with PyYAML | Configure-time YAML manifest resolution through `tools/mmcu-deps.py` |
-| C++20 compiler with module support | Native builds and C++ module compilation |
+| C++20 compiler with CMake-compatible module scanning | Native builds and C++ module compilation |
 | C compiler | C/ASM startup, vendor support code, and mixed-language targets |
 | Ninja 1.11+ | CMake generator support for C++20 module dependency scanning |
 
 Known compiler expectations:
 
-- Native builds need a host C++20 compiler with module support.
-- Current docs assume Clang 20+ or GCC 15+ for C++20 modules.
+- Native builds need a host C++20 compiler that CMake can use for module
+  dependency scanning.
+- Current native builds assume Clang 20+ or GCC 15+ for C++20 modules.
 
 ### Build Generator
 
@@ -68,6 +69,17 @@ older Ninja, the build directory was probably configured earlier with a
 different `CMAKE_MAKE_PROGRAM`. Check `<build-dir>/CMakeCache.txt`; recreate
 that build directory with `./configure.sh --clean` or use a fresh
 `--build-dir`.
+
+If Ninja is new enough but CMake reports that the compiler cannot discover
+the C++20 module import graph, the selected host compiler is too old. GCC
+11.x, for example, is not sufficient for this build. Select GCC 15+ or
+Clang 20+ explicitly. On Debian/Ubuntu, see [Clang Toolchain](toolchain-clang.md)
+for the `./setup.sh --install-clang` flow.
+
+```bash
+CC=/usr/bin/gcc-15 CXX=/usr/bin/g++-15 ./configure.sh --clean
+CC=/usr/bin/clang-20 CXX=/usr/bin/clang++-20 ./configure.sh --clean
+```
 
 ### Bare-Metal ARM Builds
 
@@ -247,8 +259,8 @@ Native build only:
 cmake
 python3 + PyYAML
 host C compiler
-host C++20 compiler with module support
-ninja (optional)
+host C++20 compiler with CMake-compatible module scanning
+ninja 1.11+
 ```
 
 Generic bare-metal MCU build:
