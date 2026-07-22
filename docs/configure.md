@@ -1,15 +1,29 @@
 # Configure: Platform, Target, Toolchain
 
-MMCU's top-level `CMakeLists.txt` exposes four cache variables that
-together select what gets built. `MMCU_PLATFORM` is the top-level choice;
-`MMCU_TARGET` and the toolchain both default from it, and `MMCU_BOARD`
-defaults from `MMCU_TARGET`; all can be overridden independently.
+MMCU's top-level `CMakeLists.txt` exposes cache variables that select what
+gets built. `MMCU_APPLICATION_DIR` selects the application, `MMCU_PLATFORM`
+is the top-level platform choice, `MMCU_TARGET` and the toolchain both default
+from it, and `MMCU_BOARD` defaults from `MMCU_TARGET`; all can be overridden
+independently.
 
 ```
+MMCU_APPLICATION_DIR   defaults to applications/main
 MMCU_PLATFORM          native | mcu | cmsis | pico_sdk
 MMCU_TARGET            defaults per platform, must be one of that platform's valid targets
 MMCU_BOARD             defaults per target for Pico-series targets, optional otherwise
 CMAKE_TOOLCHAIN_FILE   defaults per platform, overridable
+```
+
+## `MMCU_APPLICATION_DIR`
+
+`MMCU_APPLICATION_DIR` points at the selected application directory. The
+directory must contain `mmcu.yaml` and `main.cpp`. It defaults to
+`applications/main`; the self-contained MCP stdio server is
+`applications/mcp/server`.
+
+```bash
+./configure.sh --application-dir applications/mcp/server \
+  --build-dir build-mcp-server-native
 ```
 
 ## `MMCU_PLATFORM`
@@ -172,10 +186,12 @@ option list. `--board <name>` overrides the default `MMCU_BOARD` for the
 selected target. Run `cmake --build <dir>` afterward to build.
 
 `./configure.sh --interactive` (or `-i`) walks through the same choices as
-numbered menus instead of flags: platform, target (skipped when the platform
-has only one valid target), board override, compiler (mcu/cmsis/pico_sdk, forced
-to gcc for pico-sdk `rp2040`/`rp2350`), CPU/CMSIS overrides, linker map, build
-type, build directory, and clean. The board prompt reads the board
+numbered menus instead of flags: application, platform, target (skipped when
+the platform has only one valid target), board override, compiler
+(mcu/cmsis/pico_sdk, forced to gcc for pico-sdk `rp2040`/`rp2350`), CPU/CMSIS
+overrides, linker map, build type, build directory, and clean. The application
+prompt is first and lists application directories that contain both `mmcu.yaml`
+and `main.cpp`. The board prompt reads the board
 registry and shows only boards compatible with the selected
 `MMCU_PLATFORM`/`MMCU_TARGET`; if no compatible boards are discoverable, it
 falls back to the free-text blank-by-default prompt. It prints a summary
@@ -185,7 +201,8 @@ After configuring, `./configure.sh` writes `.config` (repo root,
 git-ignored) recording the last build directory plus the relevant
 configure-time choices: `MMCU_PLATFORM`, `MMCU_TARGET`, `MMCU_BOARD`,
 compiler/toolchain, build type, CMSIS path/tag, CMSIS-RP2xxx-DFP path, CPU
-override, linker-map flag, and compiler path overrides. It then prints
+override, linker-map flag, compiler path overrides, and
+`MMCU_APPLICATION_DIR`. It then prints
 `Run: ./build.sh`. `./build.sh`/`./run.sh` read `.config` as their default
 `--build-dir` — see [Build And Run](build.md) — so you don't have to
 repeat `--build-dir <dir>` on every subsequent command.

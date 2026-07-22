@@ -146,6 +146,29 @@ python3 -m venv ./venv
 python -m pip install --upgrade pip
 ```
 
+If `./venv/bin/python` exists but `python -m pip` fails, the virtual
+environment was created without pip or the OS Python venv support package is
+incomplete. `./setup.sh` first tries `python -m ensurepip --upgrade` inside
+the venv. On Debian/Ubuntu systems where `ensurepip` is disabled or missing,
+install the matching OS package such as `python3-venv` or `python3.10-venv`,
+then rerun `./setup.sh`.
+
+For repair:
+
+```sh
+./setup.sh --force
+```
+
+For a full venv recreation:
+
+```sh
+./setup.sh --clear
+```
+
+`--force` keeps `./venv` and force-reinstalls Python requirements. `--clear`
+recreates only `./venv`; it does not remove build directories or platform
+checkouts.
+
 Install documentation tooling:
 
 ```sh

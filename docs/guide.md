@@ -142,7 +142,7 @@ After configure, use `./build.sh`:
 ```
 
 `configure.sh` writes `.config`, recording the last configured build
-directory and platform/target/board. `build.sh`, `run.sh`, and `flash.sh`
+directory and application/platform/target/board. `build.sh`, `run.sh`, and `flash.sh`
 use that file as their default build-directory hint. Deleting `.config` is
 safe; the scripts fall back to `build/`.
 
@@ -501,7 +501,7 @@ cat .config
 
 `build.sh`, `run.sh`, and `flash.sh` use `.config` when no `--build-dir`
 is provided. If `build.sh` has to recreate the recorded build directory, it
-also replays the recorded compiler/toolchain settings. `platform.sh install`
+also replays the recorded application/compiler/toolchain settings. `platform.sh install`
 uses `.config`'s `MMCU_PLATFORM` when no `--platform` is provided. Pass
 `--build-dir`/`--platform` explicitly or delete `.config`.
 

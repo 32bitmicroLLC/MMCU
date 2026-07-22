@@ -12,12 +12,12 @@ Plain `./build.sh` with no prior `./configure.sh` call still works: it
 configures `build/` with the `MMCU_PLATFORM=native` defaults first.
 
 `./configure.sh` writes `.config` (repo root, git-ignored) recording the
-build directory/platform/target/board it just configured. `./build.sh` and
+build directory/application/platform/target/board it just configured. `./build.sh` and
 `./run.sh` read it as their default `--build-dir` when none is given, so
 `./build.sh` right after `./configure.sh --platform mcu --target cortex-m0`
 builds `build-cortex-m0-gcc`, not plain `build`. If that directory gets
 deleted later, `./build.sh` reconfigures it using `.config`'s recorded
-platform/target/board/compiler/toolchain settings rather than falling back
+application/platform/target/board/compiler/toolchain settings rather than falling back
 to native or gcc defaults. `.config` is purely a convenience for these
 scripts — `clean.sh` doesn't consult it, and deleting `.config` is always
 safe (everything just falls back to plain `build`).

@@ -6,6 +6,8 @@ INSTALL_CMSIS=0
 INSTALL_PICO_SDK=0
 CHECK_ONLY=0
 NATIVE_BUILD=0
+FORCE_VENV=0
+CLEAR_VENV=0
 
 usage() {
     cat <<'EOF'
@@ -25,6 +27,8 @@ Options:
       --pico-sdk      Also run platforms/pico-sdk/pico-sdk-install.sh
       --native-build  Configure and build the default native target as a smoke test
       --check         Report tool status only; make no changes
+      --force         Repair/reinstall ./venv in place; force-reinstall Python requirements
+      --clear         Recreate ./venv from scratch before installing requirements
   -h, --help          Show this help
 
 Examples:
@@ -33,6 +37,8 @@ Examples:
   ./setup.sh --cmsis
   ./setup.sh --pico-sdk
   ./setup.sh --check
+  ./setup.sh --force
+  ./setup.sh --clear
   ./setup.sh --native-build
 EOF
 }
@@ -133,6 +139,21 @@ check_python_package() {
     fi
 }
 
+ensure_venv_pip() {
+    local python_bin="$1"
+
+    if "$python_bin" -m pip --version >/dev/null 2>&1; then
+        return 0
+    fi
+
+    info "Bootstrapping pip in ./venv"
+    if "$python_bin" -m ensurepip --upgrade >/dev/null 2>&1; then
+        return 0
+    fi
+
+    fail "The existing ./venv has Python but no pip, and ensurepip is unavailable. Install your OS venv package (for example python3-venv/python3.10-venv on Debian/Ubuntu), then rerun ./setup.sh."
+}
+
 setup_venv() {
     local python_bin
     python_bin="$(venv_python)"
@@ -143,6 +164,11 @@ setup_venv() {
             echo "missing: ./venv"
             return 0
         fi
+        if "$python_bin" -m pip --version >/dev/null 2>&1; then
+            echo "ok: pip"
+        else
+            echo "missing: pip"
+        fi
         check_python_package "$python_bin" yaml PyYAML || true
         if [[ $INSTALL_DOCS -eq 1 ]]; then
             check_python_package "$python_bin" mkdocs MkDocs || true
@@ -150,20 +176,41 @@ setup_venv() {
         return 0
     fi
 
-    if [[ ! -x "$python_bin" ]]; then
+    if [[ $CLEAR_VENV -eq 1 ]]; then
+        info "Recreating ./venv"
+        python3 -m venv --clear ./venv
+    elif [[ $FORCE_VENV -eq 1 ]]; then
+        if [[ -x "$python_bin" ]]; then
+            info "Upgrading ./venv in place"
+            python3 -m venv --upgrade ./venv
+        else
+            info "Creating ./venv"
+            python3 -m venv ./venv
+        fi
+    elif [[ ! -x "$python_bin" ]]; then
         info "Creating ./venv"
         python3 -m venv ./venv
     fi
+
+    ensure_venv_pip "$python_bin"
 
     info "Updating pip"
     "$python_bin" -m pip install --upgrade pip
 
     info "Installing YAML tooling"
-    "$python_bin" -m pip install -r requirements-yaml.txt
+    if [[ $FORCE_VENV -eq 1 ]]; then
+        "$python_bin" -m pip install --upgrade --force-reinstall -r requirements-yaml.txt
+    else
+        "$python_bin" -m pip install -r requirements-yaml.txt
+    fi
 
     if [[ $INSTALL_DOCS -eq 1 ]]; then
         info "Installing documentation tooling"
-        "$python_bin" -m pip install -r requirements-docs.txt
+        if [[ $FORCE_VENV -eq 1 ]]; then
+            "$python_bin" -m pip install --upgrade --force-reinstall -r requirements-docs.txt
+        else
+            "$python_bin" -m pip install -r requirements-docs.txt
+        fi
     fi
 
     check_python_package "$python_bin" yaml PyYAML
@@ -237,6 +284,14 @@ while [[ $# -gt 0 ]]; do
             CHECK_ONLY=1
             shift
             ;;
+        --force)
+            FORCE_VENV=1
+            shift
+            ;;
+        --clear)
+            CLEAR_VENV=1
+            shift
+            ;;
         -h|--help)
             usage
             exit 0
@@ -248,6 +303,14 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [[ $CHECK_ONLY -eq 1 && ( $FORCE_VENV -eq 1 || $CLEAR_VENV -eq 1 ) ]]; then
+    fail "--check cannot be combined with --force or --clear"
+fi
+
+if [[ $CLEAR_VENV -eq 1 && $FORCE_VENV -eq 1 ]]; then
+    FORCE_VENV=0
+fi
 
 check_host_tools
 setup_venv

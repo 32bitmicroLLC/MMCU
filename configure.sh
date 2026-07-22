@@ -114,6 +114,63 @@ prompt_yes_no() {
     [[ "$answer" =~ ^[Yy] ]]
 }
 
+list_applications() {
+    local repo_root app_manifest app_dir app_name label
+    repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    while IFS= read -r app_manifest; do
+        app_dir="$(dirname "$app_manifest")"
+        if [[ ! -f "$repo_root/$app_dir/main.cpp" ]]; then
+            continue
+        fi
+
+        app_name="$(awk -F: '
+            /^[[:space:]]*name[[:space:]]*:/ {
+                value=$2
+                sub(/^[[:space:]]*/, "", value)
+                sub(/[[:space:]]*$/, "", value)
+                print value
+                exit
+            }
+        ' "$repo_root/$app_manifest")"
+        label="$app_dir"
+        [[ -n "$app_name" ]] && label="$label - $app_name"
+        echo "$app_dir"$'\t'"$label"
+    done < <(cd "$repo_root" && find applications -mindepth 2 -name mmcu.yaml -type f | sort)
+}
+
+prompt_application_choice() {
+    local app_rows=() app_values=() app_labels=()
+    local row value label default_index idx
+
+    mapfile -t app_rows < <(list_applications)
+    if [[ ${#app_rows[@]} -eq 0 ]]; then
+        APPLICATION_DIR="$(prompt_default "MMCU_APPLICATION_DIR" "${APPLICATION_DIR:-applications/main}")"
+        return
+    fi
+
+    for row in "${app_rows[@]}"; do
+        IFS=$'\t' read -r value label <<< "$row"
+        [[ -z "$value" || -z "$label" ]] && continue
+        app_values+=("$value")
+        app_labels+=("$label")
+    done
+
+    default_index=1
+    if [[ -n "$APPLICATION_DIR" ]]; then
+        for i in "${!app_values[@]}"; do
+            [[ "${app_values[$i]}" == "$APPLICATION_DIR" ]] && default_index=$((i + 1))
+        done
+    else
+        for i in "${!app_values[@]}"; do
+            [[ "${app_values[$i]}" == "applications/main" ]] && default_index=$((i + 1))
+        done
+    fi
+
+    idx="$(prompt_choice "Select MMCU_APPLICATION_DIR:" "$default_index" "${app_labels[@]}")"
+    APPLICATION_DIR="${app_values[$((idx - 1))]}"
+}
+
 default_board_for_target() {
     case "$1" in
         rp2040)
@@ -260,6 +317,8 @@ run_interactive() {
     echo "MMCU interactive configuration (docs/configure.md)"
     echo "===================================================="
 
+    prompt_application_choice
+
     local platform_values=(native mcu cmsis pico_sdk)
     local platform_labels=(
         "native   - host build, emu target"
@@ -391,6 +450,7 @@ run_interactive() {
 
     echo
     echo "Summary:"
+    [[ -n "$APPLICATION_DIR" ]] && echo "  MMCU_APPLICATION_DIR = $APPLICATION_DIR"
     echo "  MMCU_PLATFORM = $PLATFORM"
     echo "  MMCU_TARGET   = $TARGET"
     [[ -n "$BOARD" ]] && echo "  MMCU_BOARD    = $BOARD"
@@ -565,6 +625,16 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+
+read_config_var() {
+    local var="$1"
+    [[ -f .config ]] || return 0
+    grep "^${var}=" .config 2>/dev/null | tail -1 | cut -d= -f2-
+}
+
+if [[ -z "$APPLICATION_DIR" ]]; then
+    APPLICATION_DIR="$(read_config_var MMCU_APPLICATION_DIR)"
+fi
 
 if [[ "$PLATFORM" == "pico_sdk" \
       && ( "$_mmcu_effective_target" == "rp2040" || "$_mmcu_effective_target" == "rp2350" ) \

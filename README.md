@@ -137,7 +137,7 @@ one application/platform/target/board tuple.
 These paths are generated or local machine state and are ignored by Git:
 
 ```text
-.config                         # last configured build dir/platform/target/board
+.config                         # last configured build dir/application/platform/target/board
 build/                          # default native build directory
 build-*/                        # platform/target build directories
 site/                           # generated documentation site

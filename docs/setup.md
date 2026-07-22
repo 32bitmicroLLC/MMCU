@@ -23,6 +23,8 @@ The default setup does three things:
 - checks required host tools: CMake 4.0+, Python 3, C compiler, and C++20
   compiler support;
 - creates or updates `./venv`;
+- bootstraps `pip` into an existing `./venv` if the interpreter exists but
+  `pip` is missing;
 - installs `requirements-yaml.txt`, including PyYAML, which is required
   by the configure-time manifest resolver.
 
@@ -39,6 +41,30 @@ validation tools.
 Use this on an already-provisioned machine or in CI when you want a quick
 report without creating `./venv`, installing Python packages, downloading
 SDKs, or configuring a build directory.
+
+## Repair or recreate `./venv`
+
+Use `--force` when the virtual environment exists but packages are stale,
+missing, or inconsistent:
+
+```bash
+./setup.sh --force
+```
+
+This keeps `./venv`, upgrades it in place with `python3 -m venv --upgrade`,
+bootstraps `pip` if needed, upgrades `pip`, and force-reinstalls the Python
+requirements.
+
+Use `--clear` when the virtual environment itself is corrupted or was created
+with the wrong Python minor version:
+
+```bash
+./setup.sh --clear
+```
+
+This recreates only `./venv` with `python3 -m venv --clear ./venv`, then
+installs the normal requirements. It does not remove build directories,
+platform checkouts, generated docs, or any source files.
 
 ## Documentation setup
 

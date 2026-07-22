@@ -150,6 +150,7 @@ if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
         CONFIG_ARM_GXX="$(read_config_var MMCU_ARM_GXX)"
         CONFIG_CLANG_CC="$(read_config_var MMCU_CLANG_CC)"
         CONFIG_CLANG_CXX="$(read_config_var MMCU_CLANG_CXX)"
+        CONFIG_APPLICATION_DIR="$(read_config_var MMCU_APPLICATION_DIR)"
         if [[ -z "$CONFIG_COMPILER" && "${CONFIG_PLATFORM:-native}" != "native" ]]; then
             case "$BUILD_DIR" in
                 *-clang) CONFIG_COMPILER="clang" ;;
@@ -172,7 +173,8 @@ if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
         [[ -n "$CONFIG_ARM_GXX" ]] && CONFIGURE_ARGS+=(--arm-gxx "$CONFIG_ARM_GXX")
         [[ -n "$CONFIG_CLANG_CC" ]] && CONFIGURE_ARGS+=(--clang-cc "$CONFIG_CLANG_CC")
         [[ -n "$CONFIG_CLANG_CXX" ]] && CONFIGURE_ARGS+=(--clang-cxx "$CONFIG_CLANG_CXX")
-        echo "==> $BUILD_DIR is not configured yet; reconfiguring using .config (MMCU_PLATFORM=${CONFIG_PLATFORM:-native}${CONFIG_TARGET:+ MMCU_TARGET=$CONFIG_TARGET}${CONFIG_BOARD:+ MMCU_BOARD=$CONFIG_BOARD}${CONFIG_COMPILER:+ compiler=$CONFIG_COMPILER})"
+        [[ -n "$CONFIG_APPLICATION_DIR" ]] && CONFIGURE_ARGS+=(--application-dir "$CONFIG_APPLICATION_DIR")
+        echo "==> $BUILD_DIR is not configured yet; reconfiguring using .config (MMCU_PLATFORM=${CONFIG_PLATFORM:-native}${CONFIG_TARGET:+ MMCU_TARGET=$CONFIG_TARGET}${CONFIG_BOARD:+ MMCU_BOARD=$CONFIG_BOARD}${CONFIG_APPLICATION_DIR:+ MMCU_APPLICATION_DIR=$CONFIG_APPLICATION_DIR}${CONFIG_COMPILER:+ compiler=$CONFIG_COMPILER})"
         [[ $VERBOSE -eq 1 ]] && CONFIGURE_ARGS+=(--verbose)
         "$SCRIPT_DIR/configure.sh" "${CONFIGURE_ARGS[@]}"
     else
