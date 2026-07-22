@@ -25,6 +25,7 @@ GENERATOR=""
 CLEAN=0
 INTERACTIVE=0
 VERBOSE=0
+LIST_TOOLCHAINS=0
 
 usage() {
     cat <<'EOF'
@@ -60,6 +61,8 @@ Options:
   -G, --generator <name>    CMake generator (default: Ninja if available)
   -c, --clean               Remove build directory before configure
   -i, --interactive         Prompt with numbered choices instead of flags
+      --list-toolchains     List discovered compiler toolchains for the selected
+                             platform/target and exit
   -v, --verbose             Show verbose CMake configure output
   -h, --help                Show this help
 
@@ -392,7 +395,7 @@ emit_native_toolchain_candidate() {
     else
         label="$id - $cxx_path $version, unsupported: $reason"
     fi
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$family" "$cc_path" "$cxx_path" "$version" "$status" "$reason" "$label"
+    printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "$id" "$family" "$cc_path" "$cxx_path" "$version" "$status" "$reason" "$label"
 }
 
 emit_arm_gcc_toolchain_candidate() {
@@ -413,7 +416,7 @@ emit_arm_gcc_toolchain_candidate() {
     else
         label="arm-none-eabi-gcc - unsupported: $reason"
     fi
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "arm-none-eabi-gcc" "gcc" "$cc_path" "$cxx_path" "$version" "$status" "$reason" "$label"
+    printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "arm-none-eabi-gcc" "gcc" "$cc_path" "$cxx_path" "$version" "$status" "$reason" "$label"
 }
 
 emit_arm_clang_toolchain_candidate() {
@@ -451,7 +454,7 @@ emit_arm_clang_toolchain_candidate() {
     else
         label="clang-arm-none-eabi - ${cxx_path:-not found} ${version:-}, unsupported: $reason"
     fi
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "clang-arm-none-eabi" "clang" "${cc_path:-}" "${cxx_path:-}" "$version" "$status" "$reason" "$label"
+    printf '%s|%s|%s|%s|%s|%s|%s|%s\n' "clang-arm-none-eabi" "clang" "${cc_path:-}" "${cxx_path:-}" "$version" "$status" "$reason" "$label"
 }
 
 list_toolchain_candidates() {
@@ -516,7 +519,7 @@ prompt_toolchain_choice() {
 
     echo "Discovered compiler toolchains:"
     for i in "${!rows[@]}"; do
-        IFS=$'\t' read -r id family cc_path cxx_path version status reason label <<< "${rows[$i]}"
+        IFS='|' read -r id family cc_path cxx_path version status reason label <<< "${rows[$i]}"
         labels+=("$label")
         if [[ "$status" == "usable" ]]; then
             usable_indexes+=("$i")
@@ -536,14 +539,14 @@ prompt_toolchain_choice() {
 
     if [[ ${#usable_indexes[@]} -eq 1 && ${#rows[@]} -gt 1 ]]; then
         idx="${usable_indexes[0]}"
-        IFS=$'\t' read -r id family cc_path cxx_path version status reason label <<< "${rows[$idx]}"
+        IFS='|' read -r id family cc_path cxx_path version status reason label <<< "${rows[$idx]}"
         echo "Only one compatible compiler toolchain was found:"
         echo "  $label"
         echo
         echo "Rejected toolchains:"
         for i in "${!rows[@]}"; do
             [[ "$i" == "$idx" ]] && continue
-            IFS=$'\t' read -r id family cc_path cxx_path version status reason label <<< "${rows[$i]}"
+            IFS='|' read -r id family cc_path cxx_path version status reason label <<< "${rows[$i]}"
             [[ "$status" == "usable" ]] || echo "  $label"
         done
         echo
@@ -554,7 +557,7 @@ prompt_toolchain_choice() {
     else
         idx="$(prompt_choice "Select compiler toolchain:" "$default_index" "${labels[@]}")"
         idx=$((idx - 1))
-        IFS=$'\t' read -r id family cc_path cxx_path version status reason label <<< "${rows[$idx]}"
+        IFS='|' read -r id family cc_path cxx_path version status reason label <<< "${rows[$idx]}"
         if [[ "$status" != "usable" ]]; then
             echo "Error: selected toolchain is unsupported: $reason" >&2
             exit 1
@@ -813,6 +816,10 @@ while [[ $# -gt 0 ]]; do
             INTERACTIVE=1
             shift
             ;;
+        --list-toolchains)
+            LIST_TOOLCHAINS=1
+            shift
+            ;;
         -v|--verbose)
             VERBOSE=1
             shift
@@ -841,6 +848,17 @@ case "$PLATFORM" in
         exit 1
         ;;
 esac
+
+if [[ $LIST_TOOLCHAINS -eq 1 ]]; then
+    case "$PLATFORM" in
+        native) TARGET="${TARGET:-emu}" ;;
+        mcu) TARGET="${TARGET:-emu}" ;;
+        cmsis) TARGET="${TARGET:-cortex-m0}" ;;
+        pico_sdk) TARGET="${TARGET:-rp2040}" ;;
+    esac
+    list_toolchain_candidates "$PLATFORM" "$TARGET"
+    exit 0
+fi
 
 if [[ "$PLATFORM" == "native" ]]; then
     if [[ -n "$TOOLCHAIN_FILE" ]]; then

@@ -187,15 +187,24 @@ selected target. Run `cmake --build <dir>` afterward to build.
 
 `./configure.sh --interactive` (or `-i`) walks through the same choices as
 numbered menus instead of flags: application, platform, target (skipped when
-the platform has only one valid target), board override, compiler
-(mcu/cmsis/pico_sdk, forced to gcc for pico-sdk `rp2040`/`rp2350`), CPU/CMSIS
-overrides, linker map, build type, build directory, and clean. The application
-prompt is first and lists application directories that contain both `mmcu.yaml`
-and `main.cpp`. The board prompt reads the board
+the platform has only one valid target), board override, discovered compiler
+toolchain, CPU/CMSIS overrides, linker map, build type, build directory, and
+clean. The application prompt is first and lists application directories that
+contain both `mmcu.yaml` and `main.cpp`. The board prompt reads the board
 registry and shows only boards compatible with the selected
 `MMCU_PLATFORM`/`MMCU_TARGET`; if no compatible boards are discoverable, it
-falls back to the free-text blank-by-default prompt. It prints a summary
-before running `cmake`.
+falls back to the free-text blank-by-default prompt. The toolchain prompt
+shows compatible and rejected discovered toolchains with reasons; for example,
+pico-sdk can show Clang as rejected while native can offer Clang when GCC is
+too old for CMake C++20 module scanning. It prints a summary before running
+`cmake`.
+
+To inspect toolchain discovery without entering interactive mode:
+
+```bash
+./configure.sh --list-toolchains --platform native
+./configure.sh --list-toolchains --platform pico_sdk --target rp2040
+```
 
 After configuring, `./configure.sh` writes `.config` (repo root,
 git-ignored) recording the last build directory plus the relevant
