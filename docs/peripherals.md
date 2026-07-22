@@ -116,12 +116,13 @@ currently register-layout peripheral modules in the same shape as `gpio`
 or `uart`.
 
 - `modules/core/usb/` declares the portable USB capability surface.
-  `src/core/usb.cppm` exposes generic USB role/speed/status types and a
-  conservative default that reports no configured USB device.
+  `src/core/usb.cppm` exposes generic USB role/speed/status types and maps
+  status to TinyUSB when the selected backend is USB.
 - `modules/core/stdio-usb/` declares standard I/O over USB CDC as a
   portable capability layered on `usb` and `stdio`.
-  `src/core/stdio_usb.cppm` is a small facade over the selected platform's
-  actual backend.
+  `src/core/stdio_usb.cppm` is a facade over the selected platform's actual
+  backend. `src/core/stdio.cppm` selects UART or TinyUSB CDC operations at
+  compile time, and applications initialize the backend explicitly.
 
 Concrete USB device stacks remain platform providers. For example,
 `MMCU_PLATFORM=pico_sdk` with `MMCU_STDIO_BACKEND=usb` links

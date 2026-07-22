@@ -1,6 +1,12 @@
 // Copyright (C) 2026 32bitmicro LLC
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+module;
+
+#if defined(MMCU_STDIO_BACKEND_USB)
+#include "tusb.h"
+#endif
+
 export module usb;
 
 import mem;
@@ -26,18 +32,30 @@ struct device_status {
     speed negotiated_speed;
 };
 
-inline constexpr bool available()
+inline bool available()
 {
+#if defined(MMCU_STDIO_BACKEND_USB)
+    return true;
+#else
     return false;
+#endif
 }
 
-inline constexpr device_status status()
+inline device_status status()
 {
+#if defined(MMCU_STDIO_BACKEND_USB)
+    return {
+        .connected = tud_cdc_connected(),
+        .configured = tud_ready(),
+        .negotiated_speed = speed::full,
+    };
+#else
     return {
         .connected = false,
         .configured = false,
         .negotiated_speed = speed::full,
     };
+#endif
 }
 
 }

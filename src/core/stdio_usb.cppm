@@ -8,21 +8,26 @@ import usb;
 
 export namespace mmcu::stdio_usb {
 
-inline constexpr bool available()
+inline void initialize()
+{
+    mmcu::stdio::initialize();
+}
+
+inline bool available()
 {
     return mmcu::usb::available();
 }
 
-inline constexpr bool connected()
+inline bool connected()
 {
     return mmcu::usb::status().connected;
 }
 
-inline constexpr bool configured()
+inline bool configured()
 {
     return mmcu::usb::status().configured;
 }
 
-inline constexpr mmcu::stdio::transport default_transport{};
+inline const mmcu::stdio::transport& default_transport = mmcu::stdio::default_transport;
 
 }

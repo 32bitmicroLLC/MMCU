@@ -4,6 +4,7 @@
 import cpu;
 import gpio;
 import uart;
+import stdio;
 import mcp;
 
 namespace {
@@ -42,6 +43,7 @@ int main() asm("main");
 
 int main()
 {
+    mmcu::stdio::initialize();
     static_cast<void>(mmcu::cpu::core);
     static_cast<void>(mmcu::gpio::gpio0);
     static_cast<void>(mmcu::uart::uart0);

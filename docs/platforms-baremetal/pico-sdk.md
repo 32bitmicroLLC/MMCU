@@ -149,7 +149,11 @@ Configure USB stdio with:
 
 The generic `usb` and `stdio-usb` C++20 modules are part of the core module
 surface. `MMCU_STDIO_BACKEND=usb` selects the pico-sdk runtime provider that
-backs USB CDC stdio for the configured executable.
+backs USB CDC stdio for the configured executable. Applications call
+`mmcu::stdio::initialize()` before constructing their I/O service; the
+selected transport then uses TinyUSB CDC read/write operations. This explicit
+reference is important because pico-sdk builds use section garbage collection
+and otherwise discard an unreferenced USB stack.
 
 ## Required Dependency
 
