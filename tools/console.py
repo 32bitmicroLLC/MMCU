@@ -42,6 +42,8 @@ def main() -> int:
         if args.request is not None:
             request = args.request.encode("utf-8")
             request = request.replace(b"\r\n", b"\n").replace(b"\r", b"\n").replace(b"\n", b"\r\n")
+            if not request.endswith(b"\r\n"):
+                request += b"\r\n"
             if args.diagnostic:
                 print(f"diagnostic: request {len(request)} byte(s): {request.hex(' ')}", file=sys.stderr)
             connection.write(request)
