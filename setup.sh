@@ -23,6 +23,7 @@ Default action:
   - check required host tools
   - create/update ./venv
   - install requirements-yaml.txt for the configure-time YAML resolver
+  - install requirements-console.txt for the serial console
 
 Options:
       --docs          Also install documentation tooling from requirements-docs.txt
@@ -290,6 +291,7 @@ setup_venv() {
             echo "missing: pip"
         fi
         check_python_package "$python_bin" yaml PyYAML || true
+        check_python_package "$python_bin" serial pyserial || true
         if [[ $INSTALL_DOCS -eq 1 ]]; then
             check_python_package "$python_bin" mkdocs MkDocs || true
         fi
@@ -324,6 +326,13 @@ setup_venv() {
         "$python_bin" -m pip install -r requirements-yaml.txt
     fi
 
+    info "Installing serial console tooling"
+    if [[ $FORCE_VENV -eq 1 ]]; then
+        "$python_bin" -m pip install --upgrade --force-reinstall -r requirements-console.txt
+    else
+        "$python_bin" -m pip install -r requirements-console.txt
+    fi
+
     if [[ $INSTALL_DOCS -eq 1 ]]; then
         info "Installing documentation tooling"
         if [[ $FORCE_VENV -eq 1 ]]; then
@@ -334,6 +343,7 @@ setup_venv() {
     fi
 
     check_python_package "$python_bin" yaml PyYAML
+    check_python_package "$python_bin" serial pyserial
 }
 
 setup_pico_sdk() {

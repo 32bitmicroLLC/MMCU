@@ -28,7 +28,8 @@ The default setup does three things:
 - bootstraps `pip` into an existing `./venv` if the interpreter exists but
   `pip` is missing;
 - installs `requirements-yaml.txt`, including PyYAML, which is required
-  by the configure-time manifest resolver.
+  by the configure-time manifest resolver;
+- installs `requirements-console.txt`, including pyserial for `console.sh`.
 
 `configure.sh` prefers `./venv/bin/python` when it exists. This keeps the
 YAML resolver on the same project-local Python environment used by the
