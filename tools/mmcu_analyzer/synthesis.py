@@ -25,6 +25,33 @@ from .rules import CAPABILITY_ALIASES, PLATFORM_TARGETS
 # capability -- not useful as a dependency-satisfaction check on their own.
 _UMBRELLA_SOURCE_TAGS = {"pico-sdk", "pico-hardware-hal", "pin-claim"}
 
+# CMake link interfaces often contain things that are not dependency names:
+# generator expressions, unresolved variables, flags, linker scripts, imported
+# host packages, and internal helper/interface targets. Reporting those as
+# missing MMCU packages makes verbose analyzer output unusable.
+_CMAKE_SCOPE_KEYWORDS = {
+    "PUBLIC",
+    "PRIVATE",
+    "INTERFACE",
+    "LINK_PUBLIC",
+    "LINK_PRIVATE",
+    "LINK_INTERFACE_LIBRARIES",
+}
+_HOST_OR_SYSTEM_LIBRARIES = {
+    "c",
+    "dl",
+    "m",
+    "pthread",
+    "rt",
+    "stdc++",
+    "subunit",
+    "util",
+    "FuzzingEngine",
+    "setupapi",
+    "winusb",
+    "vdeplug",
+}
+
 
 def classify_primary_kind(cmake: CMakeStatic, has_source: bool, has_cmake: bool) -> ClassificationInfo:
     if any(t.kind == "executable" and t.sources for t in cmake.targets):
@@ -52,12 +79,60 @@ def _dependency_evidence(
     cmake: CMakeStatic, source: SourceInfo, generated_code: GeneratedCodeInfo
 ) -> set[str]:
     evidence: set[str] = set()
+    internal_targets = {target.name for target in cmake.targets}
     for target in cmake.targets:
-        evidence.update(target.link_libraries)
+        for library in target.link_libraries:
+            normalized = _normalize_cmake_link_dependency(library, internal_targets)
+            if normalized:
+                evidence.add(normalized)
     evidence.update(tag for tag in source.tags if tag not in _UMBRELLA_SOURCE_TAGS)
     if generated_code.required:
         evidence.add("cmsis-stream")
     return evidence
+
+
+def _normalize_cmake_link_dependency(name: str, internal_targets: set[str]) -> str | None:
+    """Return a concrete dependency name, or ``None`` for CMake syntax/noise."""
+
+    candidate = name.strip().strip('"').strip("'")
+    if not candidate:
+        return None
+
+    if candidate in _CMAKE_SCOPE_KEYWORDS:
+        return None
+    if candidate in _HOST_OR_SYSTEM_LIBRARIES:
+        return None
+
+    # Unresolved CMake values are not concrete dependency evidence. Examples:
+    # ${LIBUSB_LIBRARIES}, hardware_${NAME}_headers,
+    # $<IF:$<BOOL:...>,pico_stdio_usb,>
+    if "$<" in candidate or "${" in candidate or "}" in candidate:
+        return None
+
+    # Linker/compiler flags and archive selectors are toolchain inputs, not
+    # MMCU capabilities.
+    if candidate.startswith(("-", ":")):
+        return None
+    if candidate.startswith("LINKER:") or candidate.startswith("SHELL:"):
+        return None
+
+    # CMake imported targets usually name host/discovered packages. Keep only
+    # imported targets that have an explicit alias rule.
+    if "::" in candidate and candidate not in CAPABILITY_ALIASES:
+        return None
+
+    # pico-sdk emits many *_headers interface targets. Those are not separate
+    # MMCU dependencies; the owning module/platform capability should cover
+    # its headers.
+    if candidate.endswith("_headers"):
+        return None
+
+    # If this is an internal CMake target in the analyzed repo, don't report it
+    # as missing unless we know how to map that target to an MMCU capability.
+    if candidate in internal_targets and candidate not in CAPABILITY_ALIASES:
+        return None
+
+    return candidate
 
 
 def compute_dependencies(
