@@ -1,125 +1,45 @@
 # Toolchain Model
 
-MMCU uses C++20 modules and multiple platform foundations. Toolchain handling
-therefore has two responsibilities:
+This page defines the abstract MMCU toolchain model and the proposed
+`mmcu.toolchain/v1` DSL. For the top-level guide tying all toolchain pages
+together, see [Toolchains](toolchains.md). For compiler-specific operational
+details, see [GCC Toolchain](toolchain-gcc.md) and
+[Clang Toolchain](toolchain-clang.md).
 
-- choose an installed compiler that can build the selected platform/target;
-- describe that compatibility as declarative metadata, not scattered shell
-  conditions.
+## Definition
 
-This page is the generic model. Compiler-specific operational details remain
-in [GCC Toolchain](toolchain-gcc.md) and [Clang Toolchain](toolchain-clang.md).
+An MMCU **toolchain** is a declarative description of a compiler family and
+the capabilities it can provide when installed on the host.
 
-## Current requirements
+A toolchain declaration does not by itself prove that the compiler is
+installed. It tells the resolver:
 
-Native builds require:
+- which commands to search for;
+- which version is acceptable;
+- which target triple or execution environment it serves;
+- which build capabilities it provides;
+- which platforms it is known to support or reject.
 
-- Ninja 1.11 or newer;
-- GCC 15+ or Clang 20+ for CMake-compatible C++20 module dependency scanning.
+The selected platform, target, and board then declare what they require.
+Compatibility is resolved by matching installed toolchain candidates against
+those requirements.
 
-Older compilers can compile many C++20 programs, but still fail MMCU because
-CMake cannot discover the C++20 module import graph.
-
-Bare-metal builds use platform-specific requirements:
-
-| Platform | Default toolchain | Notes |
-|---|---|---|
-| `native` | host GCC 15+ or Clang 20+ | Requires CMake C++20 module scanning |
-| `mcu` | `arm-none-eabi-gcc` | Clang may be usable when ARM runtime/sysroot integration is configured |
-| `cmsis` | `arm-none-eabi-gcc` | Clang is intended to be supported for CMSIS targets |
-| `pico_sdk` | `arm-none-eabi-gcc` | Clang is not wired yet for RP2040/RP2350 pico-sdk builds |
-
-## Discovery
-
-`configure.sh` should discover installed compilers before asking the user to
-select a toolchain.
-
-For native builds, the intended discovery order is:
-
-```text
-$CXX
-g++-23 ... g++-15
-clang++-23 ... clang++-20
-c++, g++, clang++
-```
-
-The matching C compiler is derived from the selected C++ compiler:
-
-```text
-g++-15       -> gcc-15
-clang++-21   -> clang-21
-arm-none-eabi-g++ -> arm-none-eabi-gcc
-```
-
-For cross builds, discovery should include:
-
-```text
-arm-none-eabi-g++
-arm-none-eabi-gcc
-clang++-23 ... clang++-20
-clang-23 ... clang-20
-```
-
-with Clang carrying required target flags such as:
-
-```text
---target=arm-none-eabi
-```
-
-## Interactive selection
-
-Interactive configure mode must not silently switch compilers. If the selected
-platform can use Clang because system GCC is too old, the user should see that
-and acknowledge it.
-
-Example:
-
-```text
-Select compiler toolchain:
-  1) clang-20 - /usr/bin/clang++-20 20.1.8, usable for native C++20 modules
-  2) gcc-system - /usr/bin/g++ 11.4.0, unsupported: need GCC 15+ for C++20 modules
-Choice [1]:
-```
-
-If exactly one usable toolchain exists, interactive mode should still ask for
-acknowledgement when rejected candidates were found:
-
-```text
-Only one compatible compiler toolchain was found:
-  clang-20 - /usr/bin/clang++-20 20.1.8
-
-System GCC was found but is not usable:
-  gcc-system - /usr/bin/g++ 11.4.0: need GCC 15+ for C++20 modules
-
-Use clang-20? [Y/n]:
-```
-
-Non-interactive mode may select the first compatible default, but it must
-print what it selected and why an obvious default was skipped.
-
-Explicit `CC` and `CXX` always win. If explicit compilers are incompatible,
-configure must fail rather than replacing them.
-
-## Declarative metadata
-
-Toolchain compatibility should be expressed by two metadata sources:
-
-```text
-toolchains/        # compiler families, commands, versions, capabilities
-modules/platform/  # platform requirements and known-compatible toolchains
-```
-
-The rule is:
+## Core rule
 
 ```text
 toolchain declarations describe what an installed compiler family can provide
 platform modules describe what they require
-configure resolves installed toolchains against the selected platform/target
+target metadata may add CPU/ISA requirements and flags
+board metadata may add rare board-specific build requirements
+configure resolves installed candidates against the selected configuration
 ```
 
-## Toolchain declaration layout
+The model keeps compatibility data in YAML metadata instead of spreading it
+through shell conditionals.
 
-Toolchain declarations live under the top-level `toolchains/` tree:
+## File layout
+
+Toolchain declarations live under top-level `toolchains/`:
 
 ```text
 toolchains/
@@ -132,8 +52,18 @@ toolchains/
     clang/mmcu-toolchain.yaml
 ```
 
-Each declaration describes a compiler family and how to find installed
-commands:
+Platform compatibility lives in platform module declarations:
+
+```text
+modules/platform/cmsis/mmcu.yaml
+modules/platform/cmsis/6/mmcu.yaml
+modules/platform/pico-sdk/mmcu.yaml
+modules/platform/pico-sdk/2/mmcu.yaml
+```
+
+## DSL shape
+
+A toolchain declaration uses YAML:
 
 ```yaml
 schema: mmcu.toolchain/v1
@@ -170,21 +100,120 @@ platforms:
     - native
 ```
 
-Important fields:
+## Fields
 
-| Field | Meaning |
-|---|---|
-| `schema` | Toolchain schema identifier, initially `mmcu.toolchain/v1` |
-| `name` | Stable MMCU toolchain name |
-| `family` | Compiler family such as `gcc` or `clang` |
-| `target_triple` | Optional cross target triple such as `arm-none-eabi` |
-| `provides` | Capabilities this toolchain can satisfy |
-| `version.minimum` | Minimum acceptable compiler version |
-| `commands` | How discovery finds C and C++ compiler commands |
-| `platforms.compatible` | Platforms this toolchain may satisfy |
-| `platforms.incompatible` | Explicit incompatibilities and reasons |
+| Field | Required | Meaning |
+|---|---:|---|
+| `schema` | yes | Toolchain schema identifier, initially `mmcu.toolchain/v1` |
+| `name` | yes | Stable MMCU toolchain name |
+| `kind` | yes | Always `toolchain` |
+| `family` | yes | Compiler family such as `gcc`, `clang`, `iar`, or `armclang` |
+| `target_triple` | no | Cross target triple such as `arm-none-eabi` |
+| `provides` | yes | Capabilities this toolchain can satisfy |
+| `version.minimum` | no | Minimum acceptable compiler version |
+| `commands` | yes | Discovery patterns or exact command names |
+| `commands.*.required_flags` | no | Flags that must accompany this command |
+| `targets` | no | Host/cross target support metadata |
+| `platforms.compatible` | no | Platforms this toolchain may satisfy |
+| `platforms.incompatible` | no | Explicit incompatibilities and reasons |
 
-## Native GCC declaration
+## Capabilities
+
+Capabilities are uppercase tokens used for compatibility matching. Initial
+capabilities include:
+
+```text
+C
+CXX
+ASM
+CXX20
+CXX20_MODULES
+CMAKE_CXX_MODULE_SCAN
+FREESTANDING_C
+FREESTANDING_CXX
+ARM_EABI
+ARMV6M
+ARMV8M_MAIN
+THUMB
+PICO_SDK_SUPPORTED
+```
+
+Capabilities should describe real build requirements, not brand preferences.
+For example, `CMAKE_CXX_MODULE_SCAN` is required by native C++20 module builds
+because CMake must be able to discover import graph dependencies.
+
+## Command discovery
+
+Commands may be exact names:
+
+```yaml
+commands:
+  cc:
+    exact: arm-none-eabi-gcc
+  cxx:
+    exact: arm-none-eabi-g++
+```
+
+or versioned patterns:
+
+```yaml
+commands:
+  cc:
+    patterns:
+      - gcc-{version}
+      - gcc
+  cxx:
+    patterns:
+      - g++-{version}
+      - g++
+```
+
+For Clang cross builds, required flags can be declared:
+
+```yaml
+commands:
+  cc:
+    patterns:
+      - clang-{version}
+      - clang
+  cxx:
+    patterns:
+      - clang++-{version}
+      - clang++
+  required_flags:
+    - --target=arm-none-eabi
+```
+
+Discovery should create candidate records, not just a single result:
+
+```yaml
+name: clang-native
+family: clang
+cc: /usr/bin/clang-20
+cxx: /usr/bin/clang++-20
+version: "20.1.8"
+provides:
+  - C
+  - CXX
+  - CXX20
+  - CXX20_MODULES
+  - CMAKE_CXX_MODULE_SCAN
+status: usable
+```
+
+Rejected candidates should retain reasons:
+
+```yaml
+name: gcc-system
+family: gcc
+cc: /usr/bin/gcc
+cxx: /usr/bin/g++
+version: "11.4.0"
+status: unsupported
+reason: GCC 11.4.0 is too old for CMake C++20 module scanning; need GCC 15+
+```
+
+## Native GCC
 
 ```yaml
 schema: mmcu.toolchain/v1
@@ -221,9 +250,7 @@ platforms:
     - native
 ```
 
-See [GCC Toolchain](toolchain-gcc.md) for installation and configure examples.
-
-## Native Clang declaration
+## Native Clang
 
 ```yaml
 schema: mmcu.toolchain/v1
@@ -260,9 +287,7 @@ platforms:
     - native
 ```
 
-See [Clang Toolchain](toolchain-clang.md) for the apt.llvm.org install path.
-
-## ARM GCC declaration
+## ARM GCC
 
 ```yaml
 schema: mmcu.toolchain/v1
@@ -294,10 +319,7 @@ platforms:
     - pico_sdk
 ```
 
-This is the default cross toolchain for generic bare-metal, CMSIS, and
-pico-sdk-backed targets.
-
-## ARM Clang declaration
+## ARM Clang
 
 ```yaml
 schema: mmcu.toolchain/v1
@@ -341,24 +363,10 @@ platforms:
       reason: pico-sdk Clang support requires a configured ARM runtime/sysroot and is not wired yet
 ```
 
-Clang can be a valid ARM bare-metal frontend, but each platform still needs
-runtime, sysroot, linker, and startup integration. Explicit incompatibilities
-must remain representable.
+## Platform requirements
 
-## Platform module compatibility
-
-Platform compatibility metadata lives in platform module declarations:
-
-```text
-modules/platform/cmsis/mmcu.yaml
-modules/platform/cmsis/6/mmcu.yaml
-modules/platform/pico-sdk/mmcu.yaml
-modules/platform/pico-sdk/2/mmcu.yaml
-```
-
-A platform module declares requirements rather than naming host binaries.
-
-Native platform example:
+A platform module declares required capabilities and known-compatible
+toolchain declarations:
 
 ```yaml
 schema: mmcu.module/v1
@@ -422,11 +430,9 @@ toolchains:
       reason: pico-sdk Clang support requires a configured ARM runtime/sysroot and is not wired yet
 ```
 
-## Target refinements
+## Target requirements
 
-Some requirements belong to the selected target, not the platform.
-
-RP2040 example:
+Targets add CPU, ISA, and default flag requirements:
 
 ```yaml
 schema: mmcu.target/v1
@@ -441,8 +447,6 @@ toolchains:
     mthumb: true
 ```
 
-RP2350 example:
-
 ```yaml
 schema: mmcu.target/v1
 name: rp2350
@@ -456,20 +460,21 @@ toolchains:
     mthumb: true
 ```
 
-Compatibility is computed from:
+The effective requirement set is:
 
 ```text
 platform.toolchains.requires
 + target.toolchains.requires
++ board.toolchains.requires, only for rare board-specific build needs
 ```
 
-## Board refinements
+## Board requirements
 
 Boards normally should not constrain compiler toolchains. Boards constrain
 hardware features, power, pins, buses, and default providers.
 
-Only add board-level toolchain requirements for exceptional cases, such as a
-board package that genuinely requires a special binary blob link step:
+Only add board-level toolchain requirements when the board itself changes the
+build foundation:
 
 ```yaml
 toolchains:
@@ -477,39 +482,47 @@ toolchains:
     - WIFI_FIRMWARE_BLOB_LINK
 ```
 
-Prefer platform or target requirements unless the board itself changes the
-build foundation.
+## Compatibility algorithm
 
-## Compatibility rule
-
-A discovered toolchain is compatible when all of the following are true:
+A discovered toolchain is compatible when all conditions pass:
 
 1. the platform allows the toolchain by name or by provided capabilities;
 2. the platform does not list the toolchain as incompatible;
 3. every platform-required capability is provided;
 4. every target-required capability is provided;
-5. version constraints pass;
-6. required commands exist;
-7. required flags can be supplied by the CMake/toolchain integration.
+5. every board-required capability is provided;
+6. version constraints pass;
+7. required commands exist;
+8. required flags can be supplied by CMake/toolchain integration.
 
-Unsupported candidates should be visible in interactive mode with reasons.
+Unsupported candidates should not disappear in interactive mode. They should
+be shown with reasons.
 
-## Recorded solution
+## Static solution
 
-The resolved toolchain choice should be written to `.config`:
+The resolved toolchain becomes part of the static configure solution:
+
+```yaml
+toolchain:
+  name: clang-native
+  family: clang
+  version: "20.1.8"
+  cc: /usr/bin/clang-20
+  cxx: /usr/bin/clang++-20
+  provides:
+    - C
+    - CXX
+    - CXX20
+    - CXX20_MODULES
+    - CMAKE_CXX_MODULE_SCAN
+```
+
+`.config` should record the same selected command paths:
 
 ```text
 MMCU_COMPILER=clang
 MMCU_CC=/usr/bin/clang-20
 MMCU_CXX=/usr/bin/clang++-20
-```
-
-For cross builds, record the selected toolchain family and command overrides:
-
-```text
-MMCU_COMPILER=gcc
-MMCU_ARM_GCC=/usr/bin/arm-none-eabi-gcc
-MMCU_ARM_GXX=/usr/bin/arm-none-eabi-g++
 ```
 
 This prevents later `build.sh` or auto-reconfigure runs from silently drifting
