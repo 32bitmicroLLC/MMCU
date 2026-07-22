@@ -9,6 +9,11 @@ The current native baseline is GCC 15+ or Clang 20+. Older compilers can
 compile many C++20 programs, but still fail this project because CMake cannot
 discover the C++20 module import graph.
 
+For the broader declarative compatibility model, where `toolchains/`
+declares compiler families and platform modules declare requirements, see
+[Toolchain Model](toolchain.md). For the GCC-specific path, see
+[GCC Toolchain](toolchain-gcc.md).
+
 ## Check the compiler
 
 Run:

@@ -11,6 +11,9 @@ nav:
   - Setup: setup.md
   - User Guide: guide.md
   - Tools: tools.md
+  - Toolchain Model: toolchain.md
+  - Toolchains: toolchains.md
+  - GCC Toolchain: toolchain-gcc.md
   - Clang Toolchain: toolchain-clang.md
   - Platform Tools: platform-tools.md
   - Build And Run: build.md

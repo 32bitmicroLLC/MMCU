@@ -93,6 +93,12 @@ Platform foundations are also declared as MMCU YAML modules under
 the selected platform foundation and version, while `platforms/` contains
 the installer/configure/build scripts and vendored external inputs.
 
+Platform modules are also the right place to declare toolchain requirements.
+The compatible compiler families themselves live under top-level
+`toolchains/`; the platform module states which capabilities it requires and
+which toolchain declarations are known-compatible. See
+[Toolchain Model](toolchain.md).
+
 Current CMSIS declarations:
 
 ```text

@@ -5,6 +5,9 @@ validate, and run MMCU. For the first-run command sequence, see
 [Setup](setup.md). Platform-installable tools are documented by their own
 platform pages.
 
+For the declarative compiler/platform compatibility model, see
+[Toolchain Model](toolchain.md).
+
 ## CMake
 
 CMake is the primary build tool and the first required dependency.
