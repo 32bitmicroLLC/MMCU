@@ -115,6 +115,29 @@ selection options after `--` when more than one board is connected:
 The doctor returns a non-zero status when a required check fails or no target
 can be queried, which makes it suitable for a preflight check in scripts.
 
+## pico-sdk: platform smoke test
+
+Run the platform test after installing or rebuilding picotool:
+
+```sh
+./platforms/pico-sdk/pico-sdk-test.sh
+```
+
+The test is read-only. It checks picotool's version and `info` command,
+detects Raspberry Pi USB devices, warns about a mounted BOOTSEL volume, and
+queries a connected board. Use `--skip-device` for a host-only installation
+test or `--require-device` in hardware test automation:
+
+```sh
+./platforms/pico-sdk/pico-sdk-test.sh --skip-device
+./platforms/pico-sdk/pico-sdk-test.sh --require-device -- --ser E0C9125B0D9B
+```
+
+If picotool exits with status 139, the test reports the segmentation fault
+explicitly. For picotool 2.3.0 it also identifies the known RP2040
+non-partition-capable-device bug and recommends upstream fix `282a3ca` or a
+newer release.
+
 ## pico-sdk: picotool host prerequisites
 
 Building picotool with USB support requires host packages outside MMCU:
