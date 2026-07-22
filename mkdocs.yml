@@ -15,6 +15,7 @@ nav:
   - Build And Run: build.md
   - Configure: configure.md
   - Run: run.md
+  - Analyze: analyze.md
   - Flash: flash.md
   - Clean: clean.md
   - Platform: platform.md
