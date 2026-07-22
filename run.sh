@@ -21,15 +21,17 @@ usage() {
     cat <<'EOF'
 Usage: ./run.sh [options] [-- extra-args...]
 
-Runs MMCU as configured in --build-dir: directly, for MMCU_PLATFORM=native,
-or under QEMU, for MMCU_PLATFORM=mcu/cmsis (read from the build directory's
-CMakeCache.txt after building). Configure the platform/target/toolchain
-first with ./configure.sh; run.sh never changes them. See docs/run.md.
+Runs MMCU as configured in --build-dir: directly for MMCU_PLATFORM=native,
+under QEMU for MMCU_PLATFORM=mcu/cmsis, or through the platform-specific
+target runner for hardware platforms such as pico_sdk. The configured
+platform/target are read from the build directory's CMakeCache.txt after
+building. Configure first with ./configure.sh; run.sh never changes those
+choices. See docs/run.md.
 
 Options:
   -d, --build-dir <dir>   Build directory (default: .config, else build)
   -c, --clean             Remove the build directory before building
-      --no-build          Run the existing executable/ELF without building first
+      --no-build          Run the existing build output without building first
   -v, --verbose           Show verbose build output before running
       --debug             Run under a debugger instead of directly
                           (native: gdb; mcu/cmsis: QEMU started paused with a gdbstub)
@@ -45,8 +47,8 @@ mcu/cmsis (QEMU) options:
       --start-paused        Start QEMU paused for debugger attachment
       --gdb-endpoint <ep>   QEMU gdbstub endpoint (default: tcp::1234 with --debug)
 
--- extra-args are passed to the native executable, or to QEMU, depending on
-the configured platform.
+-- extra-args are passed to the native executable, QEMU, or the
+platform-specific runner, depending on the configured platform.
 
 Notes:
   A bare-metal ELF with no board startup code/vector table will lock up
@@ -140,46 +142,9 @@ if [[ $BUILD_DIR_EXPLICIT -eq 0 ]]; then
     BUILD_DIR="${BUILD_DIR:-build}"
 fi
 
-read_config_var() {
-    local var="$1"
-    [[ -f .config ]] || return 0
-    grep "^${var}=" .config 2>/dev/null | tail -1 | cut -d= -f2-
-}
-
 read_cache_var() {
     grep "^${1}:" "$BUILD_DIR/CMakeCache.txt" 2>/dev/null | head -1 | cut -d= -f2-
 }
-
-pico_sdk_run_error() {
-    echo "Error: MMCU_PLATFORM=pico_sdk cannot be run by ./run.sh." >&2
-    echo "       QEMU does not provide an RP2040/RP2350 machine, so there is no" >&2
-    echo "       host run target for pico-sdk builds." >&2
-    echo "       Use ./flash.sh to run it on real hardware instead (see docs/flash.md)." >&2
-}
-
-configured_platform_for_run() {
-    local config_build_dir config_platform
-    if [[ -f "$BUILD_DIR/CMakeCache.txt" ]]; then
-        read_cache_var MMCU_PLATFORM
-        return 0
-    fi
-    config_build_dir="$(read_config_var MMCU_BUILD_DIR)"
-    if [[ -n "$config_build_dir" && "$config_build_dir" == "$BUILD_DIR" ]]; then
-        config_platform="$(read_config_var MMCU_PLATFORM)"
-        [[ -n "$config_platform" ]] && printf '%s\n' "$config_platform"
-    fi
-}
-
-CONFIGURED_PLATFORM="$(configured_platform_for_run)"
-if [[ "$CONFIGURED_PLATFORM" == "pico_sdk" ]]; then
-    pico_sdk_run_error
-    exit 1
-fi
-
-if [[ $DEBUG -eq 1 ]] && ! command -v "$GDB" >/dev/null 2>&1; then
-    echo "Error: $GDB not found in PATH." >&2
-    exit 1
-fi
 
 if [[ $CLEAN -eq 1 ]]; then
     rm -rf "$BUILD_DIR"
@@ -225,6 +190,10 @@ case "$PLATFORM" in
         }
 
         if [[ $DEBUG -eq 1 ]]; then
+            if ! command -v "$GDB" >/dev/null 2>&1; then
+                echo "Error: $GDB not found in PATH." >&2
+                exit 1
+            fi
             "$GDB" --args "$APP_PATH" "${EXTRA_ARGS[@]}"
         elif [[ "$TIMEOUT" == "0" ]]; then
             "$APP_PATH" "${EXTRA_ARGS[@]}"
@@ -285,6 +254,10 @@ case "$PLATFORM" in
         }
 
         if [[ $DEBUG -eq 1 ]]; then
+            if ! command -v "$GDB" >/dev/null 2>&1; then
+                echo "Error: $GDB not found in PATH." >&2
+                exit 1
+            fi
             "$QEMU" "${RUN_ARGS[@]}" &
             QEMU_PID=$!
             trap 'kill "$QEMU_PID" >/dev/null 2>&1 || true; wait "$QEMU_PID" >/dev/null 2>&1 || true' EXIT
@@ -319,8 +292,25 @@ case "$PLATFORM" in
         ;;
 
     pico_sdk)
-        pico_sdk_run_error
-        exit 1
+        if [[ $DEBUG -eq 1 ]]; then
+            echo "Error: ./run.sh --debug is not implemented for MMCU_PLATFORM=pico_sdk." >&2
+            echo "       Use ./flash.sh/./run.sh for load-and-execute, or attach a platform-specific probe/debugger manually." >&2
+            exit 1
+        fi
+        case "$TARGET" in
+            rp2040|rp2350)
+                UF2_PATH="$BUILD_DIR/mmcu_app.uf2"
+                if [[ ! -f "$UF2_PATH" ]]; then
+                    echo "Error: $UF2_PATH not found. Build with --no-build dropped, or rebuild first." >&2
+                    exit 1
+                fi
+                exec "$SCRIPT_DIR/platforms/pico-sdk/pico-sdk-run.sh" --uf2 "$UF2_PATH" "${EXTRA_ARGS[@]}"
+                ;;
+            *)
+                echo "Error: no run tool for MMCU_TARGET '$TARGET' in $BUILD_DIR/CMakeCache.txt" >&2
+                exit 1
+                ;;
+        esac
         ;;
 
     *)

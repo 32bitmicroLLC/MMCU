@@ -272,10 +272,9 @@ manually.
 ## Run
 
 `./run.sh` runs MMCU as configured — directly for native, under QEMU for
-mcu/cmsis — dispatching on the configured `MMCU_PLATFORM`. It refuses
-`pico_sdk` before building when the selected build directory or `.config`
-already identifies a pico-sdk build, because RP2040/RP2350 do not have a
-QEMU machine. Use `./flash.sh` for pico-sdk hardware. See [Run](run.md).
+mcu/cmsis, or through a platform-specific target runner for hardware
+platforms such as pico-sdk. For pico-sdk, `./run.sh` builds the UF2 and uses
+picotool to load and execute it on real hardware. See [Run](run.md).
 
 ## Flash
 

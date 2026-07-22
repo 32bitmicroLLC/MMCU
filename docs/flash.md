@@ -5,8 +5,8 @@ hardware, dispatching to whichever platform-specific flash script exists
 for the configured `MMCU_PLATFORM`/`MMCU_TARGET` (read from the build
 directory's `CMakeCache.txt` after building) — the same "read the
 configured platform, dispatch" pattern [Run](run.md) uses for host/QEMU
-execution. It never sets platform/target/toolchain itself; configure that
-first with `./configure.sh`.
+execution and target run mechanisms. It never sets platform/target/toolchain
+itself; configure that first with `./configure.sh`.
 
 ```bash
 ./configure.sh --platform pico_sdk --target rp2040
@@ -70,6 +70,11 @@ picotool load -f -x <file>
   supports picotool's reset request. Disable with `--no-force`.
 - `-x`/`--execute`: reboot into the newly flashed firmware after loading.
   Disable with `--no-execute` to leave the device in BOOTSEL mode instead.
+
+`./run.sh` for `pico_sdk` uses `platforms/pico-sdk/pico-sdk-run.sh`, which
+wraps this flash script with execution always enabled. Use `./flash.sh
+-- --no-execute` only when you want to program the device without running
+the new firmware.
 
 Extra `picotool load` options (device selection like `--ser`/`--bus`/
 `--address`, `-v`/`--verify`, `-u`/`--update`, ...) can be passed through

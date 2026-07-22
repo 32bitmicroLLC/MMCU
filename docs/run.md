@@ -1,8 +1,9 @@
 # Run
 
 `./run.sh` runs MMCU as configured in a build directory: directly, for
-`MMCU_PLATFORM=native`, or under QEMU, for `MMCU_PLATFORM=mcu` and
-`MMCU_PLATFORM=cmsis`. It reads
+`MMCU_PLATFORM=native`; under QEMU, for `MMCU_PLATFORM=mcu` and
+`MMCU_PLATFORM=cmsis`; or through a platform-specific target runner, for
+hardware-backed platforms such as `MMCU_PLATFORM=pico_sdk`. It reads
 `MMCU_PLATFORM`/`MMCU_TARGET`/`CMAKE_BUILD_TYPE` from that directory's
 `CMakeCache.txt` after building — it never sets platform/target/toolchain
 itself. See [Configure: Platform, Target, Toolchain](configure.md) and
@@ -21,21 +22,18 @@ the last `./configure.sh` run) recorded, falling back to plain `build` if
 
 - Everything [Build And Run](build.md) requires for the platform being run.
 - `qemu-system-arm` for `MMCU_PLATFORM=mcu` and `MMCU_PLATFORM=cmsis` builds.
+- `picotool` for `MMCU_PLATFORM=pico_sdk` runs on real hardware.
 - `gdb` for `--debug`.
 - `timeout` (coreutils) unless `--timeout 0`.
 
 ## How dispatch works
 
-1. Before building, `./run.sh` checks the existing `CMakeCache.txt`, or the
-   matching `.config` entry when the build directory has not been configured
-   yet. If the selected platform is `pico_sdk`, it stops immediately and
-   points to `./flash.sh`.
-2. Unless `--no-build` is passed, `./run.sh` calls `./build.sh --build-dir
+1. Unless `--no-build` is passed, `./run.sh` calls `./build.sh --build-dir
    <dir>`, which auto-configures `MMCU_PLATFORM=native` defaults if `<dir>`
    doesn't exist yet (see [Build And Run](build.md)).
-3. It reads `MMCU_PLATFORM` (and `MMCU_TARGET`, `CMAKE_BUILD_TYPE`) out of
+2. It reads `MMCU_PLATFORM` (and `MMCU_TARGET`, `CMAKE_BUILD_TYPE`) out of
    `<dir>/CMakeCache.txt`.
-4. It dispatches:
+3. It dispatches:
    - `native` → runs `<dir>/mmcu_app` directly.
    - `mcu` / `cmsis` → runs the ELF under `qemu-system-arm`, with machine/CPU derived
      from `MMCU_TARGET`:
@@ -46,8 +44,9 @@ the last `./configure.sh` run) recorded, falling back to plain `build` if
      | `cortex-m0plus` | `lm3s6965evb` | `cortex-m0plus` |
      | `emu` (or anything else) | `lm3s6965evb` | `cortex-m3` |
 
-   - `pico_sdk` → fails immediately: QEMU does not provide an RP2040/RP2350
-     machine, so pico-sdk builds must be run on real hardware with
+   - `pico_sdk` → runs the application on real hardware through
+     `platforms/pico-sdk/pico-sdk-run.sh`, which uses
+     `picotool load -f -x <uf2>` via the same lower-level mechanism as
      [Flash](flash.md).
 
 A bare-metal ELF with no board startup code/vector table will lock up under
@@ -57,10 +56,10 @@ QEMU on real Cortex-M machines until startup code provides one.
 
 ```bash
 ./run.sh --clean                     # remove --build-dir first
-./run.sh --no-build                  # run the existing executable/ELF as-is
+./run.sh --no-build                  # run existing build output as-is
 ./run.sh --verbose                   # show verbose output from the build phase
 ./run.sh --timeout 0                 # disable the default 5s timeout
-./run.sh -- --some-app-arg           # extra args: to the app (native) or QEMU (mcu)
+./run.sh -- --some-tool-arg          # extra args: app, QEMU, or platform runner
 ```
 
 `--debug` runs under a debugger instead of directly, and implies `--timeout
@@ -85,6 +84,15 @@ mcu/cmsis QEMU options: `--qemu <path>`, `--machine <name>`, `--cpu <name>`,
 executable path) applies to both platforms. Run `./run.sh --help` for the
 full list.
 
+For pico-sdk, `./run.sh` loads and executes the generated UF2 on a connected
+RP2040/RP2350 device. This is not emulation. It requires a board already in
+BOOTSEL mode, or firmware that supports picotool's reset-to-BOOTSEL request.
+Pass picotool `load` options after `--`, for example a serial selector:
+
+```bash
+./run.sh -- --ser 12345678
+```
+
 ## Examples
 
 ```bash
@@ -107,4 +115,8 @@ full list.
 
 # Re-run an already-built ELF without rebuilding
 ./run.sh --build-dir build-cortex-m0-gcc --no-build
+
+# Build, load, and execute a pico-sdk app on real hardware
+./configure.sh --platform pico_sdk --target rp2040 --board pico
+./run.sh
 ```
