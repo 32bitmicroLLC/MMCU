@@ -135,6 +135,13 @@ arm-none-eabi-gcc
 arm-none-eabi-g++
 ```
 
+On Debian/Ubuntu, install them with:
+
+```bash
+sudo apt update
+sudo apt install gcc-arm-none-eabi
+```
+
 If the commands are installed somewhere else, pass overrides:
 
 ```bash

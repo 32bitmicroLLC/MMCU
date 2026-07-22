@@ -535,6 +535,20 @@ prompt_toolchain_choice() {
             echo "  - $label"
         done
         echo "Error: no compatible compiler toolchain was found for MMCU_PLATFORM=$PLATFORM MMCU_TARGET=$TARGET." >&2
+        if [[ "$PLATFORM" == "pico_sdk" ]]; then
+            echo "       pico-sdk RP2040/RP2350 builds currently require the GNU Arm Embedded toolchain:" >&2
+            echo "         arm-none-eabi-gcc" >&2
+            echo "         arm-none-eabi-g++" >&2
+            echo "       On Debian/Ubuntu, install it with:" >&2
+            echo "         sudo apt update" >&2
+            echo "         sudo apt install gcc-arm-none-eabi" >&2
+            echo "       Install those host tools, then rerun ./configure.sh -i." >&2
+            echo "       Clang was rejected because pico-sdk Clang runtime/sysroot integration is not wired yet." >&2
+        elif [[ "$PLATFORM" == "mcu" || "$PLATFORM" == "cmsis" ]]; then
+            echo "       Install arm-none-eabi-gcc/g++, or select a supported Clang 20+ ARM EABI setup." >&2
+        elif [[ "$PLATFORM" == "native" ]]; then
+            echo "       Install GCC 15+ or Clang 20+. On Debian/Ubuntu, ./setup.sh --install-clang can install Clang." >&2
+        fi
         exit 1
     fi
 

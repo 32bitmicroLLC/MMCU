@@ -29,6 +29,18 @@ application/platform/target/board configuration.
 Native builds require Ninja 1.11+ and a compiler that CMake can use for
 C++20 module dependency scanning. Today that means GCC 15+ or Clang 20+.
 
+pico-sdk RP2040/RP2350 builds currently require the GNU Arm Embedded
+commands `arm-none-eabi-gcc` and `arm-none-eabi-g++`. Native GCC such as
+`gcc-15`/`g++-15` is not enough for pico-sdk because the output is a
+bare-metal ARM binary, not a host executable.
+
+On Debian/Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install gcc-arm-none-eabi
+```
+
 ## Metadata split
 
 Toolchain compatibility should be represented by two metadata trees:
