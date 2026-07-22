@@ -112,9 +112,11 @@ set(MMCU_MODULES
     src/core/cpu.cppm
     src/core/gpio.cppm
     src/core/uart.cppm
+    src/core/stdio.cppm
     src/core/i2c.cppm
     src/core/spi.cppm
     src/core/adc.cppm
+    libraries/MCP/mcp/mcp.cppm
 )
 set(MMCU_PICO_MODULES
     src/pico/pio.cppm

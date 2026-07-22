@@ -1,0 +1,12 @@
+schema: mmcu.module/v1
+name: stdio
+kind: module
+version: 1.0.0
+description: Target/platform-resolved standard input/output byte stream abstraction.
+provides:
+  - stdio
+modules:
+  - ../../../src/core/stdio.cppm
+depends:
+  - name: uart
+    version: 1.0.0

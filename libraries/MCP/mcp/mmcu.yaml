@@ -1,0 +1,24 @@
+schema: mmcu.module/v1
+name: mcp
+kind: library
+version: 0.1.0
+description: Self-contained Model Context Protocol server over stdio for embedded MMCU applications.
+provides:
+  - mcp
+  - mcp-server
+  - mcp-stdio-server
+modules:
+  - mcp.cppm
+depends:
+  - name: stdio
+    version: 1.0.0
+metadata:
+  links:
+    documentation:
+      - label: Model Context Protocol specification
+        url: https://modelcontextprotocol.io/specification/2025-03-26/basic/index
+      - label: JSON-RPC 2.0 Specification
+        url: https://www.jsonrpc.org/specification
+    support_repositories:
+      - label: modelcontextprotocol specification repository
+        url: https://github.com/modelcontextprotocol/modelcontextprotocol
