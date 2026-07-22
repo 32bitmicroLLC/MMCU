@@ -5,20 +5,26 @@ set -uo pipefail
 BUILD_DIR=""
 BUILD_DIR_EXPLICIT=0
 PLATFORM_OVERRIDE=""
+TARGET_OVERRIDE=""
 PICOTOOL=""
 VERBOSE=0
+RUN_HOST=0
+RUN_PLATFORM=0
+RUN_TARGET=0
+SCOPE_SELECTED=0
 
 usage() {
     cat <<'EOF'
 Usage: ./doctor.sh [options]
 
-Checks the MMCU host environment and the configured platform. The selected
-platform gets an additional device diagnostic where supported (currently
-pico_sdk, including USB/BOOTSEL checks).
+Checks the MMCU host environment and the configured platform. With no scope
+flag, host, platform, and target diagnostics all run.
 
 Options:
   -d, --build-dir <dir>   Build directory to inspect (default: .config, else build)
-  -p, --platform <name>   Platform to inspect instead of the configured one
+      --host              Diagnose host tools and the project virtual environment
+  -p, --platform [name]   Diagnose platform support; optionally override its name
+      --target [name]     Diagnose target/USB support; optionally override its name
       --picotool <path>   picotool path for pico_sdk diagnostics
   -v, --verbose           Show additional command and environment details
   -h, --help              Show this help
@@ -31,13 +37,27 @@ EOF
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -d|--build-dir) BUILD_DIR="${2:-}"; BUILD_DIR_EXPLICIT=1; shift 2 ;;
-        -p|--platform) PLATFORM_OVERRIDE="${2:-}"; shift 2 ;;
+        --host) RUN_HOST=1; SCOPE_SELECTED=1; shift ;;
+        -p|--platform)
+            RUN_PLATFORM=1; SCOPE_SELECTED=1; shift
+            if [[ $# -gt 0 && "${1#-}" == "$1" ]]; then PLATFORM_OVERRIDE="$1"; shift; fi
+            ;;
+        --target)
+            RUN_TARGET=1; SCOPE_SELECTED=1; shift
+            if [[ $# -gt 0 && "${1#-}" == "$1" ]]; then TARGET_OVERRIDE="$1"; shift; fi
+            ;;
         --picotool) PICOTOOL="${2:-}"; shift 2 ;;
         -v|--verbose) VERBOSE=1; shift ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
     esac
 done
+
+if [[ $SCOPE_SELECTED -eq 0 ]]; then
+    RUN_HOST=1
+    RUN_PLATFORM=1
+    RUN_TARGET=1
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -65,6 +85,7 @@ echo "MMCU doctor"
 echo "==========="
 echo "Build directory: $BUILD_DIR"
 
+if [[ $RUN_HOST -eq 1 ]]; then
 echo
 echo "Host tools"
 echo "----------"
@@ -98,6 +119,7 @@ if [[ -x venv/bin/python ]]; then
 else
     warn "project virtual environment ./venv is missing; run ./setup.sh"
 fi
+fi
 
 echo
 echo "MMCU configuration"
@@ -108,7 +130,7 @@ CONFIG_PLATFORM="$(read_config MMCU_PLATFORM)"
 CONFIG_TARGET="$(read_config MMCU_TARGET)"
 CONFIG_BOARD="$(read_config MMCU_BOARD)"
 PLATFORM_OVERRIDE="${PLATFORM_OVERRIDE:-$(read_cache MMCU_PLATFORM)}"
-TARGET="$(read_cache MMCU_TARGET)"
+TARGET="${TARGET_OVERRIDE:-$(read_cache MMCU_TARGET)}"
 BOARD="$(read_cache MMCU_BOARD)"
 PLATFORM="${PLATFORM_OVERRIDE:-$CONFIG_PLATFORM}"
 TARGET="${TARGET:-$CONFIG_TARGET}"
@@ -129,6 +151,7 @@ case "$PLATFORM" in
         [[ "$TARGET" == cortex-m0 || "$TARGET" == cortex-m0plus || "$TARGET" == rp2040 || -z "$TARGET" ]] || warn "cmsis target '$TARGET' is not in the documented target set" ;;
 esac
 
+if [[ $RUN_TARGET -eq 1 ]]; then
 echo
 echo "USB and device visibility"
 echo "-------------------------"
@@ -147,7 +170,9 @@ if [[ "$(uname -s)" == Linux* ]]; then
 else
     warn "USB/udev diagnostics are only implemented for Linux"
 fi
+fi
 
+if [[ $RUN_PLATFORM -eq 1 ]]; then
 echo
 echo "Platform diagnostics"
 echo "--------------------"
@@ -161,13 +186,6 @@ case "$PLATFORM" in
             pass "GNU Arm Embedded toolchain is available"
         else
             warn "GNU Arm Embedded toolchain is unavailable; install arm-none-eabi-gcc/g++"
-        fi
-        DOCTOR_ARGS=()
-        [[ -n "$PICOTOOL" ]] && DOCTOR_ARGS+=(--picotool "$PICOTOOL")
-        if [[ -x platforms/pico-sdk/pico-sdk-doctor.sh ]]; then
-            if platforms/pico-sdk/pico-sdk-doctor.sh "${DOCTOR_ARGS[@]}"; then :; else FAIL=$((FAIL + 1)); fi
-        else
-            fail "pico-sdk doctor script is missing"
         fi
         ;;
     cmsis)
@@ -189,6 +207,20 @@ case "$PLATFORM" in
     "") warn "platform diagnostic skipped" ;;
     *) warn "no platform doctor is defined for '$PLATFORM'" ;;
 esac
+fi
+
+if [[ $RUN_TARGET -eq 1 && "$PLATFORM" == pico_sdk ]]; then
+    echo
+    echo "pico-sdk target diagnostics"
+    echo "--------------------------"
+    DOCTOR_ARGS=()
+    [[ -n "$PICOTOOL" ]] && DOCTOR_ARGS+=(--picotool "$PICOTOOL")
+    if [[ -x platforms/pico-sdk/pico-sdk-doctor.sh ]]; then
+        if platforms/pico-sdk/pico-sdk-doctor.sh "${DOCTOR_ARGS[@]}"; then :; else FAIL=$((FAIL + 1)); fi
+    else
+        fail "pico-sdk doctor script is missing"
+    fi
+fi
 
 echo
 echo "Summary: $PASS passed, $WARN warning(s), $FAIL failure(s)"

@@ -1,12 +1,27 @@
 # Doctor: host and target diagnostics
 
 `./doctor.sh` is the first diagnostic command to run when setup, configure,
-build, USB detection, or board execution is unclear. It combines host checks
-with the diagnostic supplied by the selected platform.
+build, USB detection, or board execution is unclear. With no scope flag it
+combines host checks, platform checks, and target/USB checks.
 
 ```sh
 ./doctor.sh
 ```
+
+Run only a particular diagnostic scope when investigating one layer:
+
+```sh
+./doctor.sh --host                 # host tools and ./venv
+./doctor.sh --platform             # SDK/platform installation and toolchain
+./doctor.sh --target               # board, USB, BOOTSEL, and target access
+./doctor.sh --platform pico_sdk    # diagnose an explicitly named platform
+./doctor.sh --target rp2040        # inspect an explicitly named target
+```
+
+The scope flags are selective: once any of `--host`, `--platform`, or
+`--target` is supplied, only the requested scopes run. They can be combined,
+for example `./doctor.sh --host --target`. The build directory and configured
+values are still displayed as context.
 
 The command is deliberately read-only. It does not configure or build a
 directory, install packages, alter udev rules, mount or unmount BOOTSEL
