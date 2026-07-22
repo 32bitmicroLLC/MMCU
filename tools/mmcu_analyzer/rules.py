@@ -44,6 +44,7 @@ CAPABILITY_ALIASES: dict[str, list[str]] = {
     "pico-audio-pwm": ["audio-pwm", "pico-audio-pwm"],
     "arm2d_rp2040": ["arm2d-rp2040", "arm-2d-rp2040"],
     "cmsis-dsp": ["cmsis-dsp"],
+    "CMSISDSP": ["cmsis-dsp"],
     "cmsis-stream": ["cmsis-stream"],
     "arm-2d": ["arm-2d"],
     "display-st7789": ["display-st7789", "st7789"],
