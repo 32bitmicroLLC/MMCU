@@ -98,6 +98,17 @@ check_compiler() {
     [[ $c_ok -eq 1 && $cxx_ok -eq 1 ]]
 }
 
+check_ninja_version() {
+    local version
+    require_command ninja "CMake C++20 module generator" || return 1
+    version="$(ninja --version 2>/dev/null | head -1)"
+    if [[ "$(printf '%s\n' "1.11.0" "$version" | sort -V | head -n1)" != "1.11.0" ]]; then
+        echo "missing: ninja 1.11+ (found $version)"
+        return 1
+    fi
+    echo "ok: ninja $version"
+}
+
 check_host_tools() {
     local required_missing=0
 
@@ -105,12 +116,7 @@ check_host_tools() {
     check_cmake_version || required_missing=1
     require_command python3 "project-local virtual environment and Python tooling" || required_missing=1
     check_compiler || required_missing=1
-
-    if have_command ninja; then
-        echo "ok: ninja (preferred CMake generator for C++20 modules)"
-    else
-        warn "ninja not found; C++20 modules require Ninja, Ninja Multi-Config, or a supported IDE generator"
-    fi
+    check_ninja_version || required_missing=1
 
     if [[ $INSTALL_CMSIS -eq 1 || $INSTALL_PICO_SDK -eq 1 ]]; then
         require_command git "vendored CMSIS/DFP or pico-sdk checkout" || required_missing=1

@@ -45,20 +45,29 @@ environment.
 | Python 3 with PyYAML | Configure-time YAML manifest resolution through `tools/mmcu-deps.py` |
 | C++20 compiler with module support | Native builds and C++ module compilation |
 | C compiler | C/ASM startup, vendor support code, and mixed-language targets |
+| Ninja 1.11+ | CMake generator support for C++20 module dependency scanning |
 
 Known compiler expectations:
 
 - Native builds need a host C++20 compiler with module support.
 - Current docs assume Clang 20+ or GCC 15+ for C++20 modules.
 
-### Build Acceleration
+### Build Generator
 
 | Tool | Status | Used for |
 |---|---|---|
-| Ninja | Optional | Faster CMake generator; auto-detected by `configure.sh` |
+| Ninja 1.11+ | Required | CMake C++20 module builds; auto-selected by `configure.sh` |
 
-If `ninja` is present, `configure.sh` uses it. If not, CMake falls back to
-its default generator.
+MMCU uses C++20 module file sets. CMake supports those with Ninja only when
+Ninja is new enough; Ninja 1.10.x fails during CMake generation with a
+message saying Ninja 1.11 or higher is required. `configure.sh` checks this
+before invoking CMake and fails early with a shorter diagnostic.
+
+If `ninja --version` prints a new enough version but CMake still reports an
+older Ninja, the build directory was probably configured earlier with a
+different `CMAKE_MAKE_PROGRAM`. Check `<build-dir>/CMakeCache.txt`; recreate
+that build directory with `./configure.sh --clean` or use a fresh
+`--build-dir`.
 
 ### Bare-Metal ARM Builds
 

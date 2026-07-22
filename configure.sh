@@ -692,9 +692,65 @@ if [[ $CLEAN -eq 1 ]]; then
     rm -rf "$BUILD_DIR"
 fi
 
+check_ninja_version() {
+    local ninja_path version
+    if ! command -v ninja >/dev/null 2>&1; then
+        echo "Error: Ninja 1.11+ is required for MMCU C++20 module builds, but ninja was not found." >&2
+        echo "       Install or select a CMake generator with C++20 module support." >&2
+        exit 1
+    fi
+    ninja_path="$(command -v ninja)"
+    version="$("$ninja_path" --version 2>/dev/null | head -1)"
+    if [[ "$(printf '%s\n' "1.11.0" "$version" | sort -V | head -n1)" != "1.11.0" ]]; then
+        echo "Error: Ninja 1.11+ is required for CMake C++20 module support. Found: $version" >&2
+        echo "       Your CMake error is caused by Ninja being too old for C++20 modules." >&2
+        exit 1
+    fi
+    NINJA_PROGRAM="$ninja_path"
+}
+
+cached_cmake_var() {
+    local var="$1"
+    [[ -f "$BUILD_DIR/CMakeCache.txt" ]] || return 0
+    grep "^${var}:" "$BUILD_DIR/CMakeCache.txt" 2>/dev/null | head -1 | cut -d= -f2-
+}
+
+check_cached_ninja_version() {
+    local cached_program version
+    cached_program="$(cached_cmake_var CMAKE_MAKE_PROGRAM)"
+    [[ -n "$cached_program" ]] || return 0
+
+    if [[ ! -x "$cached_program" ]]; then
+        echo "Error: $BUILD_DIR is already configured with CMAKE_MAKE_PROGRAM=$cached_program, but that file is not executable." >&2
+        echo "       Use './configure.sh --clean' or a fresh --build-dir so CMake can select $NINJA_PROGRAM." >&2
+        exit 1
+    fi
+
+    version="$("$cached_program" --version 2>/dev/null | head -1)"
+    if [[ "$(printf '%s\n' "1.11.0" "$version" | sort -V | head -n1)" != "1.11.0" ]]; then
+        echo "Error: $BUILD_DIR is already configured with CMAKE_MAKE_PROGRAM=$cached_program (Ninja $version)." >&2
+        echo "       MMCU requires Ninja 1.11+ for C++20 modules; your current PATH ninja is $NINJA_PROGRAM." >&2
+        echo "       Use './configure.sh --clean' or a fresh --build-dir so CMake can select the newer Ninja." >&2
+        exit 1
+    fi
+}
+
 if [[ -z "$GENERATOR" ]] && command -v ninja >/dev/null 2>&1; then
     GENERATOR="Ninja"
 fi
+case "$GENERATOR" in
+    ""|"Ninja"|"Ninja Multi-Config")
+        check_ninja_version
+        check_cached_ninja_version
+        ;;
+    "Visual Studio "*)
+        ;;
+    *)
+        echo "Error: generator '$GENERATOR' is not supported for MMCU C++20 module builds." >&2
+        echo "       Use Ninja 1.11+ or Ninja Multi-Config." >&2
+        exit 1
+        ;;
+esac
 
 compiler_kind_from_build_dir() {
     local file line compiler_path
@@ -774,6 +830,9 @@ if [[ -n "$APPLICATION_DIR" ]]; then
 fi
 if [[ -n "$GENERATOR" ]]; then
     CMAKE_ARGS+=(-G "$GENERATOR")
+fi
+if [[ -n "${NINJA_PROGRAM:-}" && ( "$GENERATOR" == "Ninja" || "$GENERATOR" == "Ninja Multi-Config" ) ]]; then
+    CMAKE_ARGS+=(-DCMAKE_MAKE_PROGRAM="$NINJA_PROGRAM")
 fi
 
 echo "==> Configuring MMCU_PLATFORM=$PLATFORM${TARGET:+ MMCU_TARGET=$TARGET}${APPLICATION_DIR:+ MMCU_APPLICATION_DIR=$APPLICATION_DIR} in $BUILD_DIR"

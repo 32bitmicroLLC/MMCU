@@ -209,6 +209,12 @@ repeat `--build-dir <dir>` on every subsequent command.
 
 ## Direct CMake invocation
 
+Prefer `./configure.sh` for normal use. It checks Ninja 1.11+ before running
+CMake and passes the current `ninja` path as `CMAKE_MAKE_PROGRAM` for Ninja
+generators. Direct CMake invocations can reuse a stale `CMAKE_MAKE_PROGRAM`
+from an existing `CMakeCache.txt`; if that happens, delete/recreate the build
+directory or pass a fresh `-B <dir>`.
+
 ```bash
 # native (default)
 cmake -S . -B build

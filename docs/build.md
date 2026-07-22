@@ -36,7 +36,8 @@ that directory.
 - Python 3 with PyYAML for the configure-time manifest resolver
   (`tools/mmcu-deps.py`); install `requirements-yaml.txt` into `./venv/`
   with `./setup.sh` for the project-local setup
-- Ninja (optional, auto-detected by `configure.sh`)
+- Ninja 1.11 or newer; CMake requires this for C++20 module builds with the
+  Ninja generator
 - `/usr/bin/clang++-20` / `/usr/bin/clang-20` for `--platform mcu --compiler clang`
   or `--platform cmsis --compiler clang`
 - `/usr/bin/arm-none-eabi-g++` / `/usr/bin/arm-none-eabi-gcc` for
@@ -48,6 +49,11 @@ that directory.
   targets. Prefer `./platform.sh install --platform cmsis`; CMake also
   falls back to cloning into `third_party/CMSIS_6` if no `--cmsis-dir` or
   platform-local checkout is provided.
+
+If CMake reports Ninja 1.10.x even though `ninja --version` shows 1.11+,
+the existing build directory has a stale `CMAKE_MAKE_PROGRAM` in
+`CMakeCache.txt`. Reconfigure with `./configure.sh --clean` or choose a fresh
+`--build-dir`.
 
 ## Configure
 

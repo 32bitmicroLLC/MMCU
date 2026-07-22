@@ -20,8 +20,8 @@ check.
 
 The default setup does three things:
 
-- checks required host tools: CMake 4.0+, Python 3, C compiler, and C++20
-  compiler support;
+- checks required host tools: CMake 4.0+, Ninja 1.11+, Python 3, C compiler,
+  and C++20 compiler support;
 - creates or updates `./venv`;
 - bootstraps `pip` into an existing `./venv` if the interpreter exists but
   `pip` is missing;
