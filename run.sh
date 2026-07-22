@@ -140,6 +140,42 @@ if [[ $BUILD_DIR_EXPLICIT -eq 0 ]]; then
     BUILD_DIR="${BUILD_DIR:-build}"
 fi
 
+read_config_var() {
+    local var="$1"
+    [[ -f .config ]] || return 0
+    grep "^${var}=" .config 2>/dev/null | tail -1 | cut -d= -f2-
+}
+
+read_cache_var() {
+    grep "^${1}:" "$BUILD_DIR/CMakeCache.txt" 2>/dev/null | head -1 | cut -d= -f2-
+}
+
+pico_sdk_run_error() {
+    echo "Error: MMCU_PLATFORM=pico_sdk cannot be run by ./run.sh." >&2
+    echo "       QEMU does not provide an RP2040/RP2350 machine, so there is no" >&2
+    echo "       host run target for pico-sdk builds." >&2
+    echo "       Use ./flash.sh to run it on real hardware instead (see docs/flash.md)." >&2
+}
+
+configured_platform_for_run() {
+    local config_build_dir config_platform
+    if [[ -f "$BUILD_DIR/CMakeCache.txt" ]]; then
+        read_cache_var MMCU_PLATFORM
+        return 0
+    fi
+    config_build_dir="$(read_config_var MMCU_BUILD_DIR)"
+    if [[ -n "$config_build_dir" && "$config_build_dir" == "$BUILD_DIR" ]]; then
+        config_platform="$(read_config_var MMCU_PLATFORM)"
+        [[ -n "$config_platform" ]] && printf '%s\n' "$config_platform"
+    fi
+}
+
+CONFIGURED_PLATFORM="$(configured_platform_for_run)"
+if [[ "$CONFIGURED_PLATFORM" == "pico_sdk" ]]; then
+    pico_sdk_run_error
+    exit 1
+fi
+
 if [[ $DEBUG -eq 1 ]] && ! command -v "$GDB" >/dev/null 2>&1; then
     echo "Error: $GDB not found in PATH." >&2
     exit 1
@@ -159,10 +195,6 @@ if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
     echo "Error: $BUILD_DIR is not configured (no CMakeCache.txt). Run ./configure.sh or drop --no-build." >&2
     exit 1
 fi
-
-read_cache_var() {
-    grep "^${1}:" "$BUILD_DIR/CMakeCache.txt" 2>/dev/null | head -1 | cut -d= -f2-
-}
 
 PLATFORM="$(read_cache_var MMCU_PLATFORM)"
 TARGET="$(read_cache_var MMCU_TARGET)"
@@ -287,9 +319,7 @@ case "$PLATFORM" in
         ;;
 
     pico_sdk)
-        echo "Error: MMCU_PLATFORM=pico_sdk has no run mechanism: no QEMU machine exists for" >&2
-        echo "       RP2040/RP2350 (see docs/targets-arm/rp2040-rp2350.md). Use ./flash.sh to" >&2
-        echo "       run it on real hardware instead (see docs/flash.md)." >&2
+        pico_sdk_run_error
         exit 1
         ;;
 

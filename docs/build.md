@@ -271,9 +271,11 @@ manually.
 
 ## Run
 
-`./run.sh` builds (via `./build.sh`) and then runs MMCU as configured —
-directly for native, under QEMU for mcu/cmsis — dispatching on the configured
-`MMCU_PLATFORM`. See [Run](run.md).
+`./run.sh` runs MMCU as configured — directly for native, under QEMU for
+mcu/cmsis — dispatching on the configured `MMCU_PLATFORM`. It refuses
+`pico_sdk` before building when the selected build directory or `.config`
+already identifies a pico-sdk build, because RP2040/RP2350 do not have a
+QEMU machine. Use `./flash.sh` for pico-sdk hardware. See [Run](run.md).
 
 ## Flash
 

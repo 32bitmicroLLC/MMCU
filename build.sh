@@ -281,6 +281,13 @@ if [[ $MAP_AND_LIST -eq 1 ]]; then
 fi
 
 if [[ $RUN_APP -eq 1 ]]; then
+    RUN_PLATFORM="$(read_cache_var MMCU_PLATFORM)"
+    if [[ "$RUN_PLATFORM" != "native" ]]; then
+        echo "Error: build.sh --run only executes native host builds directly." >&2
+        echo "       For mcu/cmsis builds use ./run.sh so QEMU/debug options are applied." >&2
+        echo "       For pico_sdk builds use ./flash.sh to run on real hardware." >&2
+        exit 1
+    fi
     APP_PATH="$(find_app_path)" || {
         echo "Error: built executable not found in $BUILD_DIR" >&2
         exit 1

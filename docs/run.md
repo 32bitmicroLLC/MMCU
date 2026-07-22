@@ -26,12 +26,16 @@ the last `./configure.sh` run) recorded, falling back to plain `build` if
 
 ## How dispatch works
 
-1. Unless `--no-build` is passed, `./run.sh` calls `./build.sh --build-dir
+1. Before building, `./run.sh` checks the existing `CMakeCache.txt`, or the
+   matching `.config` entry when the build directory has not been configured
+   yet. If the selected platform is `pico_sdk`, it stops immediately and
+   points to `./flash.sh`.
+2. Unless `--no-build` is passed, `./run.sh` calls `./build.sh --build-dir
    <dir>`, which auto-configures `MMCU_PLATFORM=native` defaults if `<dir>`
    doesn't exist yet (see [Build And Run](build.md)).
-2. It reads `MMCU_PLATFORM` (and `MMCU_TARGET`, `CMAKE_BUILD_TYPE`) out of
+3. It reads `MMCU_PLATFORM` (and `MMCU_TARGET`, `CMAKE_BUILD_TYPE`) out of
    `<dir>/CMakeCache.txt`.
-3. It dispatches:
+4. It dispatches:
    - `native` → runs `<dir>/mmcu_app` directly.
    - `mcu` / `cmsis` → runs the ELF under `qemu-system-arm`, with machine/CPU derived
      from `MMCU_TARGET`:
@@ -42,9 +46,9 @@ the last `./configure.sh` run) recorded, falling back to plain `build` if
      | `cortex-m0plus` | `lm3s6965evb` | `cortex-m0plus` |
      | `emu` (or anything else) | `lm3s6965evb` | `cortex-m3` |
 
-   - `pico_sdk` → fails immediately: there's no run mechanism yet, since its
-     target module isn't implemented (see
-     [Bare-Metal pico-sdk Platform](platforms-baremetal/pico-sdk.md)).
+   - `pico_sdk` → fails immediately: QEMU does not provide an RP2040/RP2350
+     machine, so pico-sdk builds must be run on real hardware with
+     [Flash](flash.md).
 
 A bare-metal ELF with no board startup code/vector table will lock up under
 QEMU on real Cortex-M machines until startup code provides one.
