@@ -410,7 +410,9 @@ public:
 
     void run()
     {
-        char line[LineCapacity]{};
+        // Keep the line buffer out of the small RP2040 main stack. The JSON
+        // document used by process_line is also static for the same reason.
+        static char line[LineCapacity]{};
         std::size_t length = 0;
         for (;;) {
             if (!io_.read_line(line, LineCapacity, length) || length == 0) {
@@ -422,7 +424,7 @@ public:
 
     bool process_line(const char* line)
     {
-        json_document document;
+        static json_document document;
         if (!document.parse(line)) {
             write_error(nullptr, -32700, "Parse error");
             return false;

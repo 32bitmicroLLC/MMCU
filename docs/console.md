@@ -24,9 +24,25 @@ Choose another speed or enable hardware flow control:
 ./console.sh --dsrdtr /dev/ttyACM0
 ```
 
+If control keys or input appear not to work, enable diagnostics:
+
+```bash
+./console.sh --diagnostic /dev/ttyACM0
+```
+
+Diagnostics are written to stderr and show the file descriptors, whether
+stdin is a terminal, bytes received from the board, and bytes read from the
+keyboard. `Ctrl-C` should appear as `03` and `Ctrl-]` as `1d`. Stop the
+diagnostic session with `Ctrl-D` or by closing the terminal.
+
 The console passes received bytes directly to the terminal. Input newlines are
 translated to CRLF by default; use `--raw` to disable that translation. Press
-`Ctrl-]` to disconnect. `Ctrl-C` also exits cleanly.
+`Ctrl-]` or `Ctrl-C` to disconnect. The console handles both keys itself while
+the terminal is in raw mode, so they work even though the usual terminal
+signal processing is disabled.
+
+Enter is normalized from CR, LF, or CRLF to CRLF. This is important for the
+MCP server, which accepts newline-delimited JSON-RPC messages.
 
 On Linux, the current user normally needs to be in the `dialout` group:
 
