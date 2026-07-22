@@ -6,6 +6,7 @@ import os
 import select
 import sys
 import termios
+import time
 import tty
 
 def main() -> int:
@@ -16,6 +17,8 @@ def main() -> int:
     parser.add_argument("--dsrdtr", action="store_true")
     parser.add_argument("--raw", action="store_true", help="do not translate newlines")
     parser.add_argument("--diagnostic", action="store_true", help="trace terminal and serial events on stderr")
+    parser.add_argument("--request", help="send one newline-delimited request and print the response")
+    parser.add_argument("--wait-response", type=float, metavar="SECONDS", help="response timeout for --request (default: 2)")
     args = parser.parse_args()
 
     try:
@@ -36,6 +39,23 @@ def main() -> int:
     try:
         stdin_fd = sys.stdin.fileno()
         serial_fd = connection.fileno()
+        if args.request is not None:
+            request = args.request.encode("utf-8")
+            request = request.replace(b"\r\n", b"\n").replace(b"\r", b"\n").replace(b"\n", b"\r\n")
+            connection.write(request)
+            deadline = time.monotonic() + (args.wait_response if args.wait_response is not None else 2.0)
+            response = bytearray()
+            while time.monotonic() < deadline:
+                readable, _, _ = select.select([serial_fd], [], [], 0.05)
+                if serial_fd not in readable:
+                    continue
+                response.extend(connection.read(connection.in_waiting or 1))
+                if b"\n" in response:
+                    sys.stdout.buffer.write(response[: response.index(b"\n") + 1])
+                    sys.stdout.buffer.flush()
+                    return 0
+            print("console: timed out waiting for response", file=sys.stderr)
+            return 2
         if args.diagnostic:
             print(f"diagnostic: stdin_fd={stdin_fd} serial_fd={serial_fd} tty={sys.stdin.isatty()}", file=sys.stderr)
         if sys.stdin.isatty():
