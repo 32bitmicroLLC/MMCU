@@ -555,7 +555,9 @@ private:
     void write_integer(long value) const
     {
         char buffer[24]{};
-        auto cursor = sizeof(buffer);
+        // Reserve the final byte for the NUL terminator consumed by
+        // transport::write_string().
+        auto cursor = sizeof(buffer) - 1;
         const bool negative = value < 0;
         unsigned long magnitude = negative ? static_cast<unsigned long>(-value) : static_cast<unsigned long>(value);
 
