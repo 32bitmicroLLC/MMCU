@@ -510,6 +510,7 @@ list_toolchain_candidates() {
 prompt_toolchain_choice() {
     local rows=() usable_indexes=() labels=() default_index=1 idx row
     local id family cc_path cxx_path version status reason label
+    local selected_id selected_family selected_cc_path selected_cxx_path
 
     mapfile -t rows < <(list_toolchain_candidates "$PLATFORM" "$TARGET")
     if [[ ${#rows[@]} -eq 0 ]]; then
@@ -540,6 +541,10 @@ prompt_toolchain_choice() {
     if [[ ${#usable_indexes[@]} -eq 1 && ${#rows[@]} -gt 1 ]]; then
         idx="${usable_indexes[0]}"
         IFS='|' read -r id family cc_path cxx_path version status reason label <<< "${rows[$idx]}"
+        selected_id="$id"
+        selected_family="$family"
+        selected_cc_path="$cc_path"
+        selected_cxx_path="$cxx_path"
         echo "Only one compatible compiler toolchain was found:"
         echo "  $label"
         echo
@@ -550,10 +555,14 @@ prompt_toolchain_choice() {
             [[ "$status" == "usable" ]] || echo "  $label"
         done
         echo
-        if ! prompt_yes_no "Use $id?" "y"; then
+        if ! prompt_yes_no "Use $selected_id?" "y"; then
             echo "Aborted." >&2
             exit 1
         fi
+        id="$selected_id"
+        family="$selected_family"
+        cc_path="$selected_cc_path"
+        cxx_path="$selected_cxx_path"
     else
         idx="$(prompt_choice "Select compiler toolchain:" "$default_index" "${labels[@]}")"
         idx=$((idx - 1))
