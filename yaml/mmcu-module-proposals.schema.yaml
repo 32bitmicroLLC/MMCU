@@ -1,0 +1,96 @@
+# MMCU YAML schema description for tools/mmcu-analyze-repo.py proposal output.
+#
+# Tooling writes these files with PyYAML from Pydantic models
+# (tools/mmcu_analyzer/models.py: ModuleProposals). A proposal is a
+# *suggestion*, never materialized automatically: nothing under
+# applications/, libraries/, drivers/, or modules/ is written by `analyze`.
+# Default location: build/analyzer/<repo-name>/mmcu.module-proposals.yaml.
+
+schema: mmcu.schema/v1
+name: mmcu-module-proposals
+file_name: mmcu.module-proposals.yaml
+applies_to:
+  - build/analyzer/**/mmcu.module-proposals.yaml
+
+description: >
+  One or more proposed mmcu.yaml-shaped module declarations inferred from a
+  repo model, naming both the dependencies MMCU already satisfies and the
+  ones it doesn't yet. A proposal is safe to materialize only once every
+  listed dependency is satisfied; `materialization_blockers` names what's
+  still missing.
+
+rules:
+  unknown_fields: reject
+
+fields:
+  schema:
+    type: enum
+    required: true
+    enum: [mmcu.module-proposals/v1]
+
+  source_model:
+    type: path
+    required: true
+    description: Path to the mmcu.repo-model.yaml this proposal was derived from.
+
+  materialization_safe:
+    type: bool
+    required: true
+    description: False whenever materialization_blockers is non-empty.
+
+  materialization_blockers:
+    type: list[str]
+    required: false
+    description: Human-readable reasons materializing this proposal today would be unsafe.
+
+  modules:
+    type: list[module_proposal]
+    required: true
+    unique_by: [name]
+
+schemas:
+  module_proposal:
+    unknown_fields: reject
+    fields:
+      schema:
+        type: enum
+        enum: [mmcu.module/v1]
+      name:
+        type: str
+        required: true
+        pattern: "^[a-z0-9][a-z0-9-]*$"
+      kind:
+        type: enum
+        required: true
+        enum: [application, library, driver, module]
+      description:
+        type: str
+        required: false
+      provides:
+        type: list[str]
+        required: false
+      depends:
+        type: list[proposal_dependency]
+        required: false
+        unique_by: [name]
+
+  proposal_dependency:
+    unknown_fields: reject
+    fields:
+      name:
+        type: str
+        required: true
+      version:
+        type: semver
+        required: false
+      status:
+        type: enum
+        enum: [satisfied, missing]
+        description: >
+          Whether an existing MMCU package already provides this name.
+          `missing` entries are exactly why materialization_safe is false.
+
+validators:
+  - never written inside the analyzed repository
+  - never written inside applications/, libraries/, drivers/, or modules/
+  - a proposal with any `missing` dependency must have materialization_safe: false

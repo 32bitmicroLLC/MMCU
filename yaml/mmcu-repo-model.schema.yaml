@@ -1,0 +1,142 @@
+# MMCU YAML schema description for tools/mmcu-analyze-repo.py repo-model output.
+#
+# Tooling writes these files with PyYAML from Pydantic models
+# (tools/mmcu_analyzer/models.py: RepoModel). This is the static analysis
+# result for one external repository -- read-only, auditable, never
+# hand-written. Default location: build/analyzer/<repo-name>/mmcu.repo-model.yaml.
+
+schema: mmcu.schema/v1
+name: mmcu-repo-model
+file_name: mmcu.repo-model.yaml
+applies_to:
+  - build/analyzer/**/mmcu.repo-model.yaml
+
+description: >
+  What the analyzer found in one external repository: its inventory, git
+  provenance, static CMake graph, source-level evidence, generated-code
+  detection, inferred platform/target/board/attachments, cross-referenced
+  MMCU dependency status, and the resulting fit level. Not wired into
+  repo-wide YAML validation yet, since its default location
+  (build/analyzer/) is git-ignored generated output, not an MMCU-owned input.
+
+rules:
+  unknown_fields: reject
+
+fields:
+  schema:
+    type: enum
+    required: true
+    enum: [mmcu.repo-model/v1]
+
+  repo_path:
+    type: path
+    required: true
+    description: Absolute path to the analyzed repository.
+
+  repo_name:
+    type: str
+    required: true
+    description: Directory name of the analyzed repository.
+
+  inventory:
+    type: inventory
+    required: false
+    description: Cheap, read-only shape of the repo (dirs, file counts, CMake/Python roots).
+
+  git:
+    type: git
+    required: false
+    description: Git provenance (origin, branch, head, dirty flag, submodules).
+
+  cmake:
+    type: cmake
+    required: false
+    description: Static (and, with --configure, configured) CMake facts.
+
+  source:
+    type: source
+    required: false
+    description: Include/symbol/pin-claim evidence classified by the curated tag tables.
+
+  generated_code:
+    type: generated_code
+    required: false
+    description: Detected code generators and their checked-in output.
+
+  classification:
+    type: classification
+    required: false
+    description: Inferred primary MMCU kind (application/library/driver/module/not-mmcu/unknown).
+
+  platform:
+    type: inference
+    required: false
+    description: Inferred MMCU_PLATFORM equivalent, with confidence and evidence.
+
+  target:
+    type: inference
+    required: false
+    description: Inferred MMCU_TARGET equivalent, with confidence and evidence.
+
+  board:
+    type: board_inference
+    required: false
+    description: Inferred base board candidate(s) and whether they fully cover the repo's hardware.
+
+  attachments:
+    type: list[str]
+    required: false
+    description: External hardware attachments detected in documentation (e.g. a specific display module).
+
+  mmcu_context:
+    type: mmcu_context_summary
+    required: false
+    description: How many real MMCU packages/capabilities/boards were indexed for the dependency cross-check.
+
+  dependencies:
+    type: dependencies
+    required: false
+    description: Satisfied/missing/partial dependency status, cross-referenced against real MMCU manifests.
+
+  fit:
+    type: fit
+    required: true
+    description: Overall fit level (clean/partial/blocked/not-mmcu) and per-area scores.
+
+  migration:
+    type: list[str]
+    required: false
+    description: Free-text migration notes derived from the other fields.
+
+  findings:
+    type: list[finding]
+    required: false
+    description: Warnings/errors/info about the analysis run itself.
+
+schemas:
+  finding:
+    unknown_fields: reject
+    fields:
+      level:
+        type: enum
+        enum: [info, warning, error]
+      message:
+        type: str
+        required: true
+      path:
+        type: path
+        required: false
+
+  fit:
+    unknown_fields: reject
+    fields:
+      level:
+        type: enum
+        enum: [clean, partial, blocked, not-mmcu]
+      scores:
+        type: map[str, str]
+        description: "Per-area score, e.g. {platform: clean, board: partial}."
+
+validators:
+  - never written inside the analyzed repository
+  - never written inside applications/, libraries/, drivers/, or modules/

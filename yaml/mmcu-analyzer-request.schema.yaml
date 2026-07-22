@@ -1,0 +1,86 @@
+# MMCU YAML schema description for tools/mmcu-analyze-repo.py request files.
+#
+# Tooling loads these files with PyYAML and validates them with Pydantic
+# (tools/mmcu_analyzer/models.py: AnalyzerRequest). A request file is an
+# optional way to record an analyze invocation's flags in a file instead of
+# passing them all on the command line via --request.
+
+schema: mmcu.schema/v1
+name: mmcu-analyzer-request
+file_name: "*.yaml (any path passed to --request)"
+applies_to:
+  - any path passed to `tools/mmcu-analyze-repo.py analyze --request <path>`
+
+description: >
+  Records the inputs of one `analyze` invocation. Explicit CLI flags always
+  override the corresponding field here.
+
+rules:
+  unknown_fields: reject
+
+fields:
+  schema:
+    type: enum
+    required: false
+    enum: [mmcu.analyzer-request/v1]
+
+  repo:
+    type: path
+    required: true
+    description: Path to the repository to analyze.
+
+  mmcu_root:
+    type: path
+    required: false
+    description: Path to the MMCU checkout (default -- this tool's own repo).
+
+  out:
+    type: path
+    required: false
+    description: Output path for the repo model YAML.
+
+  proposals_out:
+    type: path
+    required: false
+    description: Output path for the module proposals YAML.
+
+  report_out:
+    type: path
+    required: false
+    description: Output path for the Markdown report.
+
+  configure:
+    type: bool
+    required: false
+    description: Also run a read-only CMake configure (file-api query only, no build).
+
+  build_dir:
+    type: path
+    required: false
+    description: Build directory to use with configure.
+
+  generator:
+    type: str
+    required: false
+    description: CMake generator to use with configure.
+
+  cache:
+    type: map[str, str]
+    required: false
+    description: Extra -D cache entries for configure.
+
+  history:
+    type: bool
+    required: false
+    description: Also run a git history scan via PyDriller, if installed.
+
+  fail_on:
+    type: enum
+    required: false
+    enum: [warning, error]
+    description: Exit non-zero if a finding at/above this level is recorded.
+
+validators:
+  - repo must exist and be a directory
+  - out/proposals_out/report_out must resolve inside mmcu_root or under the
+    system temp directory, and never inside repo

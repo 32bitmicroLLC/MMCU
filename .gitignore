@@ -95,6 +95,7 @@ platforms/pico-sdk/share/
 Testing/
 .cache/
 site/
+__pycache__/
 
 # local proposal drafts
 proposals/
