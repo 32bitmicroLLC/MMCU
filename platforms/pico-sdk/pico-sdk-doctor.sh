@@ -3,6 +3,7 @@ set -euo pipefail
 
 PICOTOOL=""
 EXTRA_ARGS=()
+VERBOSE=0
 
 usage() {
     cat <<'EOF'
@@ -15,6 +16,8 @@ mounted BOOTSEL volumes, and asks picotool for device information.
 Options:
   --picotool <path>   picotool executable (default: platforms/pico-sdk/bin/picotool,
                       falling back to picotool in PATH)
+  -v, --verbose       Show full USB topology, udev properties, tty settings,
+                      and raw picotool output
   -h, --help          Show this help
 
 Arguments after -- are passed to `picotool info` (for example
@@ -28,6 +31,10 @@ while [[ $# -gt 0 ]]; do
         --picotool)
             PICOTOOL="${2:-}"
             shift 2
+            ;;
+        -v|--verbose)
+            VERBOSE=1
+            shift
             ;;
         -h|--help)
             usage
@@ -90,7 +97,7 @@ if [[ "$(uname -s)" == "Linux" ]]; then
                 warn "USB serial application is running; picotool info requires BOOTSEL mode"
                 echo "      Use BOOTSEL for non-destructive info, or explicitly use picotool info -f to reset it."
             fi
-            if command -v lsusb >/dev/null 2>&1; then
+            if [[ $VERBOSE -eq 1 ]] && command -v lsusb >/dev/null 2>&1; then
                 echo "      USB topology:"
                 lsusb -t 2>/dev/null | grep -E 'Driver=(cdc_acm|usb-storage)|Class=(CDC|Mass Storage)' | sed 's/^/        /' || true
             fi
@@ -128,13 +135,15 @@ if [[ "$(uname -s)" == "Linux" ]]; then
             echo "      model: ${model:-unknown}"
             echo "      serial: ${serial:-unknown}"
             echo "      driver: ${driver:-unknown}"
-            echo "      interfaces: ${interfaces:-unknown}"
+            if [[ $VERBOSE -eq 1 ]]; then
+                echo "      interfaces: ${interfaces:-unknown}"
+            fi
             echo "      permissions: $(stat -c '%A %U:%G' "$serial_device" 2>/dev/null || ls -l "$serial_device")"
             owner_group="$(stat -c '%G' "$serial_device" 2>/dev/null || true)"
             if [[ -n "$owner_group" ]] && ! id -nG 2>/dev/null | tr ' ' '\n' | grep -Fxq "$owner_group"; then
                 warn "current user is not in the $owner_group group for $serial_device"
             fi
-            if command -v stty >/dev/null 2>&1; then
+            if [[ $VERBOSE -eq 1 ]] && command -v stty >/dev/null 2>&1; then
                 stty -F "$serial_device" -a 2>/dev/null | sed 's/^/      tty settings: /' || true
             fi
         done
@@ -146,11 +155,31 @@ if [[ "$(uname -s)" == "Linux" ]]; then
         fi
     fi
 
-    MOUNTS="$(findmnt -rn -S /dev/sda1 -o TARGET 2>/dev/null || true)"
-    if [[ -n "$MOUNTS" ]]; then
-        warn "BOOTSEL volume /dev/sda1 is mounted at: $MOUNTS"
-        echo "      Unmount it before picotool load/run to avoid filesystem I/O races."
-    else
+    USB_MOUNT_FOUND=0
+    BOOT_MOUNT_FOUND=0
+    if command -v findmnt >/dev/null 2>&1; then
+        while read -r mount_source mount_target mount_type; do
+            [[ -n "$mount_source" && -n "$mount_target" ]] || continue
+            [[ "$mount_source" == /dev/* ]] || continue
+            mount_properties=""
+            if command -v udevadm >/dev/null 2>&1; then
+                mount_properties="$(udevadm info --query=property --name "$mount_source" 2>/dev/null || true)"
+            fi
+            if [[ "$mount_source" == /dev/sda1 ]] || grep -q '^ID_BUS=usb$' <<<"$mount_properties"; then
+                USB_MOUNT_FOUND=1
+                if [[ "$mount_source" == /dev/sda1 ]]; then
+                    BOOT_MOUNT_FOUND=1
+                    warn "BOOTSEL USB volume mounted: $mount_source at $mount_target (${mount_type:-unknown})"
+                    echo "      Unmount it before picotool load/run to avoid filesystem I/O races."
+                else
+                    warn "USB device mounted: $mount_source at $mount_target (${mount_type:-unknown})"
+                fi
+            fi
+        done < <(findmnt -rn -o SOURCE,TARGET,FSTYPE 2>/dev/null || true)
+    fi
+    if [[ $USB_MOUNT_FOUND -eq 0 ]]; then
+        pass "no USB filesystem is mounted"
+    elif [[ $BOOT_MOUNT_FOUND -eq 0 ]]; then
         pass "no /dev/sda1 BOOTSEL volume is mounted"
     fi
 else
@@ -164,7 +193,11 @@ set +e
 "$PICOTOOL" info "${EXTRA_ARGS[@]}" >"$INFO_LOG" 2>&1
 INFO_STATUS=$?
 set -e
-cat "$INFO_LOG"
+if [[ $VERBOSE -eq 1 ]]; then
+    cat "$INFO_LOG"
+else
+    grep -Ei 'No accessible|appears to have|consider -f|consider.*force|ERROR|error:' "$INFO_LOG" | sed 's/^/      picotool: /' || true
+fi
 if [[ $INFO_STATUS -eq 0 ]]; then
     pass "picotool can query the target"
 elif grep -qiE 'USB serial connection|consider -f|consider.*force' "$INFO_LOG"; then

@@ -164,8 +164,29 @@ if [[ "$(uname -s)" == Linux* ]]; then
     fi
     if [[ -e /etc/udev/rules.d/60-picotool.rules ]] || grep -Rqs '2e8a' /etc/udev/rules.d/*.rules 2>/dev/null; then pass "Raspberry Pi udev rule appears present"; else warn "Raspberry Pi udev rule not found; BOOTSEL access may require root"; fi
     if have findmnt; then
-        BOOT_MOUNTS="$(findmnt -rn -S /dev/sda1 -o TARGET 2>/dev/null || true)"
-        if [[ -n "$BOOT_MOUNTS" ]]; then warn "BOOTSEL volume /dev/sda1 is mounted at $BOOT_MOUNTS"; else pass "no BOOTSEL volume is mounted"; fi
+        USB_MOUNT_FOUND=0
+        BOOT_MOUNT_FOUND=0
+        while read -r mount_source mount_target mount_type; do
+            [[ -n "$mount_source" && "$mount_source" == /dev/* ]] || continue
+            mount_properties=""
+            if have udevadm; then
+                mount_properties="$(udevadm info --query=property --name "$mount_source" 2>/dev/null || true)"
+            fi
+            if [[ "$mount_source" == /dev/sda1 ]] || grep -q '^ID_BUS=usb$' <<<"$mount_properties"; then
+                USB_MOUNT_FOUND=1
+                if [[ "$mount_source" == /dev/sda1 ]]; then
+                    BOOT_MOUNT_FOUND=1
+                    warn "BOOTSEL USB volume mounted: $mount_source at $mount_target (${mount_type:-unknown})"
+                else
+                    warn "USB device mounted: $mount_source at $mount_target (${mount_type:-unknown})"
+                fi
+            fi
+        done < <(findmnt -rn -o SOURCE,TARGET,FSTYPE 2>/dev/null || true)
+        if [[ $USB_MOUNT_FOUND -eq 0 ]]; then
+            pass "no USB filesystem is mounted"
+        elif [[ $BOOT_MOUNT_FOUND -eq 0 ]]; then
+            pass "no BOOTSEL volume is mounted"
+        fi
     fi
 else
     warn "USB/udev diagnostics are only implemented for Linux"
@@ -215,6 +236,7 @@ if [[ $RUN_TARGET -eq 1 && "$PLATFORM" == pico_sdk ]]; then
     echo "--------------------------"
     DOCTOR_ARGS=()
     [[ -n "$PICOTOOL" ]] && DOCTOR_ARGS+=(--picotool "$PICOTOOL")
+    [[ $VERBOSE -eq 1 ]] && DOCTOR_ARGS+=(--verbose)
     if [[ -x platforms/pico-sdk/pico-sdk-doctor.sh ]]; then
         if platforms/pico-sdk/pico-sdk-doctor.sh "${DOCTOR_ARGS[@]}"; then :; else FAIL=$((FAIL + 1)); fi
     else

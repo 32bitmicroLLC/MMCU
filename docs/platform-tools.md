@@ -112,6 +112,16 @@ selection options after `--` when more than one board is connected:
 ./platforms/pico-sdk/pico-sdk-doctor.sh -- --ser E0C9125B0D9B
 ```
 
+Use `--verbose` for full USB topology, udev interface properties, tty
+settings, and raw `picotool info` output. Without it, the doctor keeps the
+report concise while retaining device identity, permissions, and actionable
+error lines:
+
+```sh
+./platforms/pico-sdk/pico-sdk-doctor.sh --verbose
+./doctor.sh --target --verbose
+```
+
 The doctor returns a non-zero status when a required check fails or no target
 can be queried, which makes it suitable for a preflight check in scripts.
 When a board is running application firmware, Linux may show its USB-serial
@@ -122,7 +132,8 @@ For application-mode USB it also reports matching `/dev/ttyACM*` or
 `/dev/ttyUSB*` nodes, udev model/serial/interface properties, the kernel USB
 driver, device ownership and access mode, current user-group access, and tty
 settings. When available, USB topology and driver lines from `lsusb -t` are
-shown as well.
+shown as well. It also reports every mounted USB filesystem, including
+BOOTSEL `/dev/sda1` and other removable USB storage, in normal output.
 
 ## pico-sdk: platform smoke test
 
