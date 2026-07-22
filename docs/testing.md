@@ -19,6 +19,10 @@ the first `test-*.py` script:
 ./test.sh --verbose /dev/ttyACM0
 ```
 
+Normal tests print the MCP request and decoded response. `--verbose` additionally
+prints the selected command and protocol diagnostics for Python tests,
+including transmitted and received serial bytes.
+
 Use explicit application or build directory overrides when testing a
 configuration other than the current `.config`:
 

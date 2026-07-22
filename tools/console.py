@@ -46,6 +46,7 @@ def main() -> int:
                 request += b"\r\n"
             if args.diagnostic:
                 print(f"diagnostic: request {len(request)} byte(s): {request.hex(' ')}", file=sys.stderr)
+                print(f"diagnostic: request text: {request.decode('utf-8', errors='replace').rstrip()}", file=sys.stderr)
             connection.write(request)
             deadline = time.monotonic() + (args.wait_response if args.wait_response is not None else 2.0)
             response = bytearray()
@@ -58,6 +59,9 @@ def main() -> int:
                 if args.diagnostic and chunk:
                     print(f"diagnostic: response {len(chunk)} byte(s): {chunk.hex(' ')}", file=sys.stderr)
                 if b"\n" in response:
+                    if args.diagnostic:
+                        line = response[: response.index(b"\n") + 1]
+                        print(f"diagnostic: response text: {line.decode('utf-8', errors='replace').rstrip()}", file=sys.stderr)
                     sys.stdout.buffer.write(response[: response.index(b"\n") + 1])
                     sys.stdout.buffer.flush()
                     return 0

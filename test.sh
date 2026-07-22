@@ -90,8 +90,10 @@ if [[ "$TEST_PATH" == *.py ]]; then
     [[ -x "$PYTHON" ]] || PYTHON="$(command -v python3 || true)"
     [[ -n "$PYTHON" ]] || { echo "Error: Python 3 not found; run ./setup.sh." >&2; exit 1; }
     COMMAND=("$PYTHON" "$TEST_PATH")
+    [[ $VERBOSE -eq 1 ]] && COMMAND+=(--diagnostic)
 else
     COMMAND=("$TEST_PATH")
+    [[ $VERBOSE -eq 1 ]] && COMMAND+=(--verbose)
 fi
 [[ -n "$BUILD_DIR" ]] && COMMAND+=(--build-dir "$BUILD_DIR")
 COMMAND+=("${TEST_ARGS[@]}")

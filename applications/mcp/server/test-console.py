@@ -44,6 +44,8 @@ def main() -> int:
     if response.get("id") != 1 or "result" not in response:
         print(f"MCP test: unexpected response: {response}", file=sys.stderr)
         return 1
+    print(f"MCP request: {json.dumps(request, separators=(',', ':'))}")
+    print(f"MCP response: {json.dumps(response, separators=(',', ':'))}")
     print("MCP initialize: PASS")
     return 0
 
