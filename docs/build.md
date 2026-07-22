@@ -289,5 +289,6 @@ targets, via `picotool` — dispatching on the configured `MMCU_PLATFORM`/
 ./clean.sh
 ```
 
-Discovers and removes every configured MMCU build directory (`build`,
-`build-cortex-m0-gcc`, ...) — see [Clean](clean.md).
+Removes the build directory recorded in `.config`. Use
+`./clean.sh --all-builds` to remove every configured build directory — see
+[Clean](clean.md).

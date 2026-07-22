@@ -1,27 +1,21 @@
 # Clean
 
-`./clean.sh` removes MMCU build directories as configured, instead of
-assuming a single hardcoded `build` directory. By default it discovers
-every top-level `build*` directory whose `CMakeCache.txt` has
-`MMCU_PLATFORM` set (see [Configure: Platform, Target, Toolchain](configure.md))
-and removes exactly those — covering `build`, `build-cortex-m0-gcc`,
-`build-cortex-m0plus-clang`, or any other `--build-dir` chosen at configure
-time, without needing to be told each name.
+`./clean.sh` removes the currently configured MMCU build directory by
+default. It reads `MMCU_BUILD_DIR` from `.config`, falling back to `build`.
+This matches the directory used by `build.sh`, `run.sh`, and `flash.sh`.
 
 ```bash
-./clean.sh              # discover and remove every configured MMCU build dir
+./clean.sh              # remove the build directory recorded in .config
 ./clean.sh -n            # dry run: print what would be removed
+./clean.sh --all-builds  # discover and remove every configured build* directory
 ```
 
 ## How discovery works
 
-For each directory matching `build` or `build-*` at the repo root,
-`clean.sh` checks whether `<dir>/CMakeCache.txt` contains an
-`MMCU_PLATFORM:` entry. If it does, that directory was configured by
-`./configure.sh` (or a direct `cmake` invocation with `-DMMCU_PLATFORM=...`)
-and is removed. Directories matching `build*` that aren't MMCU build
-directories (no `CMakeCache.txt`, or a cache from some unrelated CMake
-project) are left alone.
+With `--all-builds`, each directory matching `build` or `build-*` at the repo
+root is checked for an `MMCU_PLATFORM:` entry in its `CMakeCache.txt`. Only
+those directories are removed. Directories matching `build*` that are not
+MMCU build directories are left alone.
 
 Removal output includes the platform/target that was configured, when
 known:
@@ -56,8 +50,9 @@ Testing
 
 ## Not covered
 
-`./clean.sh` only touches MMCU's own `MMCU_PLATFORM`-configured build
-directories. It does not touch:
+`./clean.sh` only touches the selected MMCU build directory, or all of
+MMCU's `MMCU_PLATFORM`-configured build directories when `--all-builds` is
+explicitly used. It does not touch:
 
 - `third_party/` (vendored CMSIS_6 checkout, shared across build
   directories — see [Build And Run](build.md)).
@@ -67,4 +62,5 @@ directories. It does not touch:
 
 ## Options
 
-Run `./clean.sh --help` for the full list: `-n`/`--dry-run`, `-a`/`--all`.
+Run `./clean.sh --help` for the full list: `-n`/`--dry-run`,
+`--all-builds`, and `-a`/`--all`.

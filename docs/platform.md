@@ -22,7 +22,8 @@ that need to vendor a toolchain/SDK first.
 - `install` — vendor the platform's toolchain/SDK, if it has one.
 - `configure` — `./configure.sh --platform <name>` for `mmcu_app`.
 - `build` — `./build.sh` for `mmcu_app`.
-- `clean` — `./clean.sh` (discovers every configured `mmcu_app` build dir).
+- `clean` — `./clean.sh` (cleans the current `.config` build dir; use
+  `./clean.sh --all-builds` for every configured build dir).
 
 `configure`/`build`/`clean` always go through the top-level `configure.sh`/
 `build.sh`/`clean.sh` — see [Configure](configure.md),

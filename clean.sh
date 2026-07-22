@@ -3,29 +3,30 @@ set -euo pipefail
 
 DRY_RUN=0
 REMOVE_ALL=0
+ALL_BUILDS=0
 TARGETS=()
 
 usage() {
     cat <<'EOF'
 Usage: ./clean.sh [options] [paths...]
 
-Removes MMCU build directories as configured: by default, every top-level
-build* directory whose CMakeCache.txt has MMCU_PLATFORM set (see
-./configure.sh and docs/configure.md) — not just a hardcoded "build". This
-covers build, build-cortex-m0-gcc, build-cortex-m0plus-clang, and any other
---build-dir chosen at configure time.
+Removes the currently configured MMCU build directory by default. The default
+comes from MMCU_BUILD_DIR in .config, falling back to build. Use --all-builds
+to discover every top-level build* directory whose CMakeCache.txt has
+MMCU_PLATFORM set.
 
 Explicit [paths...] override discovery entirely and are removed as given,
 whether or not they look like MMCU build directories.
 
 Options:
   -n, --dry-run   Print what would be removed without deleting
+      --all-builds Discover and remove every configured build* directory
   -a, --all       Also remove in-source CMake and docs artifacts
   -h, --help      Show this help
 
 Defaults:
-  If no paths are provided, discovers and removes every configured MMCU
-  build* directory found. See docs/clean.md.
+  If no paths are provided, removes the build directory recorded in .config.
+  Use --all-builds for the multi-build cleanup mode. See docs/clean.md.
 EOF
 }
 
@@ -33,6 +34,10 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         -n|--dry-run)
             DRY_RUN=1
+            shift
+            ;;
+        --all-builds)
+            ALL_BUILDS=1
             shift
             ;;
         -a|--all)
@@ -69,10 +74,18 @@ if [[ ${#TARGETS[@]} -gt 0 ]]; then
 fi
 
 if [[ $EXPLICIT -eq 0 ]]; then
-    for dir in build build-*; do
-        [[ -d "$dir" ]] || continue
-        is_mmcu_build_dir "$dir" && TARGETS+=("$dir")
-    done
+    if [[ $ALL_BUILDS -eq 1 ]]; then
+        for dir in build build-*; do
+            [[ -d "$dir" ]] || continue
+            is_mmcu_build_dir "$dir" && TARGETS+=("$dir")
+        done
+    else
+        CURRENT_BUILD_DIR=""
+        if [[ -f .config ]]; then
+            CURRENT_BUILD_DIR="$(grep '^MMCU_BUILD_DIR=' .config 2>/dev/null | tail -1 | cut -d= -f2-)"
+        fi
+        TARGETS+=("${CURRENT_BUILD_DIR:-build}")
+    fi
 fi
 
 if [[ $REMOVE_ALL -eq 1 ]]; then
@@ -87,7 +100,7 @@ if [[ $REMOVE_ALL -eq 1 ]]; then
 fi
 
 if [[ ${#TARGETS[@]} -eq 0 ]]; then
-    echo "Nothing to clean: no configured MMCU build directories found (build, build-*)."
+    echo "Nothing to clean: no target build directory was selected."
     exit 0
 fi
 
