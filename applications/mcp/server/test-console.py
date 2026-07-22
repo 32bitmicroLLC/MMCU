@@ -26,15 +26,17 @@ def main() -> int:
     ]
     if args.diagnostic:
         command.insert(1, "--diagnostic")
-    result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+    result = subprocess.run(command, cwd=root, capture_output=True)
+    stdout = result.stdout.decode("utf-8", errors="replace")
+    stderr = result.stderr.decode("utf-8", errors="replace")
     if result.returncode != 0:
-        sys.stderr.write(result.stderr)
+        sys.stderr.write(stderr)
         return result.returncode
     try:
-        response = json.loads(result.stdout)
+        response = json.loads(stdout)
     except json.JSONDecodeError as exc:
         print(f"MCP test: invalid JSON response: {exc}", file=sys.stderr)
-        print(result.stdout, file=sys.stderr)
+        print(stdout, file=sys.stderr)
         return 1
     if response.get("id") != 1 or "result" not in response:
         print(f"MCP test: unexpected response: {response}", file=sys.stderr)
