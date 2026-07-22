@@ -42,6 +42,8 @@ def main() -> int:
         if args.request is not None:
             request = args.request.encode("utf-8")
             request = request.replace(b"\r\n", b"\n").replace(b"\r", b"\n").replace(b"\n", b"\r\n")
+            if args.diagnostic:
+                print(f"diagnostic: request {len(request)} byte(s): {request.hex(' ')}", file=sys.stderr)
             connection.write(request)
             deadline = time.monotonic() + (args.wait_response if args.wait_response is not None else 2.0)
             response = bytearray()
@@ -49,7 +51,10 @@ def main() -> int:
                 readable, _, _ = select.select([serial_fd], [], [], 0.05)
                 if serial_fd not in readable:
                     continue
-                response.extend(connection.read(connection.in_waiting or 1))
+                chunk = connection.read(connection.in_waiting or 1)
+                response.extend(chunk)
+                if args.diagnostic and chunk:
+                    print(f"diagnostic: response {len(chunk)} byte(s): {chunk.hex(' ')}", file=sys.stderr)
                 if b"\n" in response:
                     sys.stdout.buffer.write(response[: response.index(b"\n") + 1])
                     sys.stdout.buffer.flush()

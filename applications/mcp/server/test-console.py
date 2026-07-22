@@ -13,6 +13,7 @@ def main() -> int:
     parser.add_argument("port", help="serial device, for example /dev/ttyACM0")
     parser.add_argument("--wait", type=float, default=2.0)
     parser.add_argument("--build-dir", help="accepted by test.sh for dispatcher compatibility")
+    parser.add_argument("--diagnostic", action="store_true")
     args = parser.parse_args()
 
     root = pathlib.Path(__file__).resolve().parents[3]
@@ -23,6 +24,8 @@ def main() -> int:
         "--wait-response", str(args.wait),
         args.port,
     ]
+    if args.diagnostic:
+        command.insert(1, "--diagnostic")
     result = subprocess.run(command, cwd=root, text=True, capture_output=True)
     if result.returncode != 0:
         sys.stderr.write(result.stderr)
